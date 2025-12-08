@@ -1,7 +1,8 @@
-.PHONY: help env build build-core build-ingestion build-read test test-core test-ingestion test-read run-core run-ingestion run-read stop-core stop-ingestion stop-read e2e e2e-venv e2e-ingestion e2e-read e2e-docker infra-up infra-down services-up services-down up up-core up-ingestion up-read down down-core down-ingestion down-read down-all logs clean-pre clean-post dev
+.PHONY: help env build build-core build-ingestion build-read test test-core test-ingestion test-read run-core run-ingestion run-read stop-core stop-ingestion stop-read e2e e2e-venv e2e-ingestion e2e-read e2e-docker infra-up infra-down services-up services-down up up-core up-ingestion up-read down down-core down-ingestion down-read down-all logs clean-pre clean-post dev infra-up-choreo infra-down-choreo services-up-choreo services-down-choreo up-choreo up-core-choreo up-ingestion-choreo up-read-choreo down-choreo down-core-choreo down-ingestion-choreo down-read-choreo down-all-choreo logs-choreo clean-pre-choreo clean-post-choreo e2e-docker-choreo e2e-choreo e2e-ingestion-choreo e2e-read-choreo
 
 # Select docker compose command. Override with: make COMPOSE="docker compose"
 COMPOSE ?= docker-compose
+COMPOSE_CHOREO ?= docker-compose -f docker-compose-choreo.yml
 
 # Paths (updated after refactor)
 CORE_DIR := opengin/core-api
@@ -64,6 +65,29 @@ help:
 	@# echo "backup-<db>         Backup mongodb | postgres | neo4j"  # Disabled - requires testing
 	@# echo "restore-<db>        Restore mongodb | postgres | neo4j"  # Disabled - requires testing
 	@echo "dev                 One command: clean, build, start full stack, ready for development"
+	@echo ""
+	@echo "Choreo Environment Targets (docker-compose-choreo.yml):"
+	@echo "------------------------------------------------------------"
+	@echo "infra-up-choreo     Start databases (MongoDB, Neo4j, Postgres) - Choreo"
+	@echo "infra-down-choreo   Stop databases - Choreo"
+	@echo "services-up-choreo  Start services (core-choreo, ingestion-choreo, read-choreo)"
+	@echo "services-down-choreo Stop services - Choreo"
+	@echo "up-choreo           Start full stack (infra + services) - Choreo"
+	@echo "up-core-choreo      Start Core API service - Choreo (assumes infra is running)"
+	@echo "up-ingestion-choreo Start Ingestion API service - Choreo (assumes infra is running)"
+	@echo "up-read-choreo      Start Read API service - Choreo (assumes infra is running)"
+	@echo "down-choreo         Stop stack (keeps volumes) - Choreo"
+	@echo "down-core-choreo    Stop Core API service - Choreo"
+	@echo "down-ingestion-choreo Stop Ingestion API service - Choreo"
+	@echo "down-read-choreo    Stop Read API service - Choreo"
+	@echo "down-all-choreo     Stop stack and remove volumes - Choreo"
+	@echo "logs-choreo         Tail logs for main services - Choreo"
+	@echo "clean-pre-choreo    Clean databases (pre) using cleanup profile - Choreo"
+	@echo "clean-post-choreo   Clean databases (post) using cleanup profile - Choreo"
+	@echo "e2e-docker-choreo   Run E2E tests in docker-compose-choreo 'e2e-choreo' service"
+	@echo "e2e-choreo          Run all E2E tests locally against Choreo services"
+	@echo "e2e-ingestion-choreo Run E2E tests for Ingestion API against Choreo services"
+	@echo "e2e-read-choreo     Run E2E tests for Read API against Choreo services"
 	@echo "------------------------------------------------------------"
 	@echo "Tip: override compose command with COMPOSE=\"docker compose\" if needed"
 
@@ -400,3 +424,96 @@ dev: clean-pre build up
 	@echo "- Read API:   http://localhost:8081"
 	@echo "- Tail logs:   make logs"
 	@echo "- Run E2E:     make e2e or make e2e-docker"
+
+# Choreo Environment Targets
+infra-up-choreo:
+	@echo "Starting databases (MongoDB, Neo4j, Postgres) - Choreo"
+	@$(COMPOSE_CHOREO) up -d --build mongodb-choreo neo4j-choreo postgres-choreo
+
+infra-down-choreo:
+	@echo "Stopping databases - Choreo"
+	@$(COMPOSE_CHOREO) stop mongodb-choreo neo4j-choreo postgres-choreo || true
+
+services-up-choreo:
+	@echo "Starting services (core-choreo, ingestion-choreo, read-choreo)"
+	@$(COMPOSE_CHOREO) up -d --build core-choreo ingestion-choreo read-choreo
+
+services-down-choreo:
+	@echo "Stopping services - Choreo"
+	@$(COMPOSE_CHOREO) stop core-choreo ingestion-choreo read-choreo || true
+
+up-choreo: infra-up-choreo services-up-choreo
+	@echo "Full stack started (Choreo)."
+	@echo "- Core (gRPC): localhost:50051"
+	@echo "- Ingestion API:  http://localhost:8080"
+	@echo "- Read API:   http://localhost:8081"
+
+up-core-choreo:
+	@echo "Starting Core API service - Choreo (ensure infra is running: make infra-up-choreo)"
+	@$(COMPOSE_CHOREO) up -d --build core-choreo
+	@echo "Core API started (Choreo)."
+	@echo "- Core (gRPC): localhost:50051"
+
+up-ingestion-choreo:
+	@echo "Starting Ingestion API service - Choreo (ensure infra is running: make infra-up-choreo)"
+	@$(COMPOSE_CHOREO) up -d --build ingestion-choreo
+	@echo "Ingestion API started (Choreo)."
+	@echo "- Ingestion API:  http://localhost:8080"
+
+up-read-choreo:
+	@echo "Starting Read API service - Choreo (ensure infra is running: make infra-up-choreo)"
+	@$(COMPOSE_CHOREO) up -d --build read-choreo
+	@echo "Read API started (Choreo)."
+	@echo "- Read API:   http://localhost:8081"
+
+logs-choreo:
+	@$(COMPOSE_CHOREO) logs -f core-choreo ingestion-choreo read-choreo
+
+down-choreo:
+	@echo "Stopping stack (keeping volumes) - Choreo"
+	@$(COMPOSE_CHOREO) down
+
+down-core-choreo:
+	@echo "Stopping Core API service - Choreo"
+	@$(COMPOSE_CHOREO) stop core-choreo || true
+
+down-ingestion-choreo:
+	@echo "Stopping Ingestion API service - Choreo"
+	@$(COMPOSE_CHOREO) stop ingestion-choreo || true
+
+down-read-choreo:
+	@echo "Stopping Read API service - Choreo"
+	@$(COMPOSE_CHOREO) stop read-choreo || true
+
+down-all-choreo:
+	@echo "Stopping stack and removing volumes - Choreo"
+	@$(COMPOSE_CHOREO) down -v
+
+clean-pre-choreo:
+	@echo "Cleaning databases (pre) via cleanup profile - Choreo"
+	@$(COMPOSE_CHOREO) --profile cleanup run --rm cleanup-choreo /app/cleanup-choreo.sh pre
+
+clean-post-choreo:
+	@echo "Cleaning databases (post) via cleanup profile - Choreo"
+	@$(COMPOSE_CHOREO) --profile cleanup run --rm cleanup-choreo /app/cleanup-choreo.sh post
+
+e2e-docker-choreo:
+	@echo "Running E2E tests via docker-compose-choreo (will build and run dependent services if needed)"
+	@$(COMPOSE_CHOREO) up --build -d mongodb-choreo neo4j-choreo postgres-choreo core-choreo ingestion-choreo read-choreo
+	@$(COMPOSE_CHOREO) up --build e2e-choreo
+	@$(COMPOSE_CHOREO) rm -f e2e-choreo || true
+
+e2e-choreo: e2e-venv e2e-ingestion-choreo e2e-read-choreo
+
+e2e-ingestion-choreo: e2e-venv
+	@echo "Running E2E tests for Ingestion API against Choreo services (ensure services are up: make up-choreo)"
+	@cd $(E2E_DIR) && \
+		INGESTION_SERVICE_URL=http://localhost:8080 \
+		.venv/bin/python basic_core_tests.py
+
+e2e-read-choreo: e2e-venv
+	@echo "Running E2E tests for Read API against Choreo services (ensure services are up: make up-choreo)"
+	@cd $(E2E_DIR) && \
+		INGESTION_SERVICE_URL=http://localhost:8080 \
+		READ_SERVICE_URL=http://localhost:8081 \
+		.venv/bin/python basic_read_tests.py
