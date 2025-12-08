@@ -1,4 +1,4 @@
-# Dockerfile.core.choreo
+# Dockerfile.choreo
 #
 # Purpose:
 # This Dockerfile builds and runs the CORE API service, which provides the gRPC interface
@@ -8,9 +8,9 @@
 # Usage:
 # 1. Build the image:
 #    # For ARM64 (Apple Silicon):
-#    docker build --platform linux/arm64 -t core-service -f Dockerfile.core.choreo .
+#    docker build --platform linux/arm64 -t core-service -f opengin/core-api/docker/Dockerfile.choreo .
 #    # For AMD64:
-#    docker build --platform linux/amd64 -t core-service -f Dockerfile.core.choreo .
+#    docker build --platform linux/amd64 -t core-service -f opengin/core-api/docker/Dockerfile.choreo .
 #
 # 2. Run the container (REQUIRED environment variables):
 #   docker run -d \
@@ -117,7 +117,7 @@ COPY --from=builder /etc/passwd /etc/passwd
 COPY --from=builder /etc/group /etc/group
 
 # Copy the Choreo-specific startup script
-COPY core_startup-choreo.sh /app/start.sh
+COPY opengin/core-api/docker/core_startup-choreo.sh /app/start.sh
 RUN chmod +x /app/start.sh
 
 # Add log configuration

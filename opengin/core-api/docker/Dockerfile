@@ -1,4 +1,4 @@
-# Dockerfile.core
+# Dockerfile
 #
 # Purpose:
 # This Dockerfile builds and runs the CORE API service, which provides a gRPC interface
@@ -8,7 +8,7 @@
 #
 # Usage:
 # 1. Build the image:
-#    docker build -t core-service -f Dockerfile.core .
+#    docker build -t core-service -f opengin/core-api/docker/Dockerfile .
 #
 # 2. Run the container:
 #    docker run -d \
@@ -96,7 +96,7 @@ COPY --from=builder /etc/passwd /etc/passwd
 COPY --from=builder /etc/group /etc/group
 
 # Copy the startup script
-COPY core_startup.sh /app/start.sh
+COPY opengin/core-api/docker/core_startup.sh /app/start.sh
 RUN chmod +x /app/start.sh
 
 # Set environment variables with defaults for Neo4j connection

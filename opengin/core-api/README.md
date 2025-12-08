@@ -82,7 +82,7 @@ The service will be running in port `50051` and it is hard coded. This needs to 
 
 #### Run with Docker
 
-`Dockerfile.core` refers to just running the
+`opengin/core-api/docker/Dockerfile` refers to just running the
 
 Make sure to create a network for this work since we need every other service to be accessible hence
 we place them in the same network. 
@@ -92,7 +92,7 @@ docker network create core-network
 ```
 
 ```bash
-docker build -t core-service -f Dockerfile.core .
+docker build -t core-service -f opengin/core-api/docker/Dockerfile .
 ```
 
 ```bash

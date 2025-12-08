@@ -1,63 +1,63 @@
-# Ingestion Service Dockerfile
+# Read Service Dockerfile
 #
-# This Dockerfile builds a Ballerina-based ingestion service that communicates with a CORE service.
+# This Dockerfile builds a Ballerina-based read service that communicates with a CORE service.
 #
 # Building the Image:
 # -----------------
-# To build the image, run the following command from the directory containing this Dockerfile:
-#   docker build -t ldf-choreo-ingestion-service -f Dockerfile.ingestion.choreo .
+# To build the image, run the following command from the project root:
+#   docker build -t ldf-choreo-read-service -f opengin/read-api/docker/Dockerfile.choreo .
 #
 # Running the Container:
 # ---------------------
 # Basic run command:
 #   docker run -p 8080:8080 \
 #     -e CORE_SERVICE_URL="http://host.docker.internal:50051" \
-#     -e INGESTION_SERVICE_HOST="0.0.0.0" \
-#     -e INGESTION_SERVICE_PORT="8080" \
-#     ldf-choreo-ingestion-service
+#     -e READ_SERVICE_HOST="0.0.0.0" \
+#     -e READ_SERVICE_PORT="8081" \
+#     ldf-choreo-read-service
 #
 # Options:
-#   -p 8080:8080                    : Maps container port 8080 to host port 8080
+#   -p 8081:8081                    : Maps container port 8081 to host port 8081
 #   -e CORE_SERVICE_URL=<url>       : URL of the CORE service to connect to (required)
-#   -e INGESTION_SERVICE_HOST=<host>   : Host address to bind the service (default: 0.0.0.0)
-#   -e INGESTION_SERVICE_PORT=<port>   : Port to expose the service (default: 8080)
+#   -e READ_SERVICE_HOST=<host>   : Host address to bind the service (default: 0.0.0.0)
+#   -e READ_SERVICE_PORT=<port>   : Port to expose the service (default: 8081)
 #   -d                              : Run in detached mode (background)
 #   --name <container-name>         : Assign a name to the container
 #
 # Examples:
 # 1. Run in detached mode:
 #    docker run -d \
-#      --name ldf-choreo-ingestion-service \
-#      -p 8080:8080 \
+#      --name ldf-choreo-read-service \
+#      -p 8081:8081 \
 #      -e CORE_SERVICE_URL="http://host.docker.internal:50051" \
-#      -e INGESTION_SERVICE_HOST="0.0.0.0" \
-#      -e INGESTION_SERVICE_PORT="8080" \
-#      ldf-choreo-ingestion-service
+#      -e READ_SERVICE_HOST="0.0.0.0" \
+#      -e READ_SERVICE_PORT="8081" \
+#      ldf-choreo-read-service
 #
 # 2. Run with custom port mapping:
 #    docker run -p 9090:8080 \
 #      -e CORE_SERVICE_URL="http://host.docker.internal:50051" \
-#      -e INGESTION_SERVICE_HOST="0.0.0.0" \
-#      -e INGESTION_SERVICE_PORT="8080" \
-#      ldf-choreo-ingestion-service
+#      -e READ_SERVICE_HOST="0.0.0.0" \
+#      -e READ_SERVICE_PORT="8081" \
+#      ldf-choreo-read-service
 #
 # 3. Run with additional JVM options:
 #    docker run -p 8080:8080 \
 #      -e CORE_SERVICE_URL="http://host.docker.internal:50051" \
-#      -e INGESTION_SERVICE_HOST="0.0.0.0" \
-#      -e INGESTION_SERVICE_PORT="8080" \
+#      -e READ_SERVICE_HOST="0.0.0.0" \
+#      -e READ_SERVICE_PORT="8081" \
 #      -e JAVA_OPTS="-Xmx512m" \
-#      ldf-choreo-ingestion-service
+#      ldf-choreo-read-service
 #
 # 4. Run with container name and restart policy:
 #    docker run -d \
-#      --name ldf-choreo-ingestion-service \
+#      --name ldf-choreo-read-service \
 #      --restart unless-stopped \
-#      -p 8080:8080 \
+#      -p 8081:8081 \
 #      -e CORE_SERVICE_URL="http://host.docker.internal:50051" \
-#      -e INGESTION_SERVICE_HOST="0.0.0.0" \
-#      -e INGESTION_SERVICE_PORT="8080" \
-#      ldf-choreo-ingestion-service
+#      -e READ_SERVICE_HOST="0.0.0.0" \
+#      -e READ_SERVICE_PORT="8081" \
+#      ldf-choreo-read-service
 #
 # Environment Variables:
 # ---------------------
@@ -65,20 +65,20 @@
 #   Format: http://<host>:<port>
 #   Example: http://host.docker.internal:50051
 #
-# INGESTION_SERVICE_HOST: Host address to bind the service
+# READ_SERVICE_HOST: Host address to bind the service
 #   Default: 0.0.0.0
 #   Example: 0.0.0.0
 #
-# INGESTION_SERVICE_PORT: Port to expose the service
-#   Default: 8080
-#   Example: 8080
+# READ_SERVICE_PORT: Port to expose the service
+#   Default: 8081
+#   Example: 8081
 #
 # JAVA_OPTS: JVM options (optional)
 #   Example: -Xmx512m -XX:+UseContainerSupport
 #
 # Notes:
 # ------
-# - The service runs on port 8080 inside the container
+# - The service runs on port 8081 inside the container
 # - The container uses a non-root user (choreouser) for security
 # - The service waits for the CORE service to be available before starting
 # - Use host.docker.internal to connect to services running on the host machine
@@ -98,7 +98,7 @@
 #    - Ensure the ports are not already in use
 #    - Check file permissions in the container
 
-# Build stage for Ingestion service
+# Build stage for Read service
 FROM --platform=linux/amd64 ballerina/ballerina:2201.11.0 AS builder
 
 # Set working directory
@@ -122,7 +122,7 @@ RUN apk add --no-cache shadow && \
 RUN apk add --no-cache ca-certificates netcat-openbsd dos2unix
 
 # Create and set permissions for build directories
-RUN mkdir -p /app/opengin/ingestion-api/target && \
+RUN mkdir -p /app/opengin/read-api/target && \
     chown -R choreouser:choreo /app && \
     chmod -R 755 /app
 
@@ -132,7 +132,7 @@ USER 10014
 # Build the application with explicit platform settings
 # ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
 # Build the Ballerina service
-RUN cd opengin/ingestion-api && \
+RUN cd opengin/read-api && \
     bal build
 
 # Final stage
@@ -152,23 +152,23 @@ RUN mkdir -p /home/choreouser/.ballerina && \
     chmod -R 755 /home/choreouser
 
 # Copy the source code and build artifacts
-COPY --from=builder /app/opengin/ingestion-api /app/opengin/ingestion-api
+COPY --from=builder /app/opengin/read-api /app/opengin/read-api
 COPY --from=builder /etc/passwd /etc/passwd
 COPY --from=builder /etc/group /etc/group
 
 # Set Ballerina configurable variables from environment variables
 ENV BAL_CONFIG_VAR_CORESERVICEURL=${CORE_SERVICE_URL:-http://core-choreo:50051}
-ENV BAL_CONFIG_VAR_INGESTIONSERVICEHOST=${INGESTION_SERVICE_HOST:-0.0.0.0}
-ENV BAL_CONFIG_VAR_INGESTIONSERVICEPORT=${INGESTION_SERVICE_PORT:-8080}
+ENV BAL_CONFIG_VAR_READSERVICEHOST=${READ_SERVICE_HOST:-0.0.0.0}
+ENV BAL_CONFIG_VAR_READSERVICEPORT=${READ_SERVICE_PORT:-8081}
 
 # Create startup script with proper line endings
 RUN echo '#!/bin/sh' > /app/start.sh && \
-    echo 'echo "Starting ingestion service with Ballerina configurable variables:"' >> /app/start.sh && \
+    echo 'echo "Starting read service with Ballerina configurable variables:"' >> /app/start.sh && \
     echo 'echo "BAL_CONFIG_VAR_CORESERVICEURL: $BAL_CONFIG_VAR_CORESERVICEURL"' >> /app/start.sh && \
-    echo 'echo "BAL_CONFIG_VAR_INGESTIONSERVICEHOST: $BAL_CONFIG_VAR_INGESTIONSERVICEHOST"' >> /app/start.sh && \
-    echo 'echo "BAL_CONFIG_VAR_INGESTIONSERVICEPORT: $BAL_CONFIG_VAR_INGESTIONSERVICEPORT"' >> /app/start.sh && \
+    echo 'echo "BAL_CONFIG_VAR_READSERVICEHOST: $BAL_CONFIG_VAR_READSERVICEHOST"' >> /app/start.sh && \
+    echo 'echo "BAL_CONFIG_VAR_READSERVICEPORT: $BAL_CONFIG_VAR_READSERVICEPORT"' >> /app/start.sh && \
     echo '' >> /app/start.sh && \
-    echo 'exec bal run /app/opengin/ingestion-api' >> /app/start.sh && \
+    echo 'exec bal run /app/opengin/read-api' >> /app/start.sh && \
     chmod +x /app/start.sh && \
     dos2unix /app/start.sh
 
@@ -176,14 +176,14 @@ RUN echo '#!/bin/sh' > /app/start.sh && \
 RUN chown -R choreouser:choreo /app && \
     chmod -R 777 /app
 
-# Ensure the entire ingestion-api project directory has write permissions
-RUN chown -R choreouser:choreo /app/opengin/ingestion-api && \
-    chmod -R 777 /app/opengin/ingestion-api
+# Ensure the entire read-api project directory has write permissions
+RUN chown -R choreouser:choreo /app/opengin/read-api && \
+    chmod -R 777 /app/opengin/read-api
 
 # Ensure target directory has proper write permissions
-RUN mkdir -p /app/opengin/ingestion-api/target && \
-    chown -R choreouser:choreo /app/opengin/ingestion-api/target && \
-    chmod -R 777 /app/opengin/ingestion-api/target
+RUN mkdir -p /app/opengin/read-api/target && \
+    chown -R choreouser:choreo /app/opengin/read-api/target && \
+    chmod -R 777 /app/opengin/read-api/target
 
 # Create necessary directories and set permissions before switching user
 RUN mkdir -p /home/choreouser/.ballerina && \

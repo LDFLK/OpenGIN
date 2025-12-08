@@ -82,7 +82,7 @@ END $$;
 - ✅ Automatically cleans all tables with `attr_` prefix
 - ✅ Skips system tables (pg_*, sql_*)
 
-## 🚀 Implementation in Dockerfile.core
+## 🚀 Implementation in opengin/core-api/docker/Dockerfile
 
 The cleanup is implemented in two phases:
 
@@ -205,7 +205,7 @@ The system now includes a dedicated cleanup service that provides a centralized,
 cleanup:
   build:
     context: .
-    dockerfile: Dockerfile.cleanup
+    dockerfile: deployment/development/docker/cleanup/Dockerfile
   container_name: cleanup
   networks:
     - ldf-network
