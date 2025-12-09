@@ -14,3 +14,4 @@ echo "POSTGRES_HOST: $POSTGRES_HOST"
 
 echo "=== Starting CORE Service (Choreo Environment) ==="
 exec core-service 2>&1 | tee /app/core-service-choreo.log
+

@@ -1,4 +1,4 @@
-# Dockerfile.core
+# Dockerfile
 #
 # Purpose:
 # This Dockerfile builds and runs the CORE API service, which provides a gRPC interface
@@ -8,7 +8,7 @@
 #
 # Usage:
 # 1. Build the image:
-#    docker build -t core-service -f Dockerfile.core .
+#    docker build -t core-service -f opengin/core-api/docker/Dockerfile .
 #
 # 2. Run the container:
 #    docker run -d \
@@ -43,14 +43,18 @@ FROM --platform=linux/amd64 golang:1.23 AS builder
 # Set working directory
 WORKDIR /app
 
-# Copy the source code
+# Copy the entire repository (build context is repo root: '.')
+# The build context is set in docker-compose.yml as '.' (repo root)
+# This allows access to all services in the monorepo if needed
 COPY . .
 
-# Download dependencies
+# Download Go dependencies
+# Note: We navigate to opengin/core-api because the build context is the repo root
 RUN cd opengin/core-api && \
     go mod download
 
 # Build the application
+# Note: We navigate to opengin/core-api because the build context is the repo root
 RUN cd opengin/core-api && \
     go build -o core-service cmd/server/service.go cmd/server/utils.go
 
@@ -96,7 +100,7 @@ COPY --from=builder /etc/passwd /etc/passwd
 COPY --from=builder /etc/group /etc/group
 
 # Copy the startup script
-COPY core_startup.sh /app/start.sh
+COPY opengin/core-api/docker/core_startup.sh /app/start.sh
 RUN chmod +x /app/start.sh
 
 # Set environment variables with defaults for Neo4j connection

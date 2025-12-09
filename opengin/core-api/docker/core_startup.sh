@@ -8,11 +8,11 @@ clean_databases() {
     
     # Clean MongoDB collections
     echo "Cleaning MongoDB collections..."
-    mongosh --eval "db = db.getSiblingDB(\"$MONGO_DB_NAME\"); if (db.metadata) { db.metadata.drop(); print(\"Dropped metadata collection\"); } if (db.metadata_test) { db.metadata_test.drop(); print(\"Dropped metadata_test collection\"); }" mongodb://admin:admin123@mongodb:27017/admin?authSource=admin || echo "MongoDB cleanup completed"
+    mongosh --eval "db = db.getSiblingDB(\"$MONGO_DB_NAME\"); if (db.metadata) { db.metadata.drop(); print(\"Dropped metadata collection\"); } if (db.metadata_test) { db.metadata_test.drop(); print(\"Dropped metadata_test collection\"); }" $MONGO_URI || echo "MongoDB cleanup completed"
     
     # Clean Neo4j database
     echo "Cleaning Neo4j database..."
-    cypher-shell -u neo4j -p neo4j123 -a bolt://neo4j:7687 "MATCH (n) DETACH DELETE n" || echo "Neo4j cleanup completed"
+    cypher-shell -u $NEO4J_USER -p $NEO4J_PASSWORD -a $NEO4J_URI "MATCH (n) DETACH DELETE n" || echo "Neo4j cleanup completed"
     
     # Clean specific PostgreSQL tables by dropping them completely
     echo "Cleaning specific PostgreSQL tables by dropping them completely..."
@@ -34,7 +34,7 @@ echo "POSTGRES_HOST: $POSTGRES_HOST"
 
 # Test MongoDB connection
 echo "Testing MongoDB connection..."
-until mongosh --eval "db.adminCommand(\"ping\")" mongodb://admin:admin123@mongodb:27017/admin; do
+until mongosh --eval "db.adminCommand(\"ping\")" $MONGO_URI; do
   echo "Waiting for MongoDB to be ready..."
   sleep 2
 done
@@ -42,7 +42,7 @@ echo "MongoDB connection successful!"
 
 # Test Neo4j connection
 echo "Testing Neo4j connection..."
-until cypher-shell -u neo4j -p neo4j123 -a bolt://neo4j:7687 "CALL dbms.components()"; do
+until cypher-shell -u $NEO4J_USER -p $NEO4J_PASSWORD -a $NEO4J_URI "CALL dbms.components()"; do
   echo "Waiting for Neo4j to be ready..."
   sleep 2
 done
@@ -73,3 +73,4 @@ clean_databases "After Tests"
 
 echo "=== Starting CORE Service ==="
 exec core-service 2>&1 | tee /app/core-service.log
+

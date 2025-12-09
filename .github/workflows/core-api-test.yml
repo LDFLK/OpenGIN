@@ -5,13 +5,15 @@ on:
     branches: [ main ]
     paths:
       - 'opengin/core-api/**'
-      - 'Dockerfile.core'
+      - 'opengin/core-api/docker/Dockerfile'
+      - 'opengin/core-api/docker/Dockerfile.choreo'
       - 'docker-compose.yml'
   pull_request:
     branches: [ main ]
     paths:
       - 'opengin/core-api/**'
-      - 'Dockerfile.core'
+      - 'opengin/core-api/docker/Dockerfile'
+      - 'opengin/core-api/docker/Dockerfile.choreo'
       - 'docker-compose.yml'
 
 jobs:

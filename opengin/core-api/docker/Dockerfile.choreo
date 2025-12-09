@@ -1,4 +1,4 @@
-# Dockerfile.core.choreo
+# Dockerfile.choreo
 #
 # Purpose:
 # This Dockerfile builds and runs the CORE API service, which provides the gRPC interface
@@ -6,11 +6,13 @@
 # connects to both Neo4j (for graph relationships) and MongoDB (for metadata storage).
 #
 # Usage:
-# 1. Build the image:
+# 1. Build the image (from opengin/core-api directory):
 #    # For ARM64 (Apple Silicon):
-#    docker build --platform linux/arm64 -t core-service -f Dockerfile.core.choreo .
+#    docker build --platform linux/arm64 -t core-service -f docker/Dockerfile.choreo .
 #    # For AMD64:
-#    docker build --platform linux/amd64 -t core-service -f Dockerfile.core.choreo .
+#    docker build --platform linux/amd64 -t core-service -f docker/Dockerfile.choreo .
+#    # Or from repo root:
+#    docker build --platform linux/amd64 -t core-service -f docker/Dockerfile.choreo ./opengin/core-api
 #
 # 2. Run the container (REQUIRED environment variables):
 #   docker run -d \
@@ -61,7 +63,7 @@ FROM --platform=${BUILDPLATFORM:-linux/amd64} golang:1.23 AS builder
 # Set working directory
 WORKDIR /app
 
-# Copy the source code
+# Copy the source code (build context is opengin/core-api directory)
 COPY . .
 
 ## Create a new user with UID 10014 and set up directories
@@ -72,12 +74,10 @@ RUN groupadd -g 10014 choreo && \
     chmod -R 755 /home/choreouser
 
 # Download dependencies
-RUN cd opengin/core-api && \
-    go mod download
+RUN go mod download
 
 # Build the application as a static binary
-RUN cd opengin/core-api && \
-    CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' -o core-service cmd/server/service.go cmd/server/utils.go
+RUN CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' -o core-service cmd/server/service.go cmd/server/utils.go
 
 # Final stage
 FROM --platform=${TARGETPLATFORM:-linux/amd64} golang:1.24
@@ -110,14 +110,14 @@ RUN apt-get update && \
 ENV JAVA_HOME=/usr/lib/jvm/default-java
 ENV PATH=$JAVA_HOME/bin:$PATH
 
-# Copy the built binary to PATH and the entire core-api directory
-COPY --from=builder /app/opengin/core-api/core-service /usr/local/bin/
-COPY --from=builder /app/opengin/core-api /app/opengin/core-api
+# Copy the built binary to PATH and the entire service directory
+COPY --from=builder /app/core-service /usr/local/bin/
+COPY --from=builder /app /app/opengin/core-api
 COPY --from=builder /etc/passwd /etc/passwd
 COPY --from=builder /etc/group /etc/group
 
 # Copy the Choreo-specific startup script
-COPY core_startup-choreo.sh /app/start.sh
+COPY docker/core_startup-choreo.sh /app/start.sh
 RUN chmod +x /app/start.sh
 
 # Add log configuration

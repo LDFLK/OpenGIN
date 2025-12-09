@@ -77,7 +77,7 @@ services:
     platform: linux/amd64
     build:
       context: .
-      dockerfile: Dockerfile.cleanup
+      dockerfile: deployment/development/docker/cleanup/Dockerfile
     container_name: cleanup
     networks:
       - ldf-network
@@ -103,7 +103,7 @@ services:
     platform: linux/amd64
     build:
       context: .
-      dockerfile: Dockerfile.core
+      dockerfile: opengin/core-api/docker/Dockerfile
       args:
         - DOCKER_DEFAULT_PLATFORM=linux/amd64
     container_name: core
@@ -146,7 +146,7 @@ services:
     platform: linux/amd64
     build:
       context: .
-      dockerfile: Dockerfile.ingestion
+      dockerfile: opengin/ingestion-api/docker/Dockerfile
     container_name: ingestion
     ports:
       - "8080:8080"
@@ -170,7 +170,7 @@ services:
     platform: linux/amd64
     build:
       context: .
-      dockerfile: Dockerfile.read
+      dockerfile: opengin/read-api/docker/Dockerfile
     container_name: read
     ports:
       - "8081:8081"

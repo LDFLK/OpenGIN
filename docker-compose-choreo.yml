@@ -126,7 +126,7 @@ services:
     platform: linux/amd64
     build:
       context: .
-      dockerfile: Dockerfile.cleanup.choreo
+      dockerfile: deployment/development/docker/cleanup/Dockerfile.choreo
     container_name: cleanup-choreo
     networks:
       - choreo-network
@@ -151,8 +151,8 @@ services:
   core-choreo:
     platform: linux/amd64
     build:
-      context: .
-      dockerfile: Dockerfile.core.choreo
+      context: ./opengin/core-api
+      dockerfile: docker/Dockerfile.choreo
     container_name: core-choreo
     ports:
       - "50051:50051"
@@ -195,8 +195,8 @@ services:
   ingestion-choreo:
     platform: linux/amd64
     build:
-      context: .
-      dockerfile: Dockerfile.ingestion.choreo
+      context: ./opengin/ingestion-api
+      dockerfile: docker/Dockerfile.choreo
     container_name: ingestion-choreo
     ports:
       - "8080:8080"
@@ -219,8 +219,8 @@ services:
   read-choreo:
     platform: linux/amd64
     build:
-      context: .
-      dockerfile: Dockerfile.read.choreo
+      context: ./opengin/read-api
+      dockerfile: docker/Dockerfile.choreo
     container_name: read-choreo
     ports:
       - "8081:8081"

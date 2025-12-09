@@ -1,4 +1,4 @@
-# Dockerfile.cleanup.choreo
+# Dockerfile.choreo
 #
 # Purpose:
 # This Dockerfile creates a lightweight container specifically for database cleanup operations
@@ -7,7 +7,7 @@
 #
 # Usage:
 # 1. Build the image:
-#    docker build -t cleanup-service-choreo -f Dockerfile.cleanup.choreo .
+#    docker build -t cleanup-service-choreo -f deployment/development/docker/cleanup/Dockerfile.choreo .
 #
 # 2. Run cleanup:
 #    docker run --rm cleanup-service-choreo /app/cleanup-choreo.sh [pre|post]
@@ -30,7 +30,7 @@ RUN apk add --no-cache \
 WORKDIR /app
 
 # Copy the Choreo-specific cleanup script
-COPY cleanup-choreo.sh /app/cleanup-choreo.sh
+COPY deployment/development/docker/cleanup/cleanup-choreo.sh /app/cleanup-choreo.sh
 RUN chmod +x /app/cleanup-choreo.sh
 
 # Set environment variables with Choreo defaults

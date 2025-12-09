@@ -1,4 +1,4 @@
-# Dockerfile.cleanup
+# Dockerfile
 #
 # Purpose:
 # This Dockerfile creates a lightweight container specifically for database cleanup operations.
@@ -6,7 +6,7 @@
 #
 # Usage:
 # 1. Build the image:
-#    docker build -t cleanup-service -f Dockerfile.cleanup .
+#    docker build -t cleanup-service -f deployment/development/docker/cleanup/Dockerfile .
 #
 # 2. Run cleanup:
 #    docker run --rm cleanup-service /app/cleanup.sh [pre|post]
@@ -29,7 +29,7 @@ RUN apk add --no-cache \
 WORKDIR /app
 
 # Copy the cleanup script
-COPY cleanup.sh /app/cleanup.sh
+COPY deployment/development/docker/cleanup/cleanup.sh /app/cleanup.sh
 RUN chmod +x /app/cleanup.sh
 
 # Set environment variables with defaults

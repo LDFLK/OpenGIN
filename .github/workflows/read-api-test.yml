@@ -5,13 +5,15 @@ on:
     branches: [ main ]
     paths:
       - 'opengin/read-api/**'
-      - 'Dockerfile.read'
+      - 'opengin/read-api/docker/Dockerfile'
+      - 'opengin/read-api/docker/Dockerfile.choreo'
       - 'docker-compose.yml'
   pull_request:
     branches: [ main ]
     paths:
       - 'opengin/read-api/**'
-      - 'Dockerfile.read'
+      - 'opengin/read-api/docker/Dockerfile'
+      - 'opengin/read-api/docker/Dockerfile.choreo'
       - 'docker-compose.yml'
 
 jobs:

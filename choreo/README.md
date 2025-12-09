@@ -123,9 +123,9 @@ export READ_SERVICE_PORT="8081"
 ```bash
 # Build the CORE service image
 # For ARM64 (Apple Silicon):
-docker build --platform linux/arm64 -t ldf-choreo-core-service -f Dockerfile.core.choreo .
+docker build --platform linux/arm64 -t ldf-choreo-core-service -f opengin/core-api/docker/Dockerfile.choreo .
 # For AMD64:
-docker build --platform linux/amd64 -t ldf-choreo-core-service -f Dockerfile.core.choreo .
+docker build --platform linux/amd64 -t ldf-choreo-core-service -f opengin/core-api/docker/Dockerfile.choreo .
 
 # Run the CORE service using environment variables
 docker run -d \
@@ -155,7 +155,7 @@ docker run -d \
 
 ```bash
 # Build the ingestion service image
-docker build -t ldf-choreo-ingestion-service -f Dockerfile.ingestion.choreo .
+docker build -t ldf-choreo-ingestion-service -f opengin/ingestion-api/docker/Dockerfile.choreo .
 
 # Run the ingestion service using environment variables
 docker run -d -p 8080:8080 \

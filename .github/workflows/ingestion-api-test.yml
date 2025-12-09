@@ -5,13 +5,15 @@ on:
     branches: [ main ]
     paths:
       - 'opengin/ingestion-api/**'
-      - 'Dockerfile.ingestion'
+      - 'opengin/ingestion-api/docker/Dockerfile'
+      - 'opengin/ingestion-api/docker/Dockerfile.choreo'
       - 'docker-compose.yml'
   pull_request:
     branches: [ main ]
     paths:
       - 'opengin/ingestion-api/**'
-      - 'Dockerfile.ingestion'
+      - 'opengin/ingestion-api/docker/Dockerfile'
+      - 'opengin/ingestion-api/docker/Dockerfile.choreo'
       - 'docker-compose.yml'
 
 jobs:

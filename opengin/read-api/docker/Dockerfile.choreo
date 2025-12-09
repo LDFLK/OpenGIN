@@ -4,8 +4,10 @@
 #
 # Building the Image:
 # -----------------
-# To build the image, run the following command from the directory containing this Dockerfile:
-#   docker build -t ldf-choreo-read-service -f Dockerfile.read.choreo .
+# To build the image, run the following command from opengin/read-api directory:
+#   docker build -t ldf-choreo-read-service -f docker/Dockerfile.choreo .
+# Or from the project root:
+#   docker build -t ldf-choreo-read-service -f docker/Dockerfile.choreo ./opengin/read-api
 #
 # Running the Container:
 # ---------------------
@@ -104,7 +106,7 @@ FROM --platform=linux/amd64 ballerina/ballerina:2201.11.0 AS builder
 # Set working directory
 WORKDIR /app
 
-# Copy the source code
+# Copy the source code (build context is opengin/read-api directory)
 COPY . .
 
 # Switch to root for package installation and user creation
@@ -122,7 +124,7 @@ RUN apk add --no-cache shadow && \
 RUN apk add --no-cache ca-certificates netcat-openbsd dos2unix
 
 # Create and set permissions for build directories
-RUN mkdir -p /app/opengin/read-api/target && \
+RUN mkdir -p /app/target && \
     chown -R choreouser:choreo /app && \
     chmod -R 755 /app
 
@@ -132,8 +134,7 @@ USER 10014
 # Build the application with explicit platform settings
 # ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
 # Build the Ballerina service
-RUN cd opengin/read-api && \
-    bal build
+RUN bal build
 
 # Final stage
 FROM --platform=linux/amd64 ballerina/ballerina:2201.11.0
@@ -152,7 +153,7 @@ RUN mkdir -p /home/choreouser/.ballerina && \
     chmod -R 755 /home/choreouser
 
 # Copy the source code and build artifacts
-COPY --from=builder /app/opengin/read-api /app/opengin/read-api
+COPY --from=builder /app /app/opengin/read-api
 COPY --from=builder /etc/passwd /etc/passwd
 COPY --from=builder /etc/group /etc/group
 
