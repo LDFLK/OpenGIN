@@ -68,7 +68,6 @@ Dockerfile*
 !opengin/read-api/docker/Dockerfile
 
 # Deployment scripts (not needed in container)
-deployment/
 Makefile
 
 # Performance tests
