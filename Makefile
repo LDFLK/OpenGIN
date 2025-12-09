@@ -1,4 +1,15 @@
-.PHONY: help env build build-core build-ingestion build-read test test-core test-ingestion test-read run-core run-ingestion run-read stop-core stop-ingestion stop-read e2e e2e-venv e2e-ingestion e2e-read e2e-docker infra-up infra-down services-up services-down up up-core up-ingestion up-read down down-core down-ingestion down-read down-all logs clean-pre clean-post dev infra-up-choreo infra-down-choreo services-up-choreo services-down-choreo up-choreo up-core-choreo up-ingestion-choreo up-read-choreo down-choreo down-core-choreo down-ingestion-choreo down-read-choreo down-all-choreo logs-choreo clean-pre-choreo clean-post-choreo e2e-docker-choreo e2e-choreo e2e-ingestion-choreo e2e-read-choreo
+.PHONY: help env build build-core build-ingestion build-read test test-core test-ingestion test-read \
+	run-core run-ingestion run-read stop-core stop-ingestion stop-read \
+	e2e e2e-venv e2e-ingestion e2e-read e2e-docker \
+	infra-up infra-down services-up services-down \
+	up up-core up-ingestion up-read \
+	down down-core down-ingestion down-read down-all \
+	logs clean-pre clean-post dev \
+	infra-up-choreo infra-down-choreo services-up-choreo services-down-choreo \
+	up-choreo up-core-choreo up-ingestion-choreo up-read-choreo \
+	down-choreo down-core-choreo down-ingestion-choreo down-read-choreo down-all-choreo \
+	logs-choreo clean-pre-choreo clean-post-choreo \
+	e2e-docker-choreo e2e-choreo e2e-ingestion-choreo e2e-read-choreo
 
 # Select docker compose command. Override with: make COMPOSE="docker compose"
 COMPOSE ?= docker-compose
