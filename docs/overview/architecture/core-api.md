@@ -262,27 +262,6 @@ graph for entity and its data.
 
 ---
 
-## Error Handling
-
-### Error Types
-
-1. **Validation Errors**
-   - Invalid entity structure
-   - Missing required fields
-   - Data type mismatches
-
-2. **Database Errors**
-   - Connection failures
-   - Transaction rollbacks
-   - Constraint violations
-
-3. **Processing Errors**
-   - Type inference failures
-   - Storage strategy errors
-   - Temporal data conflicts
-
----
-
 ## API Contracts
 
 ### Protobuf Definitions
@@ -311,14 +290,8 @@ service EntityService {
 
 ## Related Documentation
 
-- [Architecture Overview](./overview.md) - System architecture
+- [Architecture Overview](./index.md) - System architecture
 - [API Layer Details](./api-layer-details.md) - API documentation
 - [Database Schemas](./database-schemas.md) - Database structures
-- [How It Works](../how_it_works.md) - End-to-end data flow
-- [Storage Types](../storage.md) - Storage inference details
-
----
-
-**Last Updated:** October 2024  
-**Version:** 1.0.0  
-**Maintained By:** OpenGIN Development Team
+- [How It Works](data_flow.md) - End-to-end data flow
+- [Storage Types](../../reference/storage.md) - Storage inference details

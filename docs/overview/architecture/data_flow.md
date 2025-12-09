@@ -212,12 +212,6 @@ The Core API processes entity creation through a systematic three-step approach:
 - Relationship properties include start/end times and relationship metadata
 - This enables complex graph queries and relationship traversal
 
-**Error Handling and Consistency**
-- Each step includes error checking to ensure data integrity
-- If any step fails, the operation can be rolled back
-- The system maintains consistency across all three databases
-- Success is only returned when all three operations complete successfully
-
 ### 3.2 Data Storage
 
 #### MongoDB Storage (Metadata)
@@ -311,51 +305,3 @@ The Core API retrieves entity data through a systematic three-step aggregation p
 
 ### 4.2 Data Transformation (Core API → Ingestion API)
 The retrieved data is converted back to JSON in the Ingestion API before being sent to the client.
-
-## 5. Error Handling
-
-The system implements error handling at multiple levels:
-
-1. **Ingestion/Read API Level**
-   - JSON validation
-   - Protobuf conversion errors
-   - gRPC communication errors
-
-2. **Core API Level**
-   - Database connection errors
-   - Data validation errors
-   - Transaction errors
-
-3. **Repository Level**
-   - Database-specific errors
-   - Query execution errors
-   - Data consistency errors
-
-## 6. Data Consistency
-
-The system maintains data consistency through:
-
-1. **Atomic Operations**
-   - MongoDB transactions for metadata
-   - Neo4j transactions for entity and relationships
-
-2. **Error Recovery(TODO)**
-   - Rollback mechanisms
-   - Error logging and monitoring
-   - Retry mechanisms for failed operations
-
-## 7. Performance Considerations
-
-1. **Connection Pooling(TODO)**
-   - MongoDB connection pool
-   - Neo4j connection pool
-   - gRPC connection management
-
-2. **Caching(TODO)**
-   - Metadata caching
-   - Entity relationship caching
-
-3. **Query Optimization(TODO)**
-   - Indexed queries
-   - Efficient relationship traversal
-   - Batch operations

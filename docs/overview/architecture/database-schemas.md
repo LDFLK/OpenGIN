@@ -347,23 +347,6 @@ RETURN source, type(r) as relationshipType, target
 MATCH (e:Entity {id: $entityId})
 DETACH DELETE e
 ```
-
-### Performance Considerations
-
-**Indexes**: Essential for fast lookups
-- Always index on `id` property
-- Consider indexes on `kind_major` and `kind_minor` for filtering
-- Add indexes on frequently queried properties
-
-**Relationship Traversal**:
-- Use specific relationship types for better performance
-- Limit traversal depth with `*1..3` syntax
-- Use `LIMIT` to avoid large result sets
-
-**Temporal Queries**:
-- Index on `startTime` and `endTime` for temporal queries
-- Use `IS NULL` checks for active relationships
-
 ---
 
 ## PostgreSQL Schema
@@ -523,20 +506,15 @@ neo4j-admin dump --database=neo4j --to=/backup/neo4j/neo4j.dump
 pg_dump -h postgres -U postgres -d opengin -F tar -f /backup/postgres/opengin.tar
 ```
 
-See [Backup Integration Guide](../deployment/BACKUP_INTEGRATION.md) for complete backup/restore workflow.
+See [Backup Integration Guide](../../reference/operations/backup_integration.md) for complete backup/restore workflow.
 
 ---
 
 ## Related Documentation
 
-- [Main Architecture Overview](./overview.md)
-- [How It Works](../how_it_works.md)
-- [Data Types](../datatype.md)
-- [Storage Types](../storage.md)
+- [Main Architecture Overview](./index.md)
+- [How It Works](data_flow.md)
+- [Data Types](../../reference/datatype.md)
+- [Storage Types](../../reference/storage.md)
 
 ---
-
-**Document Version**: 1.0  
-**Last Updated**: October 2024  
-**Component**: Database Schemas
-

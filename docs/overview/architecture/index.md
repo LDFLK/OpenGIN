@@ -86,7 +86,7 @@
 
 ### 1. API Layer (Client-Facing Services)
 
-#### Ingestion API (Ballerina, Port 8080)
+#### Ingestion API
 - **Purpose**: Handle entity mutations (CREATE, UPDATE, DELETE)
 - **Technology**: Ballerina REST service
 - **Location**: `opengin/ingestion-api/`
@@ -98,7 +98,7 @@
   - Convert Protobuf responses back to JSON
 - **Contract**: OpenAPI specification at `opengin/contracts/rest/ingestion_api.yaml`
 
-#### Read API (Ballerina, Port 8081)
+#### Read API
 - **Purpose**: Handle entity queries and retrieval
 - **Technology**: Ballerina REST service
 - **Location**: `opengin/read-api/`
@@ -110,14 +110,9 @@
   - Return formatted JSON responses
 - **Contract**: OpenAPI specification at `opengin/contracts/rest/read_api.yaml`
 
-#### Swagger UI
-- **Purpose**: Interactive API documentation
-- **Location**: `opengin/swagger-ui/`
-- **Serves**: OpenAPI specifications for Ingestion and Read APIs
-
 ### 2. Service Layer
 
-#### Core API (Go, gRPC, Port 50051)
+#### Core API
 Central orchestration service that manages data networking and all database interactions.
 
 **Location**: `opengin/core-api/`
@@ -686,10 +681,10 @@ Based on TODOs found in the codebase:
 
 ## Related Documentation
 
-- [How It Works](../how_it_works.md) - Detailed data flow documentation
-- [Data Types](../datatype.md) - Type inference system details
-- [Storage Types](../storage.md) - Storage type inference details
-- [Backup Integration](../deployment/BACKUP_INTEGRATION.md) - Backup and restore guide
+- [How It Works](data_flow.md) - Detailed data flow documentation
+- [Data Types](../../reference/datatype.md) - Type inference system details
+- [Storage Types](../../reference/storage.md) - Storage type inference details
+- [Backup Integration](../../reference/operations/backup_integration.md) - Backup and restore guide
 - [Core API](../architecture/core-api.md) - Core API documentation
 - [Ingestion API](../../opengin/ingestion-api/README.md) - Ingestion API documentation
 - [Read API](../../opengin/read-api/README.md) - Read API documentation
@@ -747,8 +742,3 @@ docker-compose build
 ```
 
 ---
-
-**Document Version**: 1.0  
-**Last Updated**: October 2024  
-**Maintained By**: OpenGIN Development Team
-

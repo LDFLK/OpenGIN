@@ -148,11 +148,6 @@ docker exec postgres psql -U postgres -d opengin -c "SELECT 'metadata' as table_
 - Track successful and failed cleanups
 - Provide clear error messages
 
-### **5. Performance Considerations**
-- Use efficient cleanup commands (TRUNCATE vs DELETE)
-- Batch operations where possible
-- Consider cleanup timing (before/after tests)
-
 ## 🔍 Troubleshooting
 
 ### **Common Issues**

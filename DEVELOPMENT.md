@@ -267,4 +267,33 @@ choreo connect --project ldf_sandbox_vibhatha --component core-service
 
 ## Backup Guide
 
-OpenGIN provides a [Backup Integration Guide](docs/deployment/BACKUP_INTEGRATION.md) which discusses how to make backups from the polyglot and make data releases. At the moment we have shown a workflow which works with the Github, but you can customize this guideline to match the backup servers.  
+## Swagger UI
+
+### Overview
+
+**Location**: `opengin/swagger-ui/`  
+**Purpose**: Interactive API documentation
+
+### Features
+
+- View all API endpoints
+- Test API calls directly from browser
+- See request/response examples
+- Understand data models
+
+### Access
+
+```bash
+# Start Swagger UI
+cd opengin/swagger-ui
+python3 serve.py
+
+# Open browser
+http://localhost:8082
+```
+
+### Configuration
+
+The Swagger UI serves the OpenAPI specifications from:
+- `opengin/contracts/rest/ingestion_api.yaml`
+- `opengin/contracts/rest/read_api.yaml`
