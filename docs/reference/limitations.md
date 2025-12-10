@@ -9,4 +9,4 @@
 
 ## OpenAPI Contract and Ballerina Service generation
 
-1. Time is being infered as `string` field. Must implement a time data type in the protobuf specification. 
+1. Time is being infered as `string` field. Must implement a time data type in the protobuf specification.

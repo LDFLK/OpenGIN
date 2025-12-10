@@ -16,23 +16,16 @@
 
 2. **Start CORE service**
    ```bash
-   cd opengin/core-api && ./core-service
+   docker-compose up -d core
    ```
-
 3. **Start APIs**
-   - **Ingestion API**: `http://localhost:8080`
-   - **Read API**: `http://localhost:8081`
-
-   *(Ensure you run the Ballerina services as per their specific instructions in `opengin/ingestion-api` and `opengin/read-api`)*
+   ```bash
+   docker-compose up -d ingestion read
+   ```
 
 ### Test the System
 
 **Run E2E tests**
 ```bash
 cd opengin/tests/e2e && ./run_e2e.sh
-```
-
-**Run performance tests**
-```bash
-cd perf && python performance_test.py
 ```

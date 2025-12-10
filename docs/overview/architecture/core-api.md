@@ -291,7 +291,7 @@ service EntityService {
 ## Related Documentation
 
 - [Architecture Overview](./index.md) - System architecture
-- [API Layer Details](./api-layer-details.md) - API documentation
+- [Service APIs](./api-layer-details.md) - API documentation
 - [Database Schemas](./database-schemas.md) - Database structures
 - [How It Works](data_flow.md) - End-to-end data flow
 - [Storage Types](../../reference/storage.md) - Storage inference details
