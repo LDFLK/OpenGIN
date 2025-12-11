@@ -224,64 +224,7 @@ The entity data is strategically distributed across three databases:
 
 **Storage Distribution:**
 
-```
-┌──────────────────────────────────────────────────────────────┐
-│ MongoDB - Metadata Storage                                   │
-│ ┌──────────────────────────────────────────────────────────┐ │
-│ │ Collection: metadata                                     │ │
-│ │ {                                                        │ │
-│ │   "_id": "entity123",                                    │ │
-│ │   "metadata": {                                          │ │
-│ │     "department": "Engineering",                         │ │
-│ │     "role": "Engineer"                                   │ │
-│ │   }                                                      │ │
-│ │ }                                                        │ │
-│ └──────────────────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────────────┘
-
-┌──────────────────────────────────────────────────────────────┐
-│ Neo4j - Entity & Relationship Storage                        │
-│ ┌──────────────────────────────────────────────────────────┐ │
-│ │ Node:                                                    │ │
-│ │ (entity123:Entity {                                      │ │
-│ │   id: "entity123",                                       │ │
-│ │   kind_major: "Person",                                  │ │
-│ │   kind_minor: "Employee",                                │ │
-│ │   name: "John Doe",                                      │ │
-│ │   created: "2024-01-01T00:00:00Z"                        │ │
-│ │ })                                                       │ │
-│ │                                                          │ │
-│ │ Relationship:                                            │ │
-│ │ (entity123)-[:REPORTS_TO {                               │ │
-│ │   id: "rel123",                                          │ │
-│ │   startTime: "2024-01-01T00:00:00Z"                      │ │
-│ │ }]->(manager123)                                         │ │
-│ └──────────────────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────────────┘
-
-┌──────────────────────────────────────────────────────────────┐
-│ PostgreSQL - Attribute Storage                               │
-│ ┌──────────────────────────────────────────────────────────┐ │
-│ │ Table: attribute_schemas                                 │ │
-│ │   {kind_major: "Person", attr_name: "expenses",          │ │
-│ │    data_type: "table", storage_type: "tabular"}          │ │
-│ │                                                          │ │
-│ │ Table: entity_attributes                                 │ │
-│ │   {entity_id: "entity123", attr_name: "expenses"}        │ │
-│ │                                                          │ │
-│ │ Table: attr_expenses                                     │ │
-│ │   {row_id: 1,                                            │ │
-│ │    type: "Travel", amount: 500,                          │ │
-│ │    date: "2024-01-15", category: "Business"}             │ │
-│ │   {row_id: 2,                                            │ │
-│ │    type: "Meals", amount: 120,                           │ │
-│ │    date: "2024-01-16", category: "Entertainment"}        │ │
-│ │   {row_id: 3,                                            │ │
-│ │    type: "Equipment", amount: 300,                       │ │
-│ │    date: "2024-01-17", category: "Office"}               │ │
-│ └──────────────────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────────────┘
-```
+![Storage-Distribution-of-openGIN](assets/images/storage_distribution_opengin.png)
 
 ---
 
@@ -289,93 +232,11 @@ The entity data is strategically distributed across three databases:
 
 ### Create Entity Flow
 
-```
-┌────────┐         ┌───────────────┐      ┌──────────────┐         ┌──────────┐
-│ Client │         │ Ingestion API │      │ Core API     │         │ Databases│
-└───┬────┘         └─────┬─────────┘      └──────┬───────┘         └────┬─────┘
-    │                    │                       │                      │
-    │ POST /entities     │                       │                      │
-    │ (JSON payload)     │                       │                      │
-    ├───────────────────>│                       │                      │
-    │                    │                       │                      │
-    │                    │ JSON to Protobuf      │                      │
-    │                    │ conversion            │                      │
-    │                    │                       │                      │
-    │                    │ gRPC: CreateEntity    │                      │
-    │                    ├──────────────────────>│                      │
-    │                    │                       │                      │
-    │                    │                       │ Save metadata        │
-    │                    │                       ├─────────────────────>│
-    │                    │                       │      (MongoDB)       │
-    │                    │                       │                      │
-    │                    │                       │ Create entity node   │
-    │                    │                       ├─────────────────────>│
-    │                    │                       │      (Neo4j)         │
-    │                    │                       │                      │
-    │                    │                       │ Create relationships │
-    │                    │                       ├─────────────────────>│
-    │                    │                       │      (Neo4j)         │
-    │                    │                       │                      │
-    │                    │                       │ Save attributes      │
-    │                    │                       ├─────────────────────>│
-    │                    │                       │    (PostgreSQL)      │
-    │                    │                       │                      │
-    │                    │    Entity (Protobuf)  │                      │
-    │                    │<──────────────────────┤                      │
-    │                    │                       │                      │
-    │                    │ Protobuf to JSON      │                      │
-    │                    │ conversion            │                      │
-    │                    │                       │                      │
-    │   201 Created      │                       │                      │
-    │   (JSON response)  │                       │                      │
-    │<───────────────────┤                       │                      │
-    │                    │                       │                      │
-```
+![Data-Flow-Sequence-Create](assets/images/data_flow_sequence_create.png)
 
 ### Read Entity Flow
 
-```
-┌────────┐         ┌───────────┐          ┌──────────────┐         ┌──────────┐
-│ Client │         │ Read API  │          │ Core API     │         │ Databases│
-└───┬────┘         └─────┬─────┘          └──────┬───────┘         └────┬─────┘
-    │                    │                       │                      │
-    │ GET /entities/123  │                       │                      │
-    │ ?output=metadata,  │                       │                      │
-    │  relationships     │                       │                      │
-    ├───────────────────>│                       │                      │
-    │                    │                       │                      │
-    │                    │ gRPC: ReadEntity      │                      │
-    │                    ├──────────────────────>│                      │
-    │                    │                       │                      │
-    │                    │                       │ Get entity info      │
-    │                    │                       ├─────────────────────>│
-    │                    │                       │    (Neo4j - always)  │
-    │                    │                       │                      │
-    │                    │                       │ Get metadata         │
-    │                    │                       ├─────────────────────>│
-    │                    │                       │  (MongoDB - if req'd)│
-    │                    │                       │                      │
-    │                    │                       │ Get relationships    │
-    │                    │                       ├─────────────────────>│
-    │                    │                       │  (Neo4j - if req'd)  │
-    │                    │                       │                      │
-    │                    │                       │ Get attributes       │
-    │                    │                       ├─────────────────────>│
-    │                    │                       │ (PostgreSQL -        │
-    │                    │                       │             if req'd)│
-    │                    │                       │ Assemble entity      │
-    │                    │                       │                      │
-    │                    │    Entity (Protobuf)  │                      │
-    │                    │<──────────────────────┤                      │
-    │                    │                       │                      │
-    │                    │ Protobuf to JSON      │                      │
-    │                    │ conversion            │                      │
-    │                    │                       │                      │
-    │   200 OK           │                       │                      │
-    │   (JSON response)  │                       │                      │
-    │<───────────────────┤                       │                      │
-    │                    │                       │                      │
-```
+![Data-Flow-Sequence-Read](assets/images/data_flow_sequence_read.png)
 
 ---
 
