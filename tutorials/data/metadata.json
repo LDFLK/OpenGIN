@@ -1,0 +1,30 @@
+{
+    "person-alex": {
+        "role": "Software Engineer",
+        "hobbies": "coding, cycling"
+    },
+    "org-techcorp": {
+        "industry": "Technology",
+        "size": "1000+"
+    },
+    "org-fitgym": {
+        "facilities": "pool, sauna, weights",
+        "rating": "4.8"
+    },
+    "place-home": {
+        "type": "Apartment",
+        "area": "850 sqft"
+    },
+    "place-cafe": {
+        "wifi": "true",
+        "rating": "4.5"
+    },
+    "place-supermarket": {
+        "chain": "FreshMart Inc.",
+        "open_24h": "true"
+    },
+    "org-netprovider": {
+        "speed": "1Gbps",
+        "support": "24/7"
+    }
+}

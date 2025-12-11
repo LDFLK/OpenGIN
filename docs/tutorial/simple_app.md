@@ -8,7 +8,7 @@ We want to store information about an employee named **"Alice Smith"**.
 - **Role**: Software Engineer
 - **Department**: Engineering
 - **Joined**: Jan 15, 2024
-- **Salary**: $120,000 (starting value)
+- **Expenses**: Monthly expense tracking (Table)
 
 ## Step 1: Define the Entity JSON
 
@@ -43,14 +43,20 @@ Static info like department goes here.
 ```
 
 ### 1.4 Attributes
-Time-sensitive data like Salary.
+Time-sensitive data like Expenses.
 ```json
 "attributes": {
-    "salary": {
+    "expenses": {
         "values": [
             {
                 "startTime": "2024-01-15T00:00:00Z",
-                "value": "120000"
+                "value": {
+                    "columns": ["Month", "Category", "Amount"],
+                    "rows": [
+                        ["January", "Internet", "50"],
+                        ["January", "Electricity", "120"]
+                    ]
+                }
             }
         ]
     }
@@ -80,11 +86,17 @@ curl -X POST http://localhost:8080/entities \
         {"key": "role", "value": "Software Engineer"}
     ],
     "attributes": {
-        "salary": {
+        "expenses": {
             "values": [
                 {
                     "startTime": "2024-01-15T00:00:00Z",
-                    "value": "120000"
+                    "value": {
+                        "columns": ["Month", "Category", "Amount"],
+                        "rows": [
+                            ["January", "Internet", "50"],
+                            ["January", "Electricity", "120"]
+                        ]
+                    }
                 }
             ]
         }

@@ -1,0 +1,8 @@
+id,kind_major,kind_minor,name,start_time
+person-alex,Person,Individual,Alex,2020-01-01T00:00:00Z
+org-techcorp,Organization,Company,TechCorp,2015-06-15T00:00:00Z
+org-fitgym,Organization,Gym,FitGym,2022-01-01T00:00:00Z
+place-home,Place,Residence,Alex's Home,2023-05-01T00:00:00Z
+place-cafe,Place,Cafe,Espresso Corner,2023-01-01T00:00:00Z
+place-supermarket,Place,Supermarket,FreshMart,2020-01-01T00:00:00Z
+org-netprovider,Organization,ISP,FiberNet,2020-01-01T00:00:00Z

@@ -5,7 +5,7 @@ Welcome to the **OpenGIN (Open General Information Network)** documentation. Thi
 ## 📚 Overview
 Understand the core concepts and architecture of OpenGIN.
 - **[What is OpenGIN?](./overview/what_is_opengin.md)**: High-level introduction, data model, and key features.
-- **[Architecture](./overview/architecture/index.md)**: Deep dive into the system design components (Moved from `architecture/overview.md`).
+- **[Architecture](./overview/architecture/index.md)**: Deep dive into the system design components.
 - **[Data Flow](./overview/architecture/data_flow.md)**: End-to-end explanation of how data moves through the system.
 
 ## 🚀 Getting Started
