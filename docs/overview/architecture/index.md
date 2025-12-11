@@ -9,7 +9,7 @@
 ## High-Level Architecture Diagram
 
 
-![High-Level Architecture Diagram](../../assets/images/opengin-architecture-diagram.png)
+![High-Level Architecture Diagram](assets/images/opengin-architecture-diagram.png)
 
 
 ---
