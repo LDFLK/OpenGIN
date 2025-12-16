@@ -268,7 +268,7 @@ restore_mongodb() {
     
     # Extract backup file
     local temp_dir=$(mktemp -d)
-    local backup_name="nexoan" ## TODO: change to opengin
+    local backup_name="opengin"
     
     log "INFO" "Extracting backup file..."
     tar -xzf "$backup_file" -C "$temp_dir"
@@ -429,7 +429,7 @@ restore_postgres() {
     
     # Extract backup file
     local temp_dir=$(mktemp -d)
-    local backup_name="nexoan.sql" ## TODO: change to opengin.sql
+    local backup_name="opengin.sql"
     
     log "INFO" "Extracting backup file..."
     tar -xzf "$backup_file" -C "$temp_dir"
