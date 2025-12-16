@@ -254,10 +254,6 @@ restore_mongodb() {
         backup_file="$backup_dir/opengin.tar.gz"
     fi
     
-    # log "INFO" "Using backup directory: $backup_dir"
-    
-    # # Look for opengin.tar.gz file
-    # local backup_file="$backup_dir/opengin.tar.gz"
     
     if [ ! -f "$backup_file" ]; then
         log "ERROR" "Backup file not found: $backup_file"
