@@ -312,12 +312,6 @@ The Read API supports temporal queries using the `activeAt` parameter:
 GET /v1/entities/entity123/attributes?name=salary&activeAt=2024-03-15T00:00:00Z
 ```
 
-**Backend Filter**:
-```sql
-WHERE start_time <= '2024-03-15T00:00:00Z'
-  AND (end_time IS NULL OR end_time >= '2024-03-15T00:00:00Z')
-```
-
 This returns only the attribute value that was active on March 15, 2024.
 
 ### Performance Optimization

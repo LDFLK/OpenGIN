@@ -134,17 +134,7 @@ The system follows these rules when inferring types:
 
 ## Type Information Structure
 
-The type information is represented using the following structure:
-
-```go
-type TypeInfo struct {
-    Type       DataType             // The inferred data type
-    IsNullable bool                 // Whether the type can be null
-    IsArray    bool                 // Whether the type is an array
-    ArrayType  *TypeInfo            // For array elements, contains the type of array elements
-    Properties map[string]*TypeInfo // For map types, contains property types
-}
-```
+The type information is structured to define the fundamental data type, including flags for nullability and array structures. For nested types, it recursively specifies element types for arrays and property maps for objects, enabling comprehensive type definitions for complex data structures.
 
 ## Best Practices
 
