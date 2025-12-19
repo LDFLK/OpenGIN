@@ -70,35 +70,3 @@ The system uses a hierarchical detection approach with the following precedence 
   }
 }
 ```
-
-## Implementation Details
-
-### Detection Algorithm
-
-The system follows this detection sequence for the three core storage types:
-
-1. **Check for Tabular Structure**:
-   - Verify presence of `columns` field (must be array)
-   - Verify presence of `rows` field (must be array)
-   - Return `TabularData` if both conditions met
-
-2. **Check for Graph Structure**:
-   - Verify presence of `nodes` field
-   - Verify presence of `edges` field
-   - Return `GraphData` if both conditions met
-
-3. **Default to Document/Map Structure**:
-   - If object with fields but no specific pattern, return `MapData`
-
-### Storage Type Constants
-
-```go
-const (
-    TabularData StorageType = "tabular"
-    MapData     StorageType = "map"
-    GraphData   StorageType = "graph"
-    UnknownData StorageType = "unknown"
-)
-```
-
-This pattern-based detection system enables automatic data classification and appropriate storage backend selection in the OpenGIN platform for the three core storage types: Tabular (PostgreSQL), Graph (Neo4j), and Document/Map (MongoDB).

@@ -110,15 +110,13 @@ The system expects this structure in [LDFLK/data-backups](https://github.com/LDF
 ```
 data-backups-0.0.1/
 └── opengin
-    └── version
-        └── 0.0.1
-            └── development
-                ├── mongodb
-                │   └── opengin.tar.gz
-                ├── postgres
-                │   └── opengin.tar.gz
-                └── neo4j
-                    └── neo4j.dump
+    └── development
+        ├── mongodb
+        │   └── mongodb.tar.gz
+        ├── postgres
+        │   └── postgres.tar.gz
+        └── neo4j
+            └── neo4j.dump
 ```
 
 ### GitHub Archive URLs

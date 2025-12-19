@@ -19,143 +19,39 @@
 ### 1. API Layer (Client-Facing Services)
 
 #### Ingestion API
-- **Purpose**: Handle entity mutations (CREATE, UPDATE, DELETE)
-- **Technology**: Ballerina REST service
-- **Location**: `opengin/ingestion-api/`
-- **Responsibilities**:
-  - Accept JSON payloads from clients
-  - Validate request structure
-  - Convert JSON to Protobuf Entity messages
-  - Communicate with CORE Service via gRPC
-  - Convert Protobuf responses back to JSON
-- **Contract**: OpenAPI specification at `opengin/contracts/rest/ingestion_api.yaml`
+
+The Ingestion API is responsible for handling entity mutations, including creation, updates, and deletions. Implemented as a Ballerina REST service, it accepts JSON payloads from clients, validates their structure, and converts them into Protobuf Entity messages. It then communicates with the Core API via gRPC and handles the conversion of Protobuf responses back to JSON for the client.
 
 #### Read API
-- **Purpose**: Handle entity queries and retrieval
-- **Technology**: Ballerina REST service
-- **Location**: `opengin/read-api/`
-- **Responsibilities**:
-  - Accept read requests from clients
-  - Support selective field retrieval (metadata, relationships, attributes)
-  - Filter and search capabilities
-  - Communicate with CORE Service via gRPC
-  - Return formatted JSON responses
-- **Contract**: OpenAPI specification at `opengin/contracts/rest/read_api.yaml`
+
+The Read API manages entity queries and retrieval. Also built as a Ballerina REST service, it accepts read requests and supports selective field retrieval, filtering, and search capabilities. It interfaces with the Core API using gRPC to fetch data and returns formatted JSON responses to the client.
 
 ### 2. Service Layer
 
 #### Core API
-Central orchestration service that manages data networking and all database interactions.
 
-**Location**: `opengin/core-api/`
+The Core API acts as the central orchestration service, managing data networking and interactions across the distributed database system. It exposes a gRPC server to handle entity operations such as creation, reading, updating, and deletion.
 
-**Core Components**:
-
-1. **gRPC Server** (`cmd/server/service.go`)
-   - `CreateEntity(ctx, *pb.Entity) (*pb.Entity, error)`
-     - Orchestrates entity creation across all databases
-     - Saves metadata to MongoDB
-     - Creates entity node in Neo4j
-     - Handles relationships in Neo4j
-     - Processes attributes for PostgreSQL
-   
-   - `ReadEntity(ctx, *pb.ReadEntityRequest) (*pb.Entity, error)`
-     - Retrieves entity information from multiple databases
-     - Supports selective field retrieval via output parameter
-     - Assembles complete entity from distributed storage
-   
-   - `UpdateEntity(ctx, *pb.UpdateEntityRequest) (*pb.Entity, error)`
-     - Updates entity information across databases
-     - Handles partial updates
-   
-   - `DeleteEntity(ctx, *pb.EntityId) (*pb.Empty, error)`
-     - Removes entity from all databases
-     - Cascades deletion across MongoDB, Neo4j, and PostgreSQL
-
-2. **Engine Layer** (`engine/`)
-   - **AttributeProcessor** (`attribute_resolver.go`)
-     - Processes entity attributes
-     - Determines storage strategy
-     - Handles time-based attribute values
-     - Manages attribute schema evolution (partial support)
-   
-   - **GraphMetadataManager** (`graph_metadata_manager.go`)
-     - Manages graph metadata
-     - Handles relationship metadata
-   
-   - **Type Inference** (`pkg/typeinference/inference.go`)
-     - Automatically detects data types
-     - Supports: int, float, string, bool, null
-     - Special types: date, time, datetime
-   
-   - **Storage Inference** (`pkg/storageinference/inference.go`)
-     - Determines optimal storage type
-     - Types: tabular, graph, list, map, scalar
-
-3. **Repository Layer** (`db/repository/`)
-   - **MongoRepository** (`mongo/mongodb_client.go`, `mongo/metadata_handler.go`)
-     - Handles metadata storage and retrieval
-     - Connection management
-     - CORE operations for metadata
-   
-   - **Neo4jRepository** (`neo4j/neo4j_client.go`, `neo4j/graph_entity_handler.go`)
-     - Manages entity nodes and relationships
-     - Graph traversal operations
-     - Cypher query execution
-   
-   - **PostgresRepository** (`postgres/postgres_client.go`, `postgres/data_handler.go`)
-     - Handles attribute storage
-     - Schema management
-     - Time-series data operations
+Internally, the service utilizes an Engine Layer to process attributes, manage graph metadata, and perform type and storage inference. The Repository Layer abstracts the interactions with underlying databases, coordinating metadata storage in MongoDB, graph management in Neo4j, and attribute storage in PostgreSQL.
 
 ### 3. Database Layer
 
-#### MongoDB (Port 27017)
-- **Purpose**: Flexible metadata storage
-- **Collections**: 
-  - `metadata` - Production metadata
-  - `metadata_test` - Test metadata
-- **Data Model**: Document-based key-value pairs
-- **Why MongoDB**: Schema-less structure ideal for dynamic metadata
-- **Location**: `deployment/development/docker/mongodb/`
+#### MongoDB
+MongoDB is used for flexible metadata storage. Its document-based, schema-less structure allows for efficient handling of the dynamic metadata associated with entities.
 
-#### Neo4j (Port 7474 HTTP, 7687 Bolt)
-- **Purpose**: Entity and relationship storage
-- **Data Model**: 
-  - **Nodes**: Entities with properties (id, kind_major, kind_minor, name, created, terminated)
-  - **Relationships**: Directed edges with properties (id, name, startTime, endTime)
-- **Why Neo4j**: Optimized for graph traversal and relationship queries
-- **Location**: `deployment/development/docker/neo4j/`
+#### Neo4j
+Neo4j serves as the specialized storage for entities and their relationships. By representing entities as nodes and relationships as directed edges, it optimizes the system for complex graph traversals and relationship-based queries.
 
-#### PostgreSQL (Port 5432)
-- **Purpose**: Time-based attribute storage
-- **Schema**:
-  - `attribute_schemas` - Attribute type definitions
-  - `entity_attributes` - Entity-to-attribute mappings
-  - `attr_*` - Dynamic tables for each attribute type
-- **Why PostgreSQL**: ACID compliance, complex queries, time-series support
-- **Location**: `deployment/development/docker/postgres/`
+#### PostgreSQL
+PostgreSQL provides robust storage for time-based attributes. It ensures ACID compliance and supports complex queries, making it ideal for managing time-series data and the evolution of attribute schemas.
 
 ### 4. Supporting Services
 
 #### Cleanup Service
-- **Purpose**: Database cleanup for testing and maintenance
-- **Technology**: Python
-- **Trigger**: Docker Compose profile (`--profile cleanup`)
-- **Operations**:
-  - Clears PostgreSQL tables
-  - Drops MongoDB collections
-  - Removes Neo4j nodes and relationships
-- **Usage**: `docker-compose --profile cleanup run --rm cleanup /app/cleanup.sh pre`
+The Cleanup Service is a utility designed for database maintenance and testing. It provides a mechanism to clear PostgreSQL tables, drop MongoDB collections, and remove Neo4j nodes and relationships, facilitating a clean state for development and testing environments.
 
 #### Backup/Restore Service
-- **Purpose**: Data persistence and version management
-- **Operations**:
-  - Local backup creation for all databases
-  - GitHub-based backup storage with versioning
-  - Automated restore from GitHub releases
-- **Scripts**: `deployment/development/init.sh`
-- **Documentation**: See `docs/deployment/BACKUP_INTEGRATION.md`
+The Backup and Restore Service ensures data persistence and version management. It handles the creation of local backups for all databases, stores them with versioning on GitHub, and supports automated restoration from specific backup releases.
 
 ---
 
@@ -244,57 +140,11 @@ The entity data is strategically distributed across three databases:
 
 ### Type Inference System
 
-**Location**: `opengin/core-api/pkg/typeinference/`
-
-**Primitive Types:**
-- `int` - Whole numbers without decimal points
-- `float` - Numbers with decimals or scientific notation
-- `string` - Text data
-- `bool` - True/false values
-- `null` - Absence of value
-
-**Special Types:**
-- `date` - Calendar dates (YYYY-MM-DD, DD/MM/YYYY, etc.)
-- `time` - Time of day (HH:MM:SS)
-- `datetime` - Combined date and time with timezone (RFC3339)
-
-**Type Inference Rules:**
-1. Numbers with decimal points → `float`
-2. Whole numbers → `int`
-3. Text matching date patterns → `date`
-4. Text matching time patterns → `time`
-5. Text matching datetime patterns → `datetime`
-6. Everything else → `string`
+The Type Inference System automatically detects data types to eliminate the need for manual specification. It identifies primitive types such as integers, floats, strings, and booleans, as well as special temporal types like dates, times, and datetimes, assigning the appropriate type based on the input value's format.
 
 ### Storage Type Inference
 
-**Location**: `opengin/core-api/pkg/storageinference/`
-
-**Storage Types:**
-1. **Tabular** - Has `columns` and `rows` fields
-   ```json
-   {"columns": ["id", "name"], "rows": [[1, "John"], [2, "Jane"]]}
-   ```
-
-2. **Graph** - Has `nodes` and `edges` fields
-   ```json
-   {"nodes": [{"id": "n1"}], "edges": [{"source": "n1", "target": "n2"}]}
-   ```
-
-3. **List** - Has `items` array
-   ```json
-   {"items": [1, 2, 3, 4, 5]}
-   ```
-
-4. **Scalar** - Single field with primitive value
-   ```json
-   {"value": 42}
-   ```
-
-5. **Map** - Key-value pairs (default)
-   ```json
-   {"key1": "value1", "key2": "value2"}
-   ```
+The Storage Type Inference mechanism determines the optimal storage structure for data. It categorizes input into formats such as tabular (for data with rows and columns), graph (for nodes and edges), list, scalar, or map, ensuring efficient storage and retrieval.
 
 ---
 
@@ -333,35 +183,13 @@ All services run within the same Docker network:
 ## Deployment
 
 ### Containerization
-- **Technology**: Docker + Docker Compose
-- **Orchestration File**: `docker-compose.yml`
-- **Network**: `ldf-network` (bridge)
-- **Volumes**: Persistent storage for all databases
+The system leverages Docker and Docker Compose for containerization, running all services within a shared bridge network. This setup ensures consistent environments and manages the persistence of database storage through volumes.
 
 ### Health Checks
+Integrated health checks are configured for all services to ensure proper startup sequencing. The Core API waits for databases to be ready, while the Ingestion and Read APIs wait for the Core API, ensuring a stable initialization process.
 
-All services include health check configurations:
-- MongoDB: `mongo --eval "db.adminCommand('ping')"`
-- Neo4j: HTTP endpoint check on port 7474
-- PostgreSQL: `pg_isready`
-- Core API: TCP check on port 50051
-- Ingestion/Read APIs: TCP checks on respective ports
-
-### Dependency Management
-
-Services start in proper order using Docker Compose `depends_on`:
-
-```
-Databases (MongoDB, Neo4j, PostgreSQL)
-  ↓
-Core API (waits for all databases to be healthy)
-  ↓
-Ingestion & Read APIs (wait for Core API to be healthy)
-```
-
-### Docker Compose Profiles
-- **Default**: Runs all core services
-- **cleanup**: Database cleanup service (separate profile)
+### Service Orchestration
+Services use dependency management to start in the correct order: databases initialize first, followed by the Core API, and finally the Ingestion and Read APIs. A default Docker Compose profile runs all core services, while a separate 'cleanup' profile is available to trigger the database cleanup service.
 
 ---
 

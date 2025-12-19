@@ -10,21 +10,19 @@ Backups are stored in a structured repository following this hierarchy:
 data-backups/
 ├── README.md
 └── opengin
-    └── version
-        └── 0.0.1
-            ├── development
-            │   ├── mongodb
-            │   │   └── opengin.tar.gz
-            │   ├── neo4j
-            │   │   └── neo4j.dump
-            │   └── postgres
-            │       └── opengin.tar.gz
-            ├── production
-            │   ├── mongodb
-            │   └── neo4j
-            └── staging
-                ├── mongodb
-                └── neo4j
+    ├── development
+    │   ├── mongodb
+    │   │   └── opengin.tar.gz
+    │   ├── neo4j
+    │   │   └── neo4j.dump
+    │   └── postgres
+    │       └── opengin.tar.gz
+    ├── production
+    │   ├── mongodb
+    │   └── neo4j
+    └── staging
+        ├── mongodb
+        └── neo4j
 ```
 
 This structure allows for:

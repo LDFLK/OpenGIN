@@ -57,10 +57,6 @@ curl -X PUT http://localhost:8080/entities/12345 \
   -H "Content-Type: application/json" \
   -d '{
     "id": "12345",
-    "kind": {
-      "major": "example",
-      "minor": "test"
-    },
     "created": "2024-03-18T00:00:00Z",
     "name": {
       "startTime": "2024-03-18T00:00:00Z",

@@ -18,11 +18,9 @@ Both APIs act as translation layers between external HTTP/JSON clients and the i
 
 ### Overview
 
-**Location**: `opengin/ingestion-api/`  
-**Language**: Ballerina  
-**Protocol**: HTTP/REST + JSON  
-**Port**: 8080  
-**Contract**: `opengin/contracts/rest/ingestion_api.yaml`
+### Overview
+
+The Ingestion API serves as the primary gateway for data entering the system. Implemented as a Ballerina REST service, it allows external clients to create, update, and delete entities using standard HTTP methods. The service validates incoming JSON payloads against defined contracts before converting them for internal processing.
 
 ### Request/Response Flow
 
@@ -95,12 +93,6 @@ Content-Type: application/json
 }
 ```
 
-**Status Codes**:
-- `201 Created`: Entity successfully created
-- `400 Bad Request`: Invalid JSON or missing required fields
-- `409 Conflict`: Entity with ID already exists
-- `500 Internal Server Error`: CORE service error
-
 #### READ Entity
 
 **Request**:
@@ -128,11 +120,6 @@ GET /entities/entity123
   "relationships": []
 }
 ```
-
-**Status Codes**:
-- `200 OK`: Entity found and returned
-- `404 Not Found`: Entity doesn't exist
-- `500 Internal Server Error`: CORE service error
 
 #### UPDATE Entity
 
@@ -167,12 +154,6 @@ Content-Type: application/json
 }
 ```
 
-**Status Codes**:
-- `200 OK`: Entity successfully updated
-- `404 Not Found`: Entity doesn't exist
-- `400 Bad Request`: Invalid update data
-- `500 Internal Server Error`: Core API error
-
 #### DELETE Entity
 
 **Request**:
@@ -185,22 +166,15 @@ DELETE /entities/entity123
 204 No Content
 ```
 
-**Status Codes**:
-- `204 No Content`: Entity successfully deleted
-- `404 Not Found`: Entity doesn't exist
-- `500 Internal Server Error`: CORE service error
-
 ---
 
 ## Read API
 
 ### Overview
 
-**Location**: `opengin/read-api/`  
-**Language**: Ballerina  
-**Protocol**: HTTP/REST + JSON  
-**Port**: 8081  
-**Contract**: `opengin/contracts/rest/read_api.yaml`
+### Overview
+
+The Read API is dedicated to serving data retrieval requests. Also built with Ballerina, it provides a RESTful interface for querying entities, their metadata, relationships, and attributes. It supports complex queries including time-travel (temporal) lookups and selective field retrieval to optimize performance and payload size.
 
 ### Read Operations
 

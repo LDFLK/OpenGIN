@@ -25,17 +25,15 @@ This guide explains how to perform data backup and restore operations using the 
 3. **Create version folder structure:**
    ```bash
    # Create the version folder (replace 0.0.1 with your version)
-   mkdir -p data-backups/opengin/version/0.0.1/development/{mongodb,postgres,neo4j}
+   mkdir -p data-backups/opengin/development/{mongodb,postgres,neo4j}
    
    # The structure should look like:
     opengin
-        └── version
-            ├── 0.0.1
-            │   ├── development
-            │   │   ├── mongodb
-            │   │   │   └── opengin.tar.gz
-            │   │   ├── neo4j
-            │   │   │   └── neo4j.dump
+        └── development
+            │   ├── mongodb
+            │   │   └── opengin.tar.gz
+            │   ├── neo4j
+            │   │   └── neo4j.dump
             │   │   └── postgres
             │   │       └── opengin.tar.gz
             │   ├── production

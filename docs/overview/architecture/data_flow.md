@@ -24,13 +24,12 @@ The system receives data through a REST API built with Ballerina. The API accept
         "role": "Software Engineer"
     },
     "attributes": {
-        "salary": {
-            "values": [
-                {
-                    "startTime": "2024-01-01T00:00:00Z",
-                    "endTime": "",
-                    "value": "100000"
-                }
+        "expenses": {
+            "columns": ["type", "amount", "date", "category"],
+            "rows": [
+                ["Travel", 500, "2024-01-15", "Business"],
+                ["Meals", 120, "2024-01-16", "Entertainment"],
+                ["Equipment", 300, "2024-01-17", "Office"]
             ]
         }
     },
