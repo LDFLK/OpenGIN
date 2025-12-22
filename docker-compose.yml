@@ -50,7 +50,6 @@ services:
       retries: 3
 
   postgres:
-    platform: linux/amd64
     build:
       context: ./deployment/development/docker/postgres
       dockerfile: Dockerfile

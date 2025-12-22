@@ -1,5 +1,5 @@
 # MongoDB Server Dockerfile
-FROM --platform=linux/arm64 mongo:4.4
+FROM mongo:4.4
 
 # Set environment variables
 ENV MONGO_INITDB_ROOT_USERNAME=admin

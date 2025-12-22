@@ -32,14 +32,14 @@ jobs:
         docker compose build core
         
         # Start required dependencies
-        docker compose up -d mongodb neo4j
+        docker compose up -d mongodb neo4j postgres
         
         # Wait for dependencies to be healthy
-        echo "Waiting for MongoDB and Neo4j to be healthy..."
+        echo "Waiting for MongoDB, Neo4j and Postgres to be healthy..."
         docker compose ps
         
         # Wait for dependencies to be ready (with timeout)
-        timeout 120 bash -c 'until docker compose ps | grep -q "healthy"; do echo "Waiting for services to be healthy..."; sleep 5; done'
+        timeout 300 bash -c 'until docker compose ps | grep -q "healthy"; do echo "Waiting for services to be healthy..."; sleep 5; done'
 
         # Start CORE service and capture logs
         echo "Starting CORE service and running tests..."
@@ -48,7 +48,7 @@ jobs:
 
         # Wait for the service to start and tests to begin
         echo "Waiting for CORE service to start..."
-        timeout 60 bash -c 'until grep -q "Running tests with environment" core.log; do echo "Waiting for tests to start..."; sleep 2; done'
+        timeout 120 bash -c 'until grep -q "Running tests with environment" core.log; do echo "Waiting for tests to start..."; sleep 2; done'
         
         # Wait for tests to complete (look for test completion indicators)
         echo "Waiting for tests to complete..."

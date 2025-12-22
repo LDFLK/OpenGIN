@@ -42,34 +42,38 @@ jobs:
         echo "Starting Read service and running tests..."
         docker compose up -d read
         
-        # Wait for tests to complete
+        # Wait for waiting loop to detect test completion
         echo "Waiting for tests to complete..."
-        sleep 30
-        
-        # Check the logs for test results
-        if docker compose logs read | grep -q "failing" && ! docker compose logs read | grep -q "0 failing"; then
-          echo "Read API tests failed!"
-          echo "Container logs:"
-          docker compose logs read
-          docker compose down
-          exit 1
-        elif docker compose logs read | grep -q "0 failing"; then
-          echo "Read API tests passed!"
-          echo "Container logs:"
-          docker compose logs read
-        else
-          echo "Test results not found in logs. Checking for service startup..."
-          if docker compose logs read | grep -q "Starting Read service"; then
-            echo "Read API tests passed (service started successfully)!"
-            echo "Container logs:"
-            docker compose logs read
-          else
-            echo "Could not determine test status from logs"
+        timeout=300
+        while [ $timeout -gt 0 ]; do
+          if docker compose logs read | grep -q "failing" && ! docker compose logs read | grep -q "0 failing"; then
+            echo "❌ Read API tests failed!"
             echo "Container logs:"
             docker compose logs read
             docker compose down
             exit 1
+          elif docker compose logs read | grep -q "0 failing"; then
+            echo "✅ Read API tests passed!"
+            echo "Container logs:"
+            docker compose logs read
+            break
+          elif docker compose logs read | grep -q "Starting Read service"; then
+            echo "✅ Read API tests passed (service started successfully)!"
+            echo "Container logs:"
+            docker compose logs read
+            break
           fi
+          echo "Waiting for tests... ($timeout seconds remaining)"
+          sleep 5
+          timeout=$((timeout - 5))
+        done
+
+        if [ $timeout -le 0 ]; then
+          echo "❌ Timeout waiting for Read API tests!"
+          echo "Container logs:"
+          docker compose logs read
+          docker compose down
+          exit 1
         fi
         
         # Cleanup
