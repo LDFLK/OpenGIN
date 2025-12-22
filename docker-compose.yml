@@ -2,7 +2,6 @@ version: '3.8'
 
 services:
   mongodb:
-    platform: linux/amd64
     build:
       context: ./deployment/development/docker/mongodb
       dockerfile: Dockerfile

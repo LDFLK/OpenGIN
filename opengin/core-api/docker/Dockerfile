@@ -67,7 +67,7 @@ FROM golang:1.24
 
 # Install runtime dependencies and qemu for emulation
 RUN apt-get update && \
-    apt-get install -y ca-certificates qemu-user-static gnupg curl wget unzip default-jdk postgresql-client netcat-openbsd && \
+    apt-get install -y ca-certificates gnupg curl wget unzip default-jdk postgresql-client netcat-openbsd && \
     # Add MongoDB repository
     curl -fsSL https://pgp.mongodb.com/server-6.0.asc | \
     gpg -o /usr/share/keyrings/mongodb-server-6.0.gpg --dearmor && \
