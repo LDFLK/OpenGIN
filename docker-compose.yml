@@ -2,7 +2,6 @@ version: '3.8'
 
 services:
   mongodb:
-    platform: linux/amd64
     build:
       context: ./deployment/development/docker/mongodb
       dockerfile: Dockerfile
@@ -20,21 +19,20 @@ services:
       - MONGO_INITDB_ROOT_PASSWORD=admin123
       - MONGO_INITDB_DATABASE=opengin
     healthcheck:
-      test: ["CMD", "mongo", "--eval", "db.adminCommand('ping')"]
+      test: [ "CMD", "mongo", "--eval", "db.adminCommand('ping')" ]
       interval: 10s
       timeout: 10s
       retries: 10
       start_period: 60s
 
   neo4j:
-    platform: linux/amd64
     build:
       context: ./deployment/development/docker/neo4j
       dockerfile: Dockerfile
     container_name: neo4j
     ports:
-      - "7474:7474"  # HTTP (different port to avoid conflict)
-      - "7687:7687"  # Bolt (different port to avoid conflict)
+      - "7474:7474" # HTTP (different port to avoid conflict)
+      - "7687:7687" # Bolt (different port to avoid conflict)
     volumes:
       - neo4j_data:/neo4j_data
       - neo4j_logs:/neo4j_logs
@@ -45,13 +43,12 @@ services:
     environment:
       - NEO4J_AUTH=neo4j/neo4j123
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"]
+      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1" ]
       interval: 30s
       timeout: 10s
       retries: 3
 
   postgres:
-    platform: linux/amd64
     build:
       context: ./deployment/development/docker/postgres
       dockerfile: Dockerfile
@@ -68,13 +65,12 @@ services:
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=opengin
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
       interval: 10s
       timeout: 5s
       retries: 5
 
   cleanup:
-    platform: linux/amd64
     build:
       context: .
       dockerfile: deployment/development/docker/cleanup/Dockerfile
@@ -100,12 +96,9 @@ services:
       - cleanup
 
   core:
-    platform: linux/amd64
     build:
       context: .
       dockerfile: opengin/core-api/docker/Dockerfile
-      args:
-        - DOCKER_DEFAULT_PLATFORM=linux/amd64
     container_name: core
     ports:
       - "50051:50051"
@@ -136,14 +129,13 @@ services:
     networks:
       - ldf-network
     healthcheck:
-      test: ["CMD", "nc", "-zv", "localhost", "50051"]
+      test: [ "CMD", "nc", "-zv", "localhost", "50051" ]
       interval: 30s
       timeout: 10s
       retries: 5
       start_period: 120s
 
   ingestion:
-    platform: linux/amd64
     build:
       context: .
       dockerfile: opengin/ingestion-api/docker/Dockerfile
@@ -160,14 +152,13 @@ services:
       core:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "8080"]
+      test: [ "CMD", "nc", "-z", "localhost", "8080" ]
       interval: 15s
       timeout: 10s
       retries: 5
       start_period: 120s
 
   read:
-    platform: linux/amd64
     build:
       context: .
       dockerfile: opengin/read-api/docker/Dockerfile
@@ -184,14 +175,13 @@ services:
       core:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "nc", "-zv", "localhost", "8081"]
+      test: [ "CMD", "nc", "-zv", "localhost", "8081" ]
       interval: 15s
       timeout: 10s
       retries: 5
       start_period: 120s
 
   e2e:
-    platform: linux/amd64
     image: python:3.9-slim
     container_name: e2e
     volumes:
@@ -233,5 +223,6 @@ volumes:
   neo4j_plugins:
   postgres_data:
   postgres_backup:
-  backup_data: # Volume for backup manager
+  backup_data:
+    # Volume for backup manager
 

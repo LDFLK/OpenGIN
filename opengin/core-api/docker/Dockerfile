@@ -38,7 +38,7 @@
 # docker network create core-network
 
 # Build stage for CORE service
-FROM --platform=linux/amd64 golang:1.23 AS builder
+FROM golang:1.23 AS builder
 
 # Set working directory
 WORKDIR /app
@@ -63,11 +63,11 @@ RUN cd opengin/core-api && \
 #     adduser  --disabled-password  --no-create-home --uid 10014 --ingroup choreo choreouser
 
 # Final stage
-FROM --platform=linux/amd64 golang:1.24
+FROM golang:1.24
 
 # Install runtime dependencies and qemu for emulation
 RUN apt-get update && \
-    apt-get install -y ca-certificates qemu-user-static gnupg curl wget unzip default-jdk postgresql-client netcat-openbsd && \
+    apt-get install -y ca-certificates gnupg curl wget unzip default-jdk postgresql-client netcat-openbsd && \
     # Add MongoDB repository
     curl -fsSL https://pgp.mongodb.com/server-6.0.asc | \
     gpg -o /usr/share/keyrings/mongodb-server-6.0.gpg --dearmor && \

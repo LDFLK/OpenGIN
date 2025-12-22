@@ -297,3 +297,26 @@ http://localhost:8082
 The Swagger UI serves the OpenAPI specifications from:
 - `opengin/contracts/rest/ingestion_api.yaml`
 - `opengin/contracts/rest/read_api.yaml`
+
+## Rancher Desktop & Docker Constraints
+
+### Architecture (Apple Silicon / ARM64)
+If you are developing on an M1/M2/M3 Mac, your Rancher Desktop/Docker environment uses the `linux/arm64` architecture.
+- **Do NOT force `platform: linux/amd64`** in `docker-compose.yml` or `Dockerfile` unless absolutely necessary.
+- Forcing `amd64` causes containers to run in **emulation mode** (QEMU), which is significantly slower and highly unstable for database workloads (Neo4j, etc.) and Go builds (`go mod download` often SIGSEGV).
+- Ensure your base images support multi-arch (which standard images like `mongo`, `neo4j`, `golang` do).
+
+### Memory Management (OOM Kills)
+The full OpenGIN stack (Neo4j + MongoDB + Postgres + Core + Ingestion + Read) requires significant RAM. The default Rancher Desktop VM limit (often 2GB) is insufficient.
+1. **Increase VM Memory**:
+   - Open Rancher Desktop -> Preferences -> Virtual Machine -> Memory.
+   - Set to at least **4GB** (8GB recommended).
+2. **Service Limits**:
+   - **Neo4j**: Default configuration uses >2GB. We have optimized the local Dockerfile to use ~1GB (`512M` Heap + `512M` PageCache).
+   - **Java Services (Ingestion/Read)**: These default to using 25% of available RAM each. We have capped them at `512MB` via `JAVA_OPTS="-Xmx512m"` in their Dockerfiles to prevent resource starvation.
+
+### Service Specifics
+- **MongoDB**: Version **5.0+** requires CPU AVX instruction support.
+  - Some virtualization environments (like Rancher Desktop on strict emulation settings or older hardware) may lack AVX.
+  - **Symptom**: Container exits immediately with `Segmentation fault`.
+  - **Fix**: Downgrade to **MongoDB 4.4**, which does not require AVX.
