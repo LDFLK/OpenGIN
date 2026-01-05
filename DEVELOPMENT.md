@@ -320,3 +320,42 @@ The full OpenGIN stack (Neo4j + MongoDB + Postgres + Core + Ingestion + Read) re
   - Some virtualization environments (like Rancher Desktop on strict emulation settings or older hardware) may lack AVX.
   - **Symptom**: Container exits immediately with `Segmentation fault`.
   - **Fix**: Downgrade to **MongoDB 4.4**, which does not require AVX.
+
+## 🤖 Antigravity & Agentic Workflows
+
+Antigravity is an agentic AI coding assistant designed to help with complex development tasks. It uses the Model Context Protocol (MCP) to interact with external tools like GitHub.
+
+### Prerequisites: Github MCP Setup
+
+To fully utilize Antigravity's capabilities (managing issues, PRs, etc.), you must set up the Github MCP server.
+
+**1. Generate a Personal Access Token (Classic)**
+
+> [!IMPORTANT]
+> You must use a **Classic** Token. Fine-grained tokens are currently not supported by the MCP server.
+
+1.  Navigate to [GitHub Developer Settings > Personal access tokens > Tokens (classic)](https://github.com/settings/tokens/new).
+2.  Click **Generate new token (classic)**.
+3.  Set the **Note** to something memorable like "Antigravity MCP".
+4.  Select the **Expiration** (or "No expiration" if preferred for local dev).
+5.  **Select Scopes**: You typically need `repo` (full control) and `user` scopes.
+6.  Click **Generate token** and copy the value immediately (you won't see it again).
+
+**2. Configure the Agent**
+
+When prompted by the Antigravity system or configuration, provide this token to authenticate the `github-mcp-server`.
+
+### How to Use
+
+Antigravity comes with built-in workflows to automate common tasks. You can invoke them using slash commands or natural language.
+
+**Common Workflows:**
+
+*   **`/analyze-issue`**: Analyzes a GitHub issue to understand requirements and context.
+*   **`/plan-resolution`**: Creates a detailed implementation plan (`implementation_plan.md`) for a specific issue.
+*   **`/create-pr`**: Automates the process of creating a Pull Request from your current changes.
+*   **`/git-setup-opengin`**: Sets up the repository specific configurations.
+
+**Example Usage:**
+> "Please /analyze-issue #42 for me."
+> "I'm done with the changes, help me /create-pr."
