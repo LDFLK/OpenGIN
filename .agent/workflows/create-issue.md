@@ -9,7 +9,7 @@ Github is configured to this project.
 
 ## Context
 
-Create a new Github issue using the mcp tools provide. 
+Create a new Github issue using the mcp tools provided. 
 
 ## Setup 
 

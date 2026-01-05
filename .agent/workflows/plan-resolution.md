@@ -16,7 +16,7 @@ Before writing code, we must create a clear technical plan. This ensures we unde
 ## How to Approach
 
 1. **Understand the Issue**:
-   - specific specific details from the GitHub issue.
+   - specific details from the GitHub issue.
    - If requirements are vague, ask clarifying questions first.
    - Use /analyze-issue workflow to learn about the issue. 
 

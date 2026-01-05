@@ -5,7 +5,7 @@ description: Create a GitHub Pull Request
 ## Background
 
 Refer to workflow `/understand-github-setting` and `/git-setup-opengin` to learn more about how the 
-Github is configured to this project. 
+GitHub is configured to this project. 
 
 ## Context
 
@@ -13,7 +13,7 @@ Create a GitHub Pull Request using the mcp tools provided.
 
 ## Setup 
 
-Use Github MCP tools to create the PR. 
+Use GitHub MCP tools to create the PR. 
 
 ## Input
 
@@ -21,7 +21,7 @@ User will give the title, body, and potentially the head and base branches. If n
 
 ## How to Approach
 
-Use the Github MCP tools to create the pull request. 
+Use the GitHub MCP tools to create the pull request. 
 
 ## Actions
 
@@ -41,7 +41,6 @@ Include a summary of changes done in this PR. For that please use the content in
 
 If there are any commits in the branch already, use the commit messages to extract some information as well. 
 
-At the end of the issue please add the following
+At the end of the description please add the following
 
-This PR closes #<issue-number>. 
-
+This PR closes #<issue-number>.

@@ -9,7 +9,7 @@ Github is configured to this project.
 
 ## Context
 
-Update an existing Github issue using the mcp tools provide. 
+Update an existing GitHub issue using the mcp tools provided. 
 
 ## Setup 
 
