@@ -32,7 +32,6 @@ services:
       start_period: 30s
 
   neo4j-choreo:
-    platform: linux/amd64
     build:
       context: ./deployment/choreo/development/docker/neo4j
       dockerfile: Dockerfile

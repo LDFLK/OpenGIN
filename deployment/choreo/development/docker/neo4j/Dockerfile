@@ -24,9 +24,9 @@ RUN groupadd -g 10014 choreo && \
 
 # Environment defaults (can be overridden at runtime)
 ENV NEO4J_AUTH=neo4j/neo4j123 \
-    NEO4J_server_memory_pagecache_size=1G \
-    NEO4J_server_memory_heap_initial__size=1G \
-    NEO4J_server_memory_heap_max__size=1G \
+    NEO4J_server_memory_pagecache_size=512M \
+    NEO4J_server_memory_heap_initial__size=512M \
+    NEO4J_server_memory_heap_max__size=512M \
     NEO4J_server_security_procedures_unrestricted=gds.*,apoc.* \
     NEO4J_server_directories_data=/neo4j_data \
     NEO4J_server_directories_logs=/neo4j_logs \
