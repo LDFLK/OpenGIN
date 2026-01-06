@@ -4,7 +4,6 @@ name: ldf-choreo
 
 services:
   mongodb-choreo:
-    platform: linux/amd64
     build:
       context: ./deployment/choreo/development/docker/mongodb
       dockerfile: Dockerfile
