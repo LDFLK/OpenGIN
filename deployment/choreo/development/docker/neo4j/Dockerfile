@@ -93,7 +93,7 @@ restore_from_github() {\n\
     \n\
     # Find the Neo4j backup file\n\
     local archive_dir="$temp_dir/data-backups-$version"\n\
-    local neo4j_backup="$archive_dir/opengin/version/$version/$environment/neo4j/neo4j.dump"\n\
+    local neo4j_backup="$archive_dir/opengin/$environment/neo4j/neo4j.dump"\n\
     \n\
     if [ ! -f "$neo4j_backup" ]; then\n\
         log "ERROR" "Neo4j backup file not found: $neo4j_backup"\n\
