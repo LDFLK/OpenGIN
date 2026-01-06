@@ -120,7 +120,6 @@ services:
     restart: unless-stopped
 
   cleanup-choreo:
-    platform: linux/amd64
     build:
       context: .
       dockerfile: deployment/development/docker/cleanup/Dockerfile.choreo
@@ -146,7 +145,6 @@ services:
       - cleanup
 
   core-choreo:
-    platform: linux/amd64
     build:
       context: ./opengin/core-api
       dockerfile: docker/Dockerfile.choreo

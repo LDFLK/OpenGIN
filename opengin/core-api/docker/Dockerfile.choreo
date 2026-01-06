@@ -58,7 +58,7 @@
 # The hostnames 'neo4j' and 'mongodb' are resolved within the ldf-network.
 
 # Build stage for CORE service
-FROM --platform=${BUILDPLATFORM:-linux/amd64} golang:1.23 AS builder
+FROM golang:1.23 AS builder
 
 # Set working directory
 WORKDIR /app
@@ -80,11 +80,11 @@ RUN go mod download
 RUN CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' -o core-service cmd/server/service.go cmd/server/utils.go
 
 # Final stage
-FROM --platform=${TARGETPLATFORM:-linux/amd64} golang:1.24
+FROM golang:1.24
 
 # Install runtime dependencies and database client tools
 RUN apt-get update && \
-    apt-get install -y ca-certificates qemu-user-static gnupg curl wget unzip default-jdk postgresql-client netcat-openbsd && \
+    apt-get install -y ca-certificates gnupg curl wget unzip default-jdk postgresql-client netcat-openbsd && \
     # Add MongoDB repository
     curl -fsSL https://pgp.mongodb.com/server-6.0.asc | \
     gpg -o /usr/share/keyrings/mongodb-server-6.0.gpg --dearmor && \
