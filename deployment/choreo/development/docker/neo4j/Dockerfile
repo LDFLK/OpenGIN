@@ -36,7 +36,7 @@ ENV NEO4J_AUTH=neo4j/neo4j123 \
     NEO4J_server_bolt_listen__address=0.0.0.0:7687 \
     NEO4J_server_http_listen__address=0.0.0.0:7474 \
     GITHUB_BACKUP_REPO=${OPENGIN_GITHUB_BACKUP_REPO:-LDFLK/data-backups} \
-    BACKUP_VERSION=${OPENGIN_DB_BACKUP_VERSION:-0.0.1} \
+    BACKUP_VERSION=${OPENGIN_DB_BACKUP_VERSION:-0.0.3} \
     BACKUP_ENVIRONMENT=${OPENGIN_CHOREO_ENVIRONMENT:-development} \
     RESTORE_FROM_GITHUB=true
 
@@ -53,18 +53,22 @@ RUN echo "server.default_listen_address=0.0.0.0" >> /etc/neo4j/neo4j.conf \
 
 # Entrypoint script with GitHub backup restore functionality
 RUN echo '#!/bin/bash\n\
-set -e\n\
-\n\
-# Logging function\n\
-log() {\n\
+    set -e\n\
+    \n\
+    # Logging function\n\
+    log() {\n\
     echo "[$(date +%Y-%m-%d\ %H:%M:%S)] $1: $2"\n\
-}\n\
-\n\
-# Function to restore from GitHub backup\n\
-restore_from_github() {\n\
-    local github_repo="${GITHUB_BACKUP_REPO:-LDFLK/data-backups}"\n\
-    local version="${BACKUP_VERSION:-0.0.1}"\n\
-    local environment="${BACKUP_ENVIRONMENT:-development}"\n\
+    }\n\
+    \n\
+    # Print environment configuration\n\
+    log "INFO" "OPENGIN_DB_BACKUP_VERSION=${OPENGIN_DB_BACKUP_VERSION:-not set}"\n\
+    log "INFO" "BACKUP_VERSION=${BACKUP_VERSION:-0.0.8}"\n\
+    \n\
+    # Function to restore from GitHub backup\n\
+    restore_from_github() {\n\
+    local github_repo="${GITHUB_BACKUP_REPO}"\n\
+    local version="${BACKUP_VERSION}"\n\
+    local environment="${BACKUP_ENVIRONMENT}"\n\
     \n\
     log "INFO" "Starting GitHub backup restore..."\n\
     log "INFO" "Repository: $github_repo"\n\
@@ -78,17 +82,17 @@ restore_from_github() {\n\
     \n\
     log "INFO" "Downloading backup from: $archive_url"\n\
     if ! wget -q "$archive_url" -O "$archive_file"; then\n\
-        log "ERROR" "Failed to download backup archive"\n\
-        rm -rf "$temp_dir"\n\
-        return 1\n\
+    log "ERROR" "Failed to download backup archive"\n\
+    rm -rf "$temp_dir"\n\
+    return 1\n\
     fi\n\
     \n\
     # Extract the archive\n\
     log "INFO" "Extracting backup archive..."\n\
     if ! unzip -q "$archive_file" -d "$temp_dir"; then\n\
-        log "ERROR" "Failed to extract backup archive"\n\
-        rm -rf "$temp_dir"\n\
-        return 1\n\
+    log "ERROR" "Failed to extract backup archive"\n\
+    rm -rf "$temp_dir"\n\
+    return 1\n\
     fi\n\
     \n\
     # Find the Neo4j backup file\n\
@@ -96,54 +100,54 @@ restore_from_github() {\n\
     local neo4j_backup="$archive_dir/opengin/$environment/neo4j/neo4j.dump"\n\
     \n\
     if [ ! -f "$neo4j_backup" ]; then\n\
-        log "ERROR" "Neo4j backup file not found: $neo4j_backup"\n\
-        rm -rf "$temp_dir"\n\
-        return 1\n\
+    log "ERROR" "Neo4j backup file not found: $neo4j_backup"\n\
+    rm -rf "$temp_dir"\n\
+    return 1\n\
     fi\n\
     \n\
     log "INFO" "Found Neo4j backup: $(basename "$neo4j_backup")"\n\
     \n\
     # Check if database already exists\n\
     if [ -d "${NEO4J_server_directories_data}/databases/neo4j" ]; then\n\
-        log "INFO" "Database already exists, skipping restore"\n\
-        rm -rf "$temp_dir"\n\
-        return 0\n\
+    log "INFO" "Database already exists, skipping restore"\n\
+    rm -rf "$temp_dir"\n\
+    return 0\n\
     fi\n\
     \n\
     # Restore the database\n\
     log "INFO" "Restoring Neo4j database..."\n\
     if neo4j-admin database load neo4j --from-path="$(dirname "$neo4j_backup")" --overwrite-destination=true; then\n\
-        log "SUCCESS" "Neo4j database restored successfully"\n\
-        rm -rf "$temp_dir"\n\
-        return 0\n\
+    log "SUCCESS" "Neo4j database restored successfully"\n\
+    rm -rf "$temp_dir"\n\
+    return 0\n\
     else\n\
-        log "ERROR" "Failed to restore Neo4j database"\n\
-        rm -rf "$temp_dir"\n\
-        return 1\n\
+    log "ERROR" "Failed to restore Neo4j database"\n\
+    rm -rf "$temp_dir"\n\
+    return 1\n\
     fi\n\
-}\n\
-\n\
-# Handle NEO4J_AUTH like the official image\n\
-if [ -n "${NEO4J_AUTH:-}" ]; then\n\
-  if [ "${NEO4J_AUTH}" = "none" ]; then\n\
+    }\n\
+    \n\
+    # Handle NEO4J_AUTH like the official image\n\
+    if [ -n "${NEO4J_AUTH:-}" ]; then\n\
+    if [ "${NEO4J_AUTH}" = "none" ]; then\n\
     log "INFO" "Disabling authentication..."\n\
     echo "dbms.security.auth_enabled=false" >> /etc/neo4j/neo4j.conf\n\
-  elif [[ "${NEO4J_AUTH}" == neo4j/* ]]; then\n\
+    elif [[ "${NEO4J_AUTH}" == neo4j/* ]]; then\n\
     password="${NEO4J_AUTH#neo4j/}"\n\
     if [ ! -d "${NEO4J_server_directories_data}/databases" ]; then\n\
-      log "INFO" "Setting initial password..."\n\
-      neo4j-admin dbms set-initial-password "$password" || true\n\
+    log "INFO" "Setting initial password..."\n\
+    neo4j-admin dbms set-initial-password "$password" || true\n\
     fi\n\
-  fi\n\
-fi\n\
-\n\
-# Restore from GitHub if enabled and database doesn'\''t exist\n\
-if [ "${RESTORE_FROM_GITHUB:-false}" = "true" ] && [ ! -d "${NEO4J_server_directories_data}/databases/neo4j" ]; then\n\
+    fi\n\
+    fi\n\
+    \n\
+    # Restore from GitHub if enabled and database doesn'\''t exist\n\
+    if [ "${RESTORE_FROM_GITHUB:-false}" = "true" ] && [ ! -d "${NEO4J_server_directories_data}/databases/neo4j" ]; then\n\
     restore_from_github || log "WARNING" "GitHub restore failed, continuing with empty database"\n\
-fi\n\
-\n\
-log "INFO" "Starting Neo4j..."\n\
-exec neo4j console' > /docker-entrypoint.sh \
+    fi\n\
+    \n\
+    log "INFO" "Starting Neo4j..."\n\
+    exec neo4j console' > /docker-entrypoint.sh \
     && chmod +x /docker-entrypoint.sh
 
 # Switch to choreo user (required for Choreo platform)

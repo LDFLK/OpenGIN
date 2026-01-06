@@ -24,7 +24,7 @@ services:
       - BACKUP_ENVIRONMENT=${OPENGIN_CHOREO_ENVIRONMENT:-development}
       - RESTORE_FROM_GITHUB=true
     healthcheck:
-      test: ["CMD", "mongo", "--eval", "db.adminCommand('ping')"]
+      test: [ "CMD", "mongo", "--eval", "db.adminCommand('ping')" ]
       interval: 10s
       timeout: 10s
       retries: 5
@@ -53,11 +53,11 @@ services:
       - NEO4J_server_http_listen__address=0.0.0.0:7474
       # GitHub backup restore configuration
       - GITHUB_BACKUP_REPO=${OPENGIN_GITHUB_BACKUP_REPO:-LDFLK/data-backups}
-      - BACKUP_VERSION=${OPENGIN_DB_BACKUP_VERSION:-0.0.1}
+      - BACKUP_VERSION=${OPENGIN_DB_BACKUP_VERSION:-0.0.3}
       - BACKUP_ENVIRONMENT=${OPENGIN_CHOREO_ENVIRONMENT:-development}
       - RESTORE_FROM_GITHUB=true
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"]
+      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -85,7 +85,7 @@ services:
       - RESTORE_FROM_GITHUB=false
       - FORCE_RESTORE=${FORCE_RESTORE:-false}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -180,7 +180,7 @@ services:
       postgres-choreo:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:50051 || exit 1"]
+      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:50051 || exit 1" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -202,7 +202,7 @@ services:
       core-choreo:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "8080"]
+      test: [ "CMD", "nc", "-z", "localhost", "8080" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -225,7 +225,7 @@ services:
       core-choreo:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "8081"]
+      test: [ "CMD", "nc", "-z", "localhost", "8081" ]
       interval: 10s
       timeout: 5s
       retries: 5
