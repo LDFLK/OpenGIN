@@ -120,5 +120,4 @@ It requires the Core-API URL to which we use the `Project URL` from `Manage`->`O
 
 And the `Build Context` we provide is the `opengin/read-api` directory.
 
-Make sure to disable the auth and security features for the moment as we are keeping APIs 
-Open. 
+> **Warning:** Make sure to disable the auth and security features for the moment as we are keeping APIs open. This configuration is not suitable for production environments.
