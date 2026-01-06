@@ -1,10 +1,18 @@
 schemaVersion: 1.2
 endpoints:
-  - name: neo4j
+  - name: neo4j-browser
     displayName: Neo4j Database
     service:
-      basePath: /
+      basePath: /browser
       port: 7474
-    type: REST
+    type: WS
+    networkVisibilities: 
+      - Public
+  - name: neo4j-bolt
+    displayName: Neo4j Bolt
+    service:
+      basePath: /
+      port: 7687
+    type: TCP
     networkVisibilities: 
       - Project
