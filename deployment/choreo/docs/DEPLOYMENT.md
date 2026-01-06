@@ -32,7 +32,7 @@ and a few file mounts to make things work.
 
 ### Choreo Configs
 
-When deploying the CORE service on thing to note is that GRPC services are not exposed through the Gateway in Choreo. So we have to choose the `PROJECT_URL` from `Manage`->`Overview` tabs in Choreo
+When deploying the CORE service one thing to note is that GRPC services are not exposed through the Gateway in Choreo. So we have to choose the `PROJECT_URL` from `Manage`->`Overview` tabs in Choreo
 console. Make sure to extract that URL and use it as the `coreServiceURL` config in both `Ingestion` API and
 `Read` API services.
 
