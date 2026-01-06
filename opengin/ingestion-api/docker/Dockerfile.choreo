@@ -101,7 +101,7 @@
 #    - Check file permissions in the container
 
 # Build stage for Ingestion service
-FROM --platform=linux/amd64 ballerina/ballerina:2201.11.0 AS builder
+FROM ballerina/ballerina:2201.11.0 AS builder
 
 # Set working directory
 WORKDIR /app
@@ -137,7 +137,7 @@ USER 10014
 RUN bal build
 
 # Final stage
-FROM --platform=linux/amd64 ballerina/ballerina:2201.11.0
+FROM ballerina/ballerina:2201.11.0
 
 # Switch to root for package installation
 USER root
@@ -161,6 +161,7 @@ COPY --from=builder /etc/group /etc/group
 ENV BAL_CONFIG_VAR_CORESERVICEURL=${CORE_SERVICE_URL:-http://core-choreo:50051}
 ENV BAL_CONFIG_VAR_INGESTIONSERVICEHOST=${INGESTION_SERVICE_HOST:-0.0.0.0}
 ENV BAL_CONFIG_VAR_INGESTIONSERVICEPORT=${INGESTION_SERVICE_PORT:-8080}
+ENV JAVA_OPTS="-Xmx512m"
 
 # Create startup script with proper line endings
 RUN echo '#!/bin/sh' > /app/start.sh && \

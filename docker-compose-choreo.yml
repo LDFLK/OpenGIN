@@ -188,7 +188,6 @@ services:
       - choreo-network
 
   ingestion-choreo:
-    platform: linux/amd64
     build:
       context: ./opengin/ingestion-api
       dockerfile: docker/Dockerfile.choreo
