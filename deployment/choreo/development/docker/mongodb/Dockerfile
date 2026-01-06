@@ -101,7 +101,7 @@ restore_from_github() {\n\
     \n\
     # Find the MongoDB backup file\n\
     local archive_dir="$temp_dir/data-backups-$version"\n\
-    local mongodb_backup="$archive_dir/opengin/version/$version/$environment/mongodb/opengin.tar.gz"\n\
+    local mongodb_backup="$archive_dir/opengin/$environment/mongodb/opengin.tar.gz"\n\
     \n\
     if [ ! -f "$mongodb_backup" ]; then\n\
         log "ERROR" "MongoDB backup file not found: $mongodb_backup"\n\
