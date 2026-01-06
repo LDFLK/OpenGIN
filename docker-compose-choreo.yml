@@ -34,6 +34,10 @@ services:
     build:
       context: ./deployment/choreo/development/docker/neo4j
       dockerfile: Dockerfile
+      args:
+        GITHUB_BACKUP_REPO: ${OPENGIN_GITHUB_BACKUP_REPO:-LDFLK/data-backups}
+        BACKUP_VERSION: ${OPENGIN_DB_BACKUP_VERSION:-0.0.3}
+        BACKUP_ENVIRONMENT: ${OPENGIN_CHOREO_ENVIRONMENT:-development}
     container_name: neo4j-choreo
     ports:
       - "7474:7474"
