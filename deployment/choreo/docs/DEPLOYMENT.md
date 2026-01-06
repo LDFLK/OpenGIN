@@ -40,7 +40,7 @@ console. Make sure to extract that URL and use it as the `coreServiceURL` config
 
 ### Configuration Groups
 
-Choreo provides a feature called `Configuration Groups` to manage configurations for different environments. And here we can add a list of environment variables and file mounts to be used for each environment. At the deployment we just link the configuration group based on the environment.
+Choreo provides a feature called `Configuration Groups` to manage configurations for different environments. This feature allows you to add a list of environment variables and file mounts for each environment. During deployment, you simply link the configuration group based on the environment.
 
 ### Components
 
