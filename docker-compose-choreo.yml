@@ -63,7 +63,6 @@ services:
       retries: 3
 
   postgres-choreo:
-    platform: linux/amd64
     build:
       context: ./deployment/choreo/development/docker/postgres
       dockerfile: Dockerfile
