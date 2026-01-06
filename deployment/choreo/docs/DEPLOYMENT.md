@@ -44,7 +44,7 @@ Choreo provides a feature called `Configuration Groups` to manage configurations
 
 ### Components
 
-Choreo provides a feature called `Components` to manage different services. And here we can add a list of services to be used for each environment. At the deployment we just link the component based on the environment.
+Choreo provides a feature called `Components` to manage different services. This feature allows you to add a list of services for each environment. During deployment, you simply link the component based on the environment.
 
 #### Core API
 
