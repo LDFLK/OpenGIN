@@ -87,7 +87,7 @@ In Choreo/OpenChoreo there is a Ballerina-based build pack.
 Also Ballerina supports configurations which is more or less like environment variables, 
 but not exactly. We use them to provide parameters to the Ballerina service. 
 
-It requires the Core-API URL to which we use the `Project URL` from `Manage`->`Overview` tabs in Choreo console which refers to the internal URL of the service which basically directly talk to the pod. 
+It requires the Core-API URL. For this, use the `Project URL` from the `Manage` -> `Overview` tab in the Choreo console. This URL refers to the internal URL of the service, which communicates directly with the pod.
 
 And the `Build Context` we provide is the `opengin/ingestion-api` directory.
 
