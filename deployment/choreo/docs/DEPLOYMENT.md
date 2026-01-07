@@ -125,5 +125,4 @@ When deploying, edit the `Configurables` as follows:
 - coreServiceHost: `0.0.0.0`
 - readServicePort: `8081`
 
-
 > **Warning:** Make sure to disable the auth and security features for the moment as we are keeping APIs open. This configuration is not suitable for production environments.
