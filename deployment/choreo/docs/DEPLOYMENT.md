@@ -122,7 +122,7 @@ And the `Build Context` we provide is the `opengin/read-api` directory.
 
 When deploying, edit the `Configurables` as follows:
 - coreServiceUrl: `the project url of your core service`
-- coreServiceHost: `0.0.0.0`
+- readServiceHost: `0.0.0.0`
 - readServicePort: `8081`
 
 > **Warning:** Make sure to disable the auth and security features for the moment as we are keeping APIs open. This configuration is not suitable for production environments.
