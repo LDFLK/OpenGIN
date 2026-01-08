@@ -1,0 +1,98 @@
+name: Docker Compose Test (Choreo)
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+    
+    - name: Build and test services (Choreo)
+      run: |
+        # Build all services
+        docker compose -f docker-compose-choreo.yml build
+        
+        # Start all services
+        echo "Starting all services..."
+        docker compose -f docker-compose-choreo.yml up -d
+        
+        # Wait for services to be healthy
+        echo "Waiting for services to be healthy..."
+        docker compose -f docker-compose-choreo.yml ps
+        
+        # Wait for tests to complete
+        echo "Waiting for tests to complete..."
+        sleep 30
+        
+        # Check CORE service test results
+        if docker compose -f docker-compose-choreo.yml logs core-choreo | grep -q "^core-choreo  | FAIL$"; then
+          echo "CORE API tests failed!"
+          echo "Container logs:"
+          docker compose -f docker-compose-choreo.yml logs core-choreo
+          docker compose -f docker-compose-choreo.yml down
+          exit 1
+        elif docker compose -f docker-compose-choreo.yml logs core-choreo | grep -q "^core-choreo  | PASS$"; then
+          echo "CORE API tests passed!"
+        else
+          echo "CORE API test results not found in logs"
+          docker compose -f docker-compose-choreo.yml down
+          exit 1
+        fi
+        
+        # Check Ingestion service test results
+        if docker compose -f docker-compose-choreo.yml logs ingestion-choreo | grep -q "failing" && ! docker compose -f docker-compose-choreo.yml logs ingestion-choreo | grep -q "0 failing"; then
+          echo "Ingestion API tests failed!"
+          echo "Container logs:"
+          docker compose -f docker-compose-choreo.yml logs ingestion-choreo
+          docker compose -f docker-compose-choreo.yml down
+          exit 1
+        elif docker compose -f docker-compose-choreo.yml logs ingestion-choreo | grep -q "0 failing"; then
+          echo "Ingestion API tests passed!"
+        else
+          echo "Ingestion API test results not found in logs"
+          docker compose -f docker-compose-choreo.yml down
+          exit 1
+        fi
+        
+        # Check Read service test results
+        if docker compose -f docker-compose-choreo.yml logs read-choreo | grep -q "failing" && ! docker compose -f docker-compose-choreo.yml logs read-choreo | grep -q "0 failing"; then
+          echo "Read API tests failed!"
+          echo "Container logs:"
+          docker compose -f docker-compose-choreo.yml logs read-choreo
+          docker compose -f docker-compose-choreo.yml down
+          exit 1
+        elif docker compose -f docker-compose-choreo.yml logs read-choreo | grep -q "0 failing"; then
+          echo "Read API tests passed!"
+        else
+          echo "Read API test results not found in logs"
+          docker compose -f docker-compose-choreo.yml down
+          exit 1
+        fi
+        
+        ## Run E2E tests (Choreo)
+        ## FIXME: https://github.com/LDFLK/nexoan/issues/117 
+        ## FIXME: https://github.com/LDFLK/nexoan/issues/236
+        ## Then uncomment the following lines
+        # echo "Running E2E tests..."
+        # docker compose -f docker-compose-choreo.yml run e2e-choreo
+        
+        # Check E2E test results
+        # if [ $? -eq 0 ]; then
+        #   echo "All tests passed!"
+        # else
+        #   echo "E2E tests failed!"
+        #   exit 1
+        # fi
+        
+        # Cleanup
+        docker compose -f docker-compose-choreo.yml down
+

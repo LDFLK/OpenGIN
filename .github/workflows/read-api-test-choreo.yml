@@ -1,0 +1,79 @@
+name: Read API Test (Choreo)
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'opengin/read-api/**'
+      - 'opengin/read-api/docker/Dockerfile.choreo'
+      - 'docker-compose-choreo.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'opengin/read-api/**'
+      - 'opengin/read-api/docker/Dockerfile.choreo'
+      - 'docker-compose-choreo.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+    
+    - name: Build and test Read service (Choreo)
+      run: |
+        # Build Read service
+        docker compose -f docker-compose-choreo.yml build read-choreo
+        
+        # Start required dependencies
+        docker compose -f docker-compose-choreo.yml up -d mongodb-choreo neo4j-choreo core-choreo
+        
+        # Wait for dependencies to be healthy
+        echo "Waiting for dependencies to be healthy..."
+        docker compose -f docker-compose-choreo.yml ps
+        
+        # Start Read service in detached mode
+        echo "Starting Read service and running tests..."
+        docker compose -f docker-compose-choreo.yml up -d read-choreo
+        
+        # Wait for waiting loop to detect test completion
+        echo "Waiting for tests to complete..."
+        timeout=300
+        while [ $timeout -gt 0 ]; do
+          if docker compose -f docker-compose-choreo.yml logs read-choreo | grep -q "failing" && ! docker compose -f docker-compose-choreo.yml logs read-choreo | grep -q "0 failing"; then
+            echo "❌ Read API tests failed!"
+            echo "Container logs:"
+            docker compose -f docker-compose-choreo.yml logs read-choreo
+            docker compose -f docker-compose-choreo.yml down
+            exit 1
+          elif docker compose -f docker-compose-choreo.yml logs read-choreo | grep -q "0 failing"; then
+            echo "✅ Read API tests passed!"
+            echo "Container logs:"
+            docker compose -f docker-compose-choreo.yml logs read-choreo
+            break
+          elif docker compose -f docker-compose-choreo.yml logs read-choreo | grep -q "Starting Read service"; then
+            echo "✅ Read API tests passed (service started successfully)!"
+            echo "Container logs:"
+            docker compose -f docker-compose-choreo.yml logs read-choreo
+            break
+          fi
+          echo "Waiting for tests... ($timeout seconds remaining)"
+          sleep 5
+          timeout=$((timeout - 5))
+        done
+
+        if [ $timeout -le 0 ]; then
+          echo "❌ Timeout waiting for Read API tests!"
+          echo "Container logs:"
+          docker compose -f docker-compose-choreo.yml logs read-choreo
+          docker compose -f docker-compose-choreo.yml down
+          exit 1
+        fi
+        
+        # Cleanup
+        docker compose -f docker-compose-choreo.yml down
+

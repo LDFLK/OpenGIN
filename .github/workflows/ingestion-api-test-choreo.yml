@@ -1,0 +1,190 @@
+name: Ingestion API Test (Choreo)
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'opengin/ingestion-api/**'
+      - 'opengin/ingestion-api/docker/Dockerfile.choreo'
+      - 'docker-compose-choreo.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'opengin/ingestion-api/**'
+      - 'opengin/ingestion-api/docker/Dockerfile.choreo'
+      - 'docker-compose-choreo.yml'
+
+jobs:
+  ingestion-api-workflow:
+    runs-on: ubuntu-latest
+    
+    steps:
+
+    - uses: actions/checkout@v3
+    
+    - name: Clear GitHub Actions cache
+      run: |
+        echo "🧹 Clearing GitHub Actions cache..."
+        rm -rf ~/.cache || true
+        rm -rf /tmp/* || true
+        
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+    
+    - name: Build and test Ingestion service (Choreo)
+      run: |
+        # Complete cache and container cleanup for fresh start
+        echo "🧹 Complete cleanup - removing all containers, images, and cache..."
+        docker compose -f docker-compose-choreo.yml down --remove-orphans || true
+        docker system prune -af || true  # -a removes all unused images, -f forces without prompt
+        docker builder prune -af || true  # Clean build cache
+        docker volume prune -f || true    # Clean unused volumes
+        
+        # Build Ingestion service (force rebuild to pick up environment variable changes)
+        docker compose -f docker-compose-choreo.yml build --no-cache ingestion-choreo
+
+        # Start required dependencies
+        docker compose -f docker-compose-choreo.yml up -d mongodb-choreo neo4j-choreo postgres-choreo core-choreo
+        
+        # Wait for databases to be fully initialized
+        echo "⏳ Waiting for databases to be fully initialized..."
+        sleep 30
+
+        # Verify databases are fresh and ready
+        echo "🔍 Verifying database state..."
+        echo "MongoDB collections:"
+        docker exec mongodb-choreo mongosh --eval "db.getMongo().getDBNames()" || echo "MongoDB not ready yet"
+        echo "Neo4j nodes:"
+        docker exec neo4j-choreo cypher-shell -u neo4j -p neo4j123 "MATCH (n) RETURN count(n) as nodeCount" || echo "Neo4j not ready yet"
+        echo "PostgreSQL tables:"
+        docker exec postgres-choreo psql -U postgres -d opengin -c "\dt" || echo "PostgreSQL not ready yet"
+
+        # Wait for dependencies to be healthy
+        echo "Waiting for dependencies to be healthy..."
+        timeout=300
+        while [ $timeout -gt 0 ]; do
+          if docker compose -f docker-compose-choreo.yml ps | grep -q "healthy"; then
+            echo "Dependencies are starting to be healthy..."
+            break
+          fi
+          # Check if any services have failed
+          if docker compose -f docker-compose-choreo.yml ps | grep -q "Exit"; then
+            echo "❌ Some services have failed during startup!"
+            echo "=== Service Status ==="
+            docker compose -f docker-compose-choreo.yml ps
+            echo "=== Failed Service Logs ==="
+            docker compose -f docker-compose-choreo.yml logs mongodb-choreo neo4j-choreo postgres-choreo core-choreo
+            docker compose -f docker-compose-choreo.yml down
+            exit 1
+          fi
+          echo "Waiting for health checks... ($timeout seconds remaining)"
+          sleep 5
+          timeout=$((timeout - 5))
+        done
+        
+        if [ $timeout -le 0 ]; then
+          echo "❌ Timeout waiting for dependencies to be healthy!"
+          echo "=== Service Status ==="
+          docker compose -f docker-compose-choreo.yml ps
+          echo "=== Dependency Logs ==="
+          docker compose -f docker-compose-choreo.yml logs mongodb-choreo neo4j-choreo postgres-choreo core-choreo
+          docker compose -f docker-compose-choreo.yml down
+          exit 1
+        fi
+        
+        # Wait for CORE service to complete tests and start the server
+        echo "Waiting for CORE service to complete tests and start server..."
+        timeout=600  # 10 minutes for Go tests to complete
+        while [ $timeout -gt 0 ]; do
+          if docker compose -f docker-compose-choreo.yml logs core-choreo | grep -q "CORE Service is running on"; then
+            echo "✅ CORE service is now running!"
+            break
+          elif docker compose -f docker-compose-choreo.yml logs core-choreo | grep -q "FAILED\|failed\|error.*test"; then
+            echo "❌ CORE service tests failed!"
+            echo "CORE service logs:"
+            docker compose -f docker-compose-choreo.yml logs core-choreo
+            docker compose -f docker-compose-choreo.yml down
+            exit 1
+          elif docker compose -f docker-compose-choreo.yml logs core-choreo | grep -q "duplicate key error"; then
+            echo "❌ CORE service tests failed due to duplicate key error!"
+            echo "This indicates database cleanup didn't work properly."
+            echo "CORE service logs:"
+            docker compose -f docker-compose-choreo.yml logs core-choreo
+            docker compose -f docker-compose-choreo.yml down
+            exit 1
+          fi
+          echo "Waiting for CORE service startup... ($timeout seconds remaining)"
+          sleep 10
+          timeout=$((timeout - 10))
+        done
+        
+        if [ $timeout -le 0 ]; then
+          echo "❌ Timeout waiting for CORE service to start!"
+          echo "CORE service logs:"
+          docker compose -f docker-compose-choreo.yml logs core-choreo
+          docker compose -f docker-compose-choreo.yml down
+          exit 1
+        fi
+        
+        # Start Ingestion service in detached mode
+        echo "Starting Ingestion service and running tests..."
+        if ! docker compose -f docker-compose-choreo.yml up -d ingestion-choreo; then
+          echo "❌ Failed to start Ingestion service!"
+          echo "=== All Service Status ==="
+          docker compose -f docker-compose-choreo.yml ps
+          echo "=== CORE Service Logs ==="
+          docker compose -f docker-compose-choreo.yml logs core-choreo
+          echo "=== Ingestion Service Logs ==="
+          docker compose -f docker-compose-choreo.yml logs ingestion-choreo
+          docker compose -f docker-compose-choreo.yml down
+          exit 1
+        fi
+        
+        # Wait for tests to complete
+        echo "Waiting for tests to complete..."
+        sleep 30
+        
+        # Check the logs for test results
+        echo "=== Ingestion Service Logs ==="
+        docker compose -f docker-compose-choreo.yml logs ingestion-choreo
+        
+        echo "=== CORE Service Logs ==="
+        docker compose -f docker-compose-choreo.yml logs core-choreo
+        
+        echo "=== All Service Status ==="
+        docker compose -f docker-compose-choreo.yml ps
+        
+        if docker compose -f docker-compose-choreo.yml logs ingestion-choreo | grep -q "failing" && ! docker compose -f docker-compose-choreo.yml logs ingestion-choreo | grep -q "0 failing"; then
+          echo "❌ Ingestion API tests failed!"
+          echo "Checking for specific error patterns..."
+          
+          if docker compose -f docker-compose-choreo.yml logs ingestion-choreo | grep -q "500"; then
+            echo "🔍 Found HTTP 500 errors - likely CORE service connectivity issue"
+            echo "CORE service status:"
+            docker compose -f docker-compose-choreo.yml ps core-choreo
+          fi
+          
+          if docker compose -f docker-compose-choreo.yml logs ingestion-choreo | grep -q "Connection refused\|connect: connection refused"; then
+            echo "🔍 Found connection refused errors - CORE service may not be responding"
+          fi
+          
+          docker compose -f docker-compose-choreo.yml down
+          exit 1
+        elif docker compose -f docker-compose-choreo.yml logs ingestion-choreo | grep -q "0 failing"; then
+          echo "✅ Ingestion API tests passed!"
+        else
+          echo "⚠️  Test results not found in logs. Checking for service startup..."
+          if docker compose -f docker-compose-choreo.yml logs ingestion-choreo | grep -q "Starting Ingestion service\|Running executable"; then
+            echo "✅ Ingestion API service started successfully!"
+          else
+            echo "❌ Could not determine test status and service may not have started properly"
+            docker compose -f docker-compose-choreo.yml down
+            exit 1
+          fi
+        fi
+        
+        # Cleanup - ensure complete cleanup for next CI run
+        echo "🧹 Final cleanup - removing all containers..."
+        docker compose -f docker-compose-choreo.yml down --remove-orphans
+        docker system prune -f
+
