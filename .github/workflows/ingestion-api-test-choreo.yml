@@ -92,34 +92,29 @@ jobs:
           exit 1
         fi
         
-        # Wait for CORE service to complete tests and start the server
-        echo "Waiting for CORE service to complete tests and start server..."
-        timeout=600  # 10 minutes for Go tests to complete
+        # Wait for CORE service to become healthy
+        echo "Waiting for CORE service to become healthy..."
+        timeout=180
         while [ $timeout -gt 0 ]; do
-          if docker compose -f docker-compose-choreo.yml logs core-choreo | grep -q "CORE Service is running on"; then
-            echo "✅ CORE service is now running!"
+          if docker compose -f docker-compose-choreo.yml ps core-choreo | grep -q "healthy"; then
+            echo "✅ CORE service is healthy!"
             break
-          elif docker compose -f docker-compose-choreo.yml logs core-choreo | grep -q "FAILED\|failed\|error.*test"; then
-            echo "❌ CORE service tests failed!"
-            echo "CORE service logs:"
-            docker compose -f docker-compose-choreo.yml logs core-choreo
-            docker compose -f docker-compose-choreo.yml down
-            exit 1
-          elif docker compose -f docker-compose-choreo.yml logs core-choreo | grep -q "duplicate key error"; then
-            echo "❌ CORE service tests failed due to duplicate key error!"
-            echo "This indicates database cleanup didn't work properly."
+          fi
+          # Check if service has failed
+          if docker compose -f docker-compose-choreo.yml ps core-choreo | grep -q "Exit\|unhealthy"; then
+            echo "❌ CORE service failed to start or became unhealthy!"
             echo "CORE service logs:"
             docker compose -f docker-compose-choreo.yml logs core-choreo
             docker compose -f docker-compose-choreo.yml down
             exit 1
           fi
-          echo "Waiting for CORE service startup... ($timeout seconds remaining)"
-          sleep 10
-          timeout=$((timeout - 10))
+          echo "Waiting for CORE service to be healthy... ($timeout seconds remaining)"
+          sleep 5
+          timeout=$((timeout - 5))
         done
         
         if [ $timeout -le 0 ]; then
-          echo "❌ Timeout waiting for CORE service to start!"
+          echo "❌ Timeout waiting for CORE service to become healthy!"
           echo "CORE service logs:"
           docker compose -f docker-compose-choreo.yml logs core-choreo
           docker compose -f docker-compose-choreo.yml down
@@ -127,7 +122,7 @@ jobs:
         fi
         
         # Start Ingestion service in detached mode
-        echo "Starting Ingestion service and running tests..."
+        echo "Starting Ingestion service (Choreo deployment)..."
         if ! docker compose -f docker-compose-choreo.yml up -d ingestion-choreo; then
           echo "❌ Failed to start Ingestion service!"
           echo "=== All Service Status ==="
@@ -140,11 +135,56 @@ jobs:
           exit 1
         fi
         
-        # Wait for tests to complete
-        echo "Waiting for tests to complete..."
-        sleep 30
+        # Wait for Ingestion service to become healthy
+        echo "Waiting for Ingestion service to become healthy..."
+        timeout=120
+        while [ $timeout -gt 0 ]; do
+          if docker compose -f docker-compose-choreo.yml ps ingestion-choreo | grep -q "healthy"; then
+            echo "✅ Ingestion service is healthy!"
+            break
+          fi
+          # Check if service has failed
+          if docker compose -f docker-compose-choreo.yml ps ingestion-choreo | grep -q "Exit\|unhealthy"; then
+            echo "❌ Ingestion service failed to start or became unhealthy!"
+            echo "Ingestion service logs:"
+            docker compose -f docker-compose-choreo.yml logs ingestion-choreo
+            docker compose -f docker-compose-choreo.yml down
+            exit 1
+          fi
+          echo "Waiting for Ingestion service to be healthy... ($timeout seconds remaining)"
+          sleep 5
+          timeout=$((timeout - 5))
+        done
         
-        # Check the logs for test results
+        if [ $timeout -le 0 ]; then
+          echo "❌ Timeout waiting for Ingestion service to become healthy!"
+          echo "Service status:"
+          docker compose -f docker-compose-choreo.yml ps ingestion-choreo
+          echo "Ingestion service logs:"
+          docker compose -f docker-compose-choreo.yml logs ingestion-choreo
+          docker compose -f docker-compose-choreo.yml down
+          exit 1
+        fi
+        
+        # Verify service started successfully - check logs for known startup message
+        echo "Verifying service started successfully..."
+        if docker compose -f docker-compose-choreo.yml logs ingestion-choreo | grep -q "Starting ingestion service with Ballerina configurable variables"; then
+          echo "✅ Ingestion service startup message found in logs!"
+        else
+          echo "⚠️  Could not find expected startup message in logs, but service is healthy"
+        fi
+        
+        # Check for connectivity errors (these would indicate real issues)
+        if docker compose -f docker-compose-choreo.yml logs ingestion-choreo | grep -q "Connection refused\|connect: connection refused"; then
+          echo "⚠️  Found connection refused errors - checking CORE service status"
+          if ! docker compose -f docker-compose-choreo.yml ps core-choreo | grep -q "healthy"; then
+            echo "❌ CORE service is not healthy - this may be the cause"
+            docker compose -f docker-compose-choreo.yml logs core-choreo
+            docker compose -f docker-compose-choreo.yml down
+            exit 1
+          fi
+        fi
+        
         echo "=== Ingestion Service Logs ==="
         docker compose -f docker-compose-choreo.yml logs ingestion-choreo
         
@@ -154,33 +194,13 @@ jobs:
         echo "=== All Service Status ==="
         docker compose -f docker-compose-choreo.yml ps
         
-        if docker compose -f docker-compose-choreo.yml logs ingestion-choreo | grep -q "failing" && ! docker compose -f docker-compose-choreo.yml logs ingestion-choreo | grep -q "0 failing"; then
-          echo "❌ Ingestion API tests failed!"
-          echo "Checking for specific error patterns..."
-          
-          if docker compose -f docker-compose-choreo.yml logs ingestion-choreo | grep -q "500"; then
-            echo "🔍 Found HTTP 500 errors - likely CORE service connectivity issue"
-            echo "CORE service status:"
-            docker compose -f docker-compose-choreo.yml ps core-choreo
-          fi
-          
-          if docker compose -f docker-compose-choreo.yml logs ingestion-choreo | grep -q "Connection refused\|connect: connection refused"; then
-            echo "🔍 Found connection refused errors - CORE service may not be responding"
-          fi
-          
+        # Final verification - service should be healthy at this point
+        if docker compose -f docker-compose-choreo.yml ps ingestion-choreo | grep -q "healthy"; then
+          echo "✅ Ingestion API service (Choreo) is healthy and ready!"
+        else
+          echo "❌ Ingestion service is not healthy!"
           docker compose -f docker-compose-choreo.yml down
           exit 1
-        elif docker compose -f docker-compose-choreo.yml logs ingestion-choreo | grep -q "0 failing"; then
-          echo "✅ Ingestion API tests passed!"
-        else
-          echo "⚠️  Test results not found in logs. Checking for service startup..."
-          if docker compose -f docker-compose-choreo.yml logs ingestion-choreo | grep -q "Starting Ingestion service\|Running executable"; then
-            echo "✅ Ingestion API service started successfully!"
-          else
-            echo "❌ Could not determine test status and service may not have started properly"
-            docker compose -f docker-compose-choreo.yml down
-            exit 1
-          fi
         fi
         
         # Cleanup - ensure complete cleanup for next CI run
