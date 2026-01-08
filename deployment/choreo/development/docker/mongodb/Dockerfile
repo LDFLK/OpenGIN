@@ -195,7 +195,7 @@ if [ -n "${MONGO_INITDB_ROOT_USERNAME}" ] && [ -n "${MONGO_INITDB_ROOT_PASSWORD}
     log "INFO" "Checking for admin user..."\n\
     if ! mongo admin --quiet --eval "db.getUser('\''${MONGO_INITDB_ROOT_USERNAME}'\'')" 2>/dev/null | grep -q "user"; then\n\
         log "INFO" "Creating admin user..."\n\
-        echo "db.createUser({user: '\''${MONGO_INITDB_ROOT_USERNAME}'\'', pwd: '\''${MONGO_INITDB_ROOT_PASSWORD}'\'', roles: [{role: '\''root'\'', db: '\''admin'\''}]})" | mongo admin --quiet > /dev/null 2>&1\n\
+        mongo admin --quiet > /dev/null 2>&1 <<< "db.createUser({user: '\''${MONGO_INITDB_ROOT_USERNAME}'\'', pwd: '\''${MONGO_INITDB_ROOT_PASSWORD}'\'', roles: [{role: '\''root'\'', db: '\''admin'\''}]})"\n\
         log "SUCCESS" "Admin user created"\n\
     fi\n\
 fi\n\
