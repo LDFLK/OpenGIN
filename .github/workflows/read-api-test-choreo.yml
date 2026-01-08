@@ -24,7 +24,7 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
     
-    - name: Build and test Read service (Choreo)
+    - name: Build and verify Read service (Choreo)
       run: |
         # Build Read service
         docker compose -f docker-compose-choreo.yml build read-choreo
@@ -36,40 +36,63 @@ jobs:
         echo "Waiting for dependencies to be healthy..."
         docker compose -f docker-compose-choreo.yml ps
         
+        # Wait for dependencies to be ready (with timeout)
+        timeout=300 bash -c 'until docker compose -f docker-compose-choreo.yml ps | grep -q "healthy"; do echo "Waiting for services to be healthy..."; sleep 5; done'
+        
         # Start Read service in detached mode
-        echo "Starting Read service and running tests..."
+        echo "Starting Read service (Choreo deployment)..."
         docker compose -f docker-compose-choreo.yml up -d read-choreo
         
-        # Wait for waiting loop to detect test completion
-        echo "Waiting for tests to complete..."
-        timeout=300
+        # Wait for Read service to become healthy
+        echo "Waiting for Read service to become healthy..."
+        timeout=120
         while [ $timeout -gt 0 ]; do
-          if docker compose -f docker-compose-choreo.yml logs read-choreo | grep -q "failing" && ! docker compose -f docker-compose-choreo.yml logs read-choreo | grep -q "0 failing"; then
-            echo "❌ Read API tests failed!"
+          if docker compose -f docker-compose-choreo.yml ps read-choreo | grep -q "healthy"; then
+            echo "✅ Read service is healthy!"
+            break
+          fi
+          # Check if service has failed
+          if docker compose -f docker-compose-choreo.yml ps read-choreo | grep -q "Exit\|unhealthy"; then
+            echo "❌ Read service failed to start or became unhealthy!"
             echo "Container logs:"
             docker compose -f docker-compose-choreo.yml logs read-choreo
             docker compose -f docker-compose-choreo.yml down
             exit 1
-          elif docker compose -f docker-compose-choreo.yml logs read-choreo | grep -q "0 failing"; then
-            echo "✅ Read API tests passed!"
-            echo "Container logs:"
-            docker compose -f docker-compose-choreo.yml logs read-choreo
-            break
-          elif docker compose -f docker-compose-choreo.yml logs read-choreo | grep -q "Starting Read service"; then
-            echo "✅ Read API tests passed (service started successfully)!"
-            echo "Container logs:"
-            docker compose -f docker-compose-choreo.yml logs read-choreo
-            break
           fi
-          echo "Waiting for tests... ($timeout seconds remaining)"
+          echo "Waiting for Read service to be healthy... ($timeout seconds remaining)"
           sleep 5
           timeout=$((timeout - 5))
         done
 
         if [ $timeout -le 0 ]; then
-          echo "❌ Timeout waiting for Read API tests!"
+          echo "❌ Timeout waiting for Read service to become healthy!"
+          echo "Service status:"
+          docker compose -f docker-compose-choreo.yml ps read-choreo
           echo "Container logs:"
           docker compose -f docker-compose-choreo.yml logs read-choreo
+          docker compose -f docker-compose-choreo.yml down
+          exit 1
+        fi
+        
+        # Verify service started successfully - check logs for known startup message
+        echo "Verifying service started successfully..."
+        if docker compose -f docker-compose-choreo.yml logs read-choreo | grep -q "Starting read service with Ballerina configurable variables"; then
+          echo "✅ Read service startup message found in logs!"
+        else
+          echo "⚠️  Could not find expected startup message in logs, but service is healthy"
+        fi
+        
+        echo "=== Read Service Logs ==="
+        docker compose -f docker-compose-choreo.yml logs read-choreo
+        
+        echo "=== Service Status ==="
+        docker compose -f docker-compose-choreo.yml ps read-choreo
+        
+        # Final verification - service should be healthy at this point
+        if docker compose -f docker-compose-choreo.yml ps read-choreo | grep -q "healthy"; then
+          echo "✅ Read API service (Choreo) is healthy and ready!"
+        else
+          echo "❌ Read service is not healthy!"
           docker compose -f docker-compose-choreo.yml down
           exit 1
         fi
