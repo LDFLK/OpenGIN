@@ -51,6 +51,7 @@ USER root
 RUN mkdir -p /neo4j_data /neo4j_logs /neo4j_plugins /var/log/neo4j /var/lib/neo4j/data /var/lib/neo4j/run
 
 # 2. Download and Restore NOW (During Build)
+# FIXME: https://github.com/LDFLK/OpenGIN/issues/425
 RUN apt-get update && apt-get install -y wget unzip neo4j=1:5.12.0 && \
     # Define variables here for the build scope
     GITHUB_REPO="${GITHUB_BACKUP_REPO}" && \
