@@ -42,6 +42,7 @@ paths:
           - It is required to provide **either** `id` or `kind.major`. <br>
           - If `id` is provided, all other filter fields are ignored, and only the matching entity will be returned. <br>
           - If `id` is not provided, `kind.major` becomes required, and additional fields can be included as filters. <br>
+          - Note that the `name` field searches for partial matches of the provided name. <br>
           - All other attributes are optional.
 
         content:
