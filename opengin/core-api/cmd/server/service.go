@@ -85,7 +85,7 @@ func (s *Server) CreateEntity(ctx context.Context, req *pb.Entity) (*pb.Entity, 
 	return req, nil
 }
 
-// ReadEntity retrieves an entity's metadata
+// ReadEntity retrieves an entity
 func (s *Server) ReadEntity(ctx context.Context, req *pb.ReadEntityRequest) (*pb.Entity, error) {
 	log.Printf("Reading Entity: %s with output fields: %v", req.Entity.Id, req.Output)
 

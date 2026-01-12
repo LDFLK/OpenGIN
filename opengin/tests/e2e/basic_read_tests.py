@@ -1393,15 +1393,77 @@ def test_search_by_name_kind_and_created_date():
     
     print("✅ Search by name, kind, and creation date successful")
 
-def test_search_by_name_partial_match():
-    """Test that searching with a partial name match returns no results."""
-    print("\n🔍 Testing search by partial name match...")
+def test_search_by_partial_name_match():
+    """Test that searching with a partial name match returns matching entities."""
+    print("\n🔍 Testing search by partial name match (should return results)...")
+    
+    # Test entity IDs
+    entity1_id = "test_partial_name_match_1"
+    entity2_id = "test_partial_name_match_2"
+    entity3_id = "test_partial_name_match_3"
+    
+    # Create test entities with different names
+    entity1_payload = {
+        "id": entity1_id,
+        "kind": {"major": "Person", "minor": "Employee"},
+        "created": "2025-04-01T00:00:00Z",
+        "terminated": "",
+        "name": {
+            "startTime": "2025-04-01T00:00:00Z",
+            "endTime": "",
+            "value": "Alice Martinez"
+        },
+        "metadata": [],
+        "attributes": [],
+        "relationships": []
+    }
+    
+    entity2_payload = {
+        "id": entity2_id,
+        "kind": {"major": "Person", "minor": "Employee"},
+        "created": "2025-04-01T00:00:00Z",
+        "terminated": "",
+        "name": {
+            "startTime": "2025-04-01T00:00:00Z",
+            "endTime": "",
+            "value": "Alice Morrison"
+        },
+        "metadata": [],
+        "attributes": [],
+        "relationships": []
+    }
+    
+    entity3_payload = {
+        "id": entity3_id,
+        "kind": {"major": "Person", "minor": "Employee"},
+        "created": "2025-04-01T00:00:00Z",
+        "terminated": "",
+        "name": {
+            "startTime": "2025-04-01T00:00:00Z",
+            "endTime": "",
+            "value": "Benjamin Martinez"
+        },
+        "metadata": [],
+        "attributes": [],
+        "relationships": []
+    }
+    
+    # Create entities
+    res = requests.post(INGESTION_API_URL, json=entity1_payload)
+    assert res.status_code in [201, 200], f"Failed to create entity1: {res.text}"
+    res = requests.post(INGESTION_API_URL, json=entity2_payload)
+    assert res.status_code in [201, 200], f"Failed to create entity2: {res.text}"
+    res = requests.post(INGESTION_API_URL, json=entity3_payload)
+    assert res.status_code in [201, 200], f"Failed to create entity3: {res.text}"
+    print(f"✅ Created test entities for partial name match test")
+    
+    # Search for partial name "Alice" - should match entity1 and entity2
     url = f"{READ_API_URL}/search"
     payload = {
         "kind": {
-            "major": "Organization"
+            "major": "Person"
         },
-        "name": "Ministry"  # Partial name that should not match
+        "name": "Alice"
     }
     res = requests.post(url, json=payload)
     assert res.status_code == 200, f"Search failed: {res.text}"
@@ -1410,9 +1472,24 @@ def test_search_by_name_partial_match():
     assert isinstance(body, dict), "Search response should be a dictionary"
     assert "body" in body, "Search response should have a 'body' field"
     assert isinstance(body["body"], list), "Search response body should be a list"
-    assert len(body["body"]) == 0, "Expected 0 results for partial name match"
     
-    print("✅ Search correctly returned no results for partial name match")
+    # Should find at least entity1 and entity2 (both contain "Alice")
+    found_ids = [entity["id"] for entity in body["body"]]
+    assert entity1_id in found_ids, f"Expected to find entity1 ({entity1_id})"
+    assert entity2_id in found_ids, f"Expected to find entity2 ({entity2_id})"
+    assert entity3_id not in found_ids or len([e for e in body["body"] if e["id"] == entity3_id]) == 0, f"Entity3 ({entity3_id}) should not match 'Alice'"
+    
+    # Verify the names contain "Alice"
+    for entity in body["body"]:
+        if entity["id"] in [entity1_id, entity2_id]:
+            # Decode the name from protobuf
+            name_obj = json.loads(entity["name"])
+            hex_value = name_obj["value"]
+            decoded_name = bytes.fromhex(hex_value).decode('utf-8')
+            assert "Alice" in decoded_name, f"Entity {entity['id']} name '{decoded_name}' should contain 'Alice'"
+    
+    print(f"✅ Found {len(body['body'])} entities matching partial name 'Alice'")
+    print("✅ Search by partial name match successful")
 
 def test_search_by_terminated_date():
     """Test searching entities by termination date."""
@@ -1895,7 +1972,7 @@ if __name__ == "__main__":
         test_search_by_name_and_kind()
         test_search_by_kind_and_created_date()
         test_search_by_name_kind_and_created_date()
-        test_search_by_name_partial_match()
+        test_search_by_partial_name_match()
         
         # Run terminated date filter tests
         test_search_by_terminated_date()
