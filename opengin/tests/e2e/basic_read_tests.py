@@ -1449,12 +1449,9 @@ def test_search_by_partial_name_match():
     }
     
     # Create entities
-    res = requests.post(INGESTION_API_URL, json=entity1_payload)
-    assert res.status_code in [201, 200], f"Failed to create entity1: {res.text}"
-    res = requests.post(INGESTION_API_URL, json=entity2_payload)
-    assert res.status_code in [201, 200], f"Failed to create entity2: {res.text}"
-    res = requests.post(INGESTION_API_URL, json=entity3_payload)
-    assert res.status_code in [201, 200], f"Failed to create entity3: {res.text}"
+    for i, payload in enumerate([entity1_payload, entity2_payload, entity3_payload], 1):
+        res = requests.post(INGESTION_API_URL, json=payload)
+        assert res.status_code in [201, 200], f"Failed to create entity{i}: {res.text}"
     print(f"✅ Created test entities for partial name match test")
     
     # Search for partial name "Alice" - should match entity1 and entity2
@@ -1477,7 +1474,7 @@ def test_search_by_partial_name_match():
     found_ids = [entity["id"] for entity in body["body"]]
     assert entity1_id in found_ids, f"Expected to find entity1 ({entity1_id})"
     assert entity2_id in found_ids, f"Expected to find entity2 ({entity2_id})"
-    assert entity3_id not in found_ids or len([e for e in body["body"] if e["id"] == entity3_id]) == 0, f"Entity3 ({entity3_id}) should not match 'Alice'"
+    assert entity3_id not in found_ids, f"Entity3 ({entity3_id}) should not match 'Alice'"
     
     # Verify the names contain "Alice"
     for entity in body["body"]:

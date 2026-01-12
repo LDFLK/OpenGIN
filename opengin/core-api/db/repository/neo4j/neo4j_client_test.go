@@ -1173,6 +1173,17 @@ func TestFilterEntitiesWithPartialNameMatch(t *testing.T) {
 			"Name":    "Alice Martinez Morrison",
 			"Created": "2025-04-01T00:00:00Z",
 		},
+		// Add entities with special regex characters to test regex injection prevention
+		{
+			"Id":      "filter_partial_name_test_regex_1",
+			"Name":    "Alice (test)",
+			"Created": "2025-04-01T00:00:00Z",
+		},
+		{
+			"Id":      "filter_partial_name_test_regex_2",
+			"Name":    "Ben.jamin",
+			"Created": "2025-04-01T00:00:00Z",
+		},
 	}
 
 	// Create all test entities
@@ -1181,117 +1192,164 @@ func TestFilterEntitiesWithPartialNameMatch(t *testing.T) {
 		assert.Nil(t, err, "Expected no error when creating test entity: %s", entity["Name"])
 	}
 
-	// Test 1: Partial match at the beginning (should match "Alice Martinez" and "Alice Morrison")
-	filters := map[string]interface{}{
-		"name": "Alice",
-	}
-	entities, err := repository.FilterEntities(ctx, kind, filters)
-	assert.Nil(t, err, "Expected no error when filtering by partial name 'Alice'")
-	assert.Equal(t, 3, len(entities), "Expected 3 entities with 'Alice' in the name")
-	names := []string{}
-	for _, e := range entities {
-		names = append(names, e["name"].(string))
-	}
-	assert.Contains(t, names, "Alice Martinez", "Expected 'Alice Martinez' to be in results")
-	assert.Contains(t, names, "Alice Morrison", "Expected 'Alice Morrison' to be in results")
-	assert.Contains(t, names, "Alice Martinez Morrison", "Expected 'Alice Martinez Morrison' to be in results")
-
-	// Test 2: Partial match in the middle (should match "Alice Martinez" and "Benjamin Martinez")
-	filters = map[string]interface{}{
-		"name": "Martinez",
-	}
-	entities, err = repository.FilterEntities(ctx, kind, filters)
-	assert.Nil(t, err, "Expected no error when filtering by partial name 'Martinez'")
-	assert.Equal(t, 3, len(entities), "Expected 3 entities with 'Martinez' in the name")
-	names = []string{}
-	for _, e := range entities {
-		names = append(names, e["name"].(string))
-	}
-	assert.Contains(t, names, "Alice Martinez", "Expected 'Alice Martinez' to be in results")
-	assert.Contains(t, names, "Benjamin Martinez", "Expected 'Benjamin Martinez' to be in results")
-	assert.Contains(t, names, "Alice Martinez Morrison", "Expected 'Alice Martinez Morrison' to be in results")
-
-	// Test 3: Case-insensitive partial match (should match entities with "Alice")
-	filters = map[string]interface{}{
-		"name": "alice",
-	}
-	entities, err = repository.FilterEntities(ctx, kind, filters)
-	assert.Nil(t, err, "Expected no error when filtering by lowercase partial name 'alice'")
-	assert.Equal(t, 3, len(entities), "Expected 3 entities with 'alice' (case-insensitive) in the name")
-	names = []string{}
-	for _, e := range entities {
-		names = append(names, e["name"].(string))
-	}
-	assert.Contains(t, names, "Alice Martinez", "Expected 'Alice Martinez' to be in results (case-insensitive match)")
-	assert.Contains(t, names, "Alice Morrison", "Expected 'Alice Morrison' to be in results (case-insensitive match)")
-
-	// Test 4: Partial match with uppercase (should match entities with "Morrison")
-	filters = map[string]interface{}{
-		"name": "MORRISON",
-	}
-	entities, err = repository.FilterEntities(ctx, kind, filters)
-	assert.Nil(t, err, "Expected no error when filtering by uppercase partial name 'MORRISON'")
-	assert.Equal(t, 3, len(entities), "Expected 3 entities with 'MORRISON' (case-insensitive) in the name")
-	names = []string{}
-	for _, e := range entities {
-		names = append(names, e["name"].(string))
-	}
-	assert.Contains(t, names, "Alice Morrison", "Expected 'Alice Morrison' to be in results (case-insensitive match)")
-	assert.Contains(t, names, "Charlotte Morrison", "Expected 'Charlotte Morrison' to be in results (case-insensitive match)")
-	assert.Contains(t, names, "Alice Martinez Morrison", "Expected 'Alice Martinez Morrison' to be in results (case-insensitive match)")
-
-	// Test 5: Partial match in the middle of multi-word name (should match multiple entities)
-	filters = map[string]interface{}{
-		"name": "Morrison",
-	}
-	entities, err = repository.FilterEntities(ctx, kind, filters)
-	assert.Nil(t, err, "Expected no error when filtering by partial name 'Morrison'")
-	assert.Equal(t, 3, len(entities), "Expected 3 entities with 'Morrison' in the name")
-	names = []string{}
-	for _, e := range entities {
-		names = append(names, e["name"].(string))
-	}
-	assert.Contains(t, names, "Alice Morrison", "Expected 'Alice Morrison' to be in results")
-	assert.Contains(t, names, "Charlotte Morrison", "Expected 'Charlotte Morrison' to be in results")
-	assert.Contains(t, names, "Alice Martinez Morrison", "Expected 'Alice Martinez Morrison' to be in results")
-
-	// Test 6: No match (should return empty)
-	filters = map[string]interface{}{
-		"name": "Zachary Wellington",
-	}
-	entities, err = repository.FilterEntities(ctx, kind, filters)
-	assert.Nil(t, err, "Expected no error when filtering by non-existent name")
-	assert.Equal(t, 0, len(entities), "Expected 0 entities with 'Zachary Wellington' in the name")
-
-	// Test 7: Partial match combined with MinorKind filter
-	filters = map[string]interface{}{
-		"name": "Alice",
-	}
-	kindWithMinor := &pb.Kind{
-		Major: "Person",
-		Minor: "Employee",
-	}
-	entities, err = repository.FilterEntities(ctx, kindWithMinor, filters)
-	assert.Nil(t, err, "Expected no error when filtering by name and MinorKind")
-	assert.Equal(t, 3, len(entities), "Expected 3 entities with 'Alice' in the name and Employee minor kind")
-
-	// Test 8: Partial match combined with created date filter
-	filters = map[string]interface{}{
-		"name":    "Alice",
-		"created": "2025-04-01T00:00:00Z",
-	}
-	entities, err = repository.FilterEntities(ctx, kind, filters)
-	assert.Nil(t, err, "Expected no error when filtering by name and created date")
-	assert.Equal(t, 3, len(entities), "Expected 3 entities with 'Alice' in the name and matching created date")
-	for _, e := range entities {
-		assert.Contains(t, []string{"Alice Martinez", "Alice Morrison", "Alice Martinez Morrison"}, e["name"].(string), "Expected entity name to be one of the Alice entities")
+	// Helper function to extract names from entities
+	getNames := func(entities []map[string]interface{}) []string {
+		names := []string{}
+		for _, e := range entities {
+			names = append(names, e["name"].(string))
+		}
+		return names
 	}
 
-	// Test 9: Single character partial match (should match multiple entities)
-	filters = map[string]interface{}{
-		"name": "A",
-	}
-	entities, err = repository.FilterEntities(ctx, kind, filters)
-	assert.Nil(t, err, "Expected no error when filtering by single character 'A'")
-	assert.GreaterOrEqual(t, len(entities), 3, "Expected at least 3 entities with 'A' in the name (Alice Martinez, Alice Morrison, Alice Martinez Morrison)")
+	t.Run("partial match at beginning", func(t *testing.T) {
+		filters := map[string]interface{}{
+			"name": "Alice",
+		}
+		entities, err := repository.FilterEntities(ctx, kind, filters)
+		assert.Nil(t, err, "Expected no error when filtering by partial name 'Alice'")
+		assert.Equal(t, 4, len(entities), "Expected 4 entities with 'Alice' in the name")
+		names := getNames(entities)
+		assert.Contains(t, names, "Alice Martinez", "Expected 'Alice Martinez' to be in results")
+		assert.Contains(t, names, "Alice Morrison", "Expected 'Alice Morrison' to be in results")
+		assert.Contains(t, names, "Alice Martinez Morrison", "Expected 'Alice Martinez Morrison' to be in results")
+		assert.Contains(t, names, "Alice (test)", "Expected 'Alice (test)' to be in results")
+	})
+
+	t.Run("partial match in middle", func(t *testing.T) {
+		filters := map[string]interface{}{
+			"name": "Martinez",
+		}
+		entities, err := repository.FilterEntities(ctx, kind, filters)
+		assert.Nil(t, err, "Expected no error when filtering by partial name 'Martinez'")
+		assert.Equal(t, 3, len(entities), "Expected 3 entities with 'Martinez' in the name")
+		names := getNames(entities)
+		assert.Contains(t, names, "Alice Martinez", "Expected 'Alice Martinez' to be in results")
+		assert.Contains(t, names, "Benjamin Martinez", "Expected 'Benjamin Martinez' to be in results")
+		assert.Contains(t, names, "Alice Martinez Morrison", "Expected 'Alice Martinez Morrison' to be in results")
+	})
+
+	t.Run("case-insensitive match lowercase", func(t *testing.T) {
+		filters := map[string]interface{}{
+			"name": "alice",
+		}
+		entities, err := repository.FilterEntities(ctx, kind, filters)
+		assert.Nil(t, err, "Expected no error when filtering by lowercase partial name 'alice'")
+		assert.Equal(t, 4, len(entities), "Expected 4 entities with 'alice' (case-insensitive) in the name")
+		names := getNames(entities)
+		assert.Contains(t, names, "Alice Martinez", "Expected 'Alice Martinez' to be in results (case-insensitive match)")
+		assert.Contains(t, names, "Alice Morrison", "Expected 'Alice Morrison' to be in results (case-insensitive match)")
+		assert.Contains(t, names, "Alice (test)", "Expected 'Alice (test)' to be in results (case-insensitive match)")
+	})
+
+	t.Run("case-insensitive match uppercase", func(t *testing.T) {
+		filters := map[string]interface{}{
+			"name": "MORRISON",
+		}
+		entities, err := repository.FilterEntities(ctx, kind, filters)
+		assert.Nil(t, err, "Expected no error when filtering by uppercase partial name 'MORRISON'")
+		assert.Equal(t, 3, len(entities), "Expected 3 entities with 'MORRISON' (case-insensitive) in the name")
+		names := getNames(entities)
+		assert.Contains(t, names, "Alice Morrison", "Expected 'Alice Morrison' to be in results (case-insensitive match)")
+		assert.Contains(t, names, "Charlotte Morrison", "Expected 'Charlotte Morrison' to be in results (case-insensitive match)")
+		assert.Contains(t, names, "Alice Martinez Morrison", "Expected 'Alice Martinez Morrison' to be in results (case-insensitive match)")
+	})
+
+	t.Run("partial match in middle of multi-word name", func(t *testing.T) {
+		filters := map[string]interface{}{
+			"name": "Morrison",
+		}
+		entities, err := repository.FilterEntities(ctx, kind, filters)
+		assert.Nil(t, err, "Expected no error when filtering by partial name 'Morrison'")
+		assert.Equal(t, 3, len(entities), "Expected 3 entities with 'Morrison' in the name")
+		names := getNames(entities)
+		assert.Contains(t, names, "Alice Morrison", "Expected 'Alice Morrison' to be in results")
+		assert.Contains(t, names, "Charlotte Morrison", "Expected 'Charlotte Morrison' to be in results")
+		assert.Contains(t, names, "Alice Martinez Morrison", "Expected 'Alice Martinez Morrison' to be in results")
+	})
+
+	t.Run("no match returns empty", func(t *testing.T) {
+		filters := map[string]interface{}{
+			"name": "Zachary Wellington",
+		}
+		entities, err := repository.FilterEntities(ctx, kind, filters)
+		assert.Nil(t, err, "Expected no error when filtering by non-existent name")
+		assert.Equal(t, 0, len(entities), "Expected 0 entities with 'Zachary Wellington' in the name")
+	})
+
+	t.Run("combined with MinorKind filter", func(t *testing.T) {
+		filters := map[string]interface{}{
+			"name": "Alice",
+		}
+		kindWithMinor := &pb.Kind{
+			Major: "Person",
+			Minor: "Employee",
+		}
+		entities, err := repository.FilterEntities(ctx, kindWithMinor, filters)
+		assert.Nil(t, err, "Expected no error when filtering by name and MinorKind")
+		assert.Equal(t, 4, len(entities), "Expected 4 entities with 'Alice' in the name and Employee minor kind")
+	})
+
+	t.Run("combined with created date filter", func(t *testing.T) {
+		filters := map[string]interface{}{
+			"name":    "Alice",
+			"created": "2025-04-01T00:00:00Z",
+		}
+		entities, err := repository.FilterEntities(ctx, kind, filters)
+		assert.Nil(t, err, "Expected no error when filtering by name and created date")
+		assert.Equal(t, 4, len(entities), "Expected 4 entities with 'Alice' in the name and matching created date")
+		names := getNames(entities)
+		expectedNames := []string{"Alice Martinez", "Alice Morrison", "Alice Martinez Morrison", "Alice (test)"}
+		for _, name := range names {
+			assert.Contains(t, expectedNames, name, "Expected entity name to be one of the Alice entities")
+		}
+	})
+
+	t.Run("single character partial match", func(t *testing.T) {
+		filters := map[string]interface{}{
+			"name": "A",
+		}
+		entities, err := repository.FilterEntities(ctx, kind, filters)
+		assert.Nil(t, err, "Expected no error when filtering by single character 'A'")
+		assert.GreaterOrEqual(t, len(entities), 4, "Expected at least 4 entities with 'A' in the name (Alice entities)")
+	})
+
+	t.Run("regex injection prevention - parentheses", func(t *testing.T) {
+		// Test that special regex characters like parentheses are treated as literal characters
+		filters := map[string]interface{}{
+			"name": "Alice (test)",
+		}
+		entities, err := repository.FilterEntities(ctx, kind, filters)
+		assert.Nil(t, err, "Expected no error when filtering by name with parentheses")
+		assert.Equal(t, 1, len(entities), "Expected 1 entity with 'Alice (test)' in the name")
+		names := getNames(entities)
+		assert.Contains(t, names, "Alice (test)", "Expected 'Alice (test)' to be in results")
+		// Verify it doesn't match other Alice entities (regex injection would cause false matches)
+		assert.NotContains(t, names, "Alice Martinez", "Should not match 'Alice Martinez' when searching for 'Alice (test)'")
+	})
+
+	t.Run("regex injection prevention - dot", func(t *testing.T) {
+		// Test that special regex characters like dot are treated as literal characters
+		filters := map[string]interface{}{
+			"name": "Ben.jamin",
+		}
+		entities, err := repository.FilterEntities(ctx, kind, filters)
+		assert.Nil(t, err, "Expected no error when filtering by name with dot")
+		assert.Equal(t, 1, len(entities), "Expected 1 entity with 'Ben.jamin' in the name")
+		names := getNames(entities)
+		assert.Contains(t, names, "Ben.jamin", "Expected 'Ben.jamin' to be in results")
+		// Verify it doesn't match "Benjamin" (regex injection would cause false matches)
+		assert.NotContains(t, names, "Benjamin Martinez", "Should not match 'Benjamin Martinez' when searching for 'Ben.jamin'")
+	})
+
+	t.Run("regex injection prevention - partial match with special chars", func(t *testing.T) {
+		// Test partial matching with special characters
+		filters := map[string]interface{}{
+			"name": "(test)",
+		}
+		entities, err := repository.FilterEntities(ctx, kind, filters)
+		assert.Nil(t, err, "Expected no error when filtering by partial name with parentheses")
+		assert.Equal(t, 1, len(entities), "Expected 1 entity with '(test)' in the name")
+		names := getNames(entities)
+		assert.Contains(t, names, "Alice (test)", "Expected 'Alice (test)' to be in results")
+	})
 }
