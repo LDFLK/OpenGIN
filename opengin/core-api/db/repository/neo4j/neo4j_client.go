@@ -876,7 +876,7 @@ func (r *Neo4jRepository) FilterEntities(ctx context.Context, kind *pb.Kind, fil
 		}
 
 		if name, ok := filters["name"].(string); ok && name != "" {
-			query += `AND e.Name = $name `
+			query += `AND e.Name =~ '(?i).*$name.*' `
 			params["name"] = name
 		}
 
