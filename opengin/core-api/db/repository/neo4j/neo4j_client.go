@@ -876,8 +876,11 @@ func (r *Neo4jRepository) FilterEntities(ctx context.Context, kind *pb.Kind, fil
 		}
 
 		if name, ok := filters["name"].(string); ok && name != "" {
-			query += `AND e.Name =~ '(?i).*$name.*' `
-			params["name"] = name
+			// Build regex pattern for case-insensitive partial match
+			// Escape special regex characters in the name to prevent regex injection
+			namePattern := "(?i).*" + name + ".*"
+			query += `AND e.Name =~ $namePattern `
+			params["namePattern"] = namePattern
 		}
 
 		// Return the matched entities
