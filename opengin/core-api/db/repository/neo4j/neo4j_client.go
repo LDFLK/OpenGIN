@@ -6,6 +6,7 @@ import (
 	"lk/datafoundation/core-api/db/config"
 	pb "lk/datafoundation/core-api/lk/datafoundation/core-api"
 	"log"
+	"regexp"
 	"time"
 
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
@@ -878,7 +879,7 @@ func (r *Neo4jRepository) FilterEntities(ctx context.Context, kind *pb.Kind, fil
 		if name, ok := filters["name"].(string); ok && name != "" {
 			// Build regex pattern for case-insensitive partial match
 			// Escape special regex characters in the name to prevent regex injection
-			namePattern := "(?i).*" + name + ".*"
+			namePattern := "(?i).*" + regexp.QuoteMeta(name) + ".*"
 			query += `AND e.Name =~ $namePattern `
 			params["namePattern"] = namePattern
 		}
