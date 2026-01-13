@@ -1239,6 +1239,7 @@ func TestFilterEntitiesWithPartialNameMatch(t *testing.T) {
 		assert.Contains(t, names, "Alice Martinez", "Expected 'Alice Martinez' to be in results (case-insensitive match)")
 		assert.Contains(t, names, "Alice Morrison", "Expected 'Alice Morrison' to be in results (case-insensitive match)")
 		assert.Contains(t, names, "Alice (test)", "Expected 'Alice (test)' to be in results (case-insensitive match)")
+		assert.Contains(t, names, "Alice Martinez Morrison", "Expected 'Alice Martinez Morrison' to be in results (case-insensitive match)")
 	})
 
 	t.Run("case-insensitive match uppercase", func(t *testing.T) {
