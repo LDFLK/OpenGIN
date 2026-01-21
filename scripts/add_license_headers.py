@@ -31,7 +31,9 @@ SPECIAL_FILES = {
 
 def has_license(content):
     """Check if the file already has a license header."""
-    return "Copyright" in content and "SPDX-License-Identifier" in content
+    # Check within the first 10 lines to avoid reading the whole file if it's large.
+    header_check_text = "\n".join(content.splitlines()[:10])
+    return "Copyright" in header_check_text and "SPDX-License-Identifier" in header_check_text
 
 def get_header(filename):
     """Get the appropriate header for a given filename."""
