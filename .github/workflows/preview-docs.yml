@@ -1,0 +1,55 @@
+name: Deploy PR Preview
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronized
+      - closed
+    paths:
+      - 'docs/**'
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  deploy-preview:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: docs
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: docs/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Deploy preview
+        uses: rossjrw/pr-preview-action@v1
+        with:
+          source_dir: docs/build
+          preview_branch: gh-pages
+          umbrella_dir: pr-preview
+          action: auto
+          # We need to build the site within the action context or before
+          # rossjrw action can run a build command, but it's often easier to run the build ourselves
+          # provided we can set the env var. 
+          # Actually, the action supports a 'build_script' input.
+          build_script: npm run build
+          # We need to pass the BASE_URL env var to the build script.
+          # The action doesn't natively expose a way to inject env vars into the build_script 
+          # easily unless we wrap it or use the 'env' map at the step level.
+        env:
+          # The action calculates the preview URL. We need to construct the matching Base URL.
+          # Default format is: /<umbrella_dir>/<pr_number>/
+          # But we are deployed at /OpenGIN/. So it will be /OpenGIN/pr-preview/<pr_number>/
+          BASE_URL: /OpenGIN/pr-preview/${{ github.event.number }}/
