@@ -207,7 +207,6 @@ Returns attribute value as it was on specific date.
 
 ## Architecture Diagrams at a Glance
 
-### System Architecture
 ```
 ┌─────────────┐
 │   Clients   │
