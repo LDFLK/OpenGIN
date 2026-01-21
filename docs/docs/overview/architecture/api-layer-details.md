@@ -18,7 +18,7 @@ Both APIs act as translation layers between external HTTP/JSON clients and the i
 
 ### Overview
 
-### Overview
+The Ingestion API serves as the primary gateway for data entering the system. Implemented as a Ballerina REST service, it allows external clients to create, update, and delete entities using standard HTTP methods. The service validates incoming JSON payloads against defined contracts before converting them for internal processing.
 
 The Ingestion API serves as the primary gateway for data entering the system. Implemented as a Ballerina REST service, it allows external clients to create, update, and delete entities using standard HTTP methods. The service validates incoming JSON payloads against defined contracts before converting them for internal processing.
 
