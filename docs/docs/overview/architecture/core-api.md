@@ -16,42 +16,7 @@ The Core API serves as the business logic layer that:
 ## Architecture
 
 ### Service Components
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        Core API (Go)                            │
-│                         Port: 50051                             │
-│                                                                 │
-│  ┌─────────────────────────────────────────────────────────┐    │
-│  │                gRPC Server                              │    │
-│  │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐        │    │
-│  │  │CreateEntity │ │ ReadEntity  │ │UpdateEntity │        │    │
-│  │  │             │ │             │ │             │        │    │
-│  │  │DeleteEntity │ │ QueryEntity │ │             │        │    │
-│  │  └─────────────┘ └─────────────┘ └─────────────┘        │    │
-│  └─────────────────────────────────────────────────────────┘    │
-│                                                                 │
-│  ┌─────────────────────────────────────────────────────────┐    │
-│  │                  Engine Layer                           │    │
-│  │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐        │    │
-│  │  │AttributeProc│ │TypeInference│ │StorageInfer │        │    │
-│  │  │essor        │ │             │ │ence         │        │    │
-│  │  └─────────────┘ └─────────────┘ └─────────────┘        │    │
-│  │  ┌─────────────────────────────────────────────────┐    │    │
-│  │  │         GraphMetadataManager                    │    │    │
-│  │  └─────────────────────────────────────────────────┘    │    │
-│  └─────────────────────────────────────────────────────────┘    │
-│                                                                 │
-│  ┌─────────────────────────────────────────────────────────┐    │
-│  │                Repository Layer                         │    │
-│  │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐        │    │
-│  │  │   MongoDB   │ │    Neo4j    │ │ PostgreSQL  │        │    │
-│  │  │ Repository  │ │ Repository  │ │ Repository  │        │    │
-│  │  └─────────────┘ └─────────────┘ └─────────────┘        │    │
-│  └─────────────────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────────────┘
-```
-
+### Service Components
 ---
 
 ## gRPC Service Methods
@@ -197,4 +162,4 @@ graph for entity and its data.
 - [Service APIs](./api-layer-details.md) - API documentation
 - [Database Schemas](./database-schemas.md) - Database structures
 - [How It Works](data_flow.md) - End-to-end data flow
-- [Storage Types](../../reference/storage.md) - Storage inference details
+- [Storage Types](../../appendix/storage.md) - Storage inference details

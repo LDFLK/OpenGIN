@@ -17,18 +17,20 @@ Get up and running quickly.
 Hands-on guides to building with OpenGIN.
 - **[Simple Application](./tutorial/simple_app.md)**: Learn how to model and create an "Employee" entity.
 
-## 📖 Reference
+## 📖 Appendix
 Detailed documentation for specific components and operations.
-- **[Data Types](./reference/datatype.md)**: Supported data types and inference.
-- **[Data Type Detection Patterns](./reference/data-type-detection-patterns.md)**: Logic for inferring data types.
-- **[Storage Types](./reference/storage.md)**: How attributes are stored.
-- **[Limitations](./reference/limitations.md)**: Known constraints.
-- **[Release Lifecycle](./reference/release_life_cycle.md)**: Versioning and release process.
-- **Operations**:
-    - **[Backup Integration](./reference/operations/backup_integration.md)**
-    - **[MongoDB Backup](./reference/operations/mongodb.md)**
-    - **[Neo4j Backup](./reference/operations/neo4j.md)**
-    - **[PostgreSQL Backup](./reference/operations/postgres.md)**
+- **[Data Types](./appendix/datatype.md)**: Supported data types and inference.
+- **[Data Type Detection Patterns](./appendix/data-type-detection-patterns.md)**: Logic for inferring data types.
+- **[Storage Types](./appendix/storage.md)**: How attributes are stored.
+- **[Limitations](./appendix/limitations.md)**: Known constraints.
+- **[Release Lifecycle](./appendix/release_life_cycle.md)**: Versioning and release process.
+
+## Operations
+
+    - **[MongoDB Backup](./appendix/operations/mongodb.md)**
+    - **[MongoDB Backup](./appendix/operations/mongodb.md)**
+    - **[Neo4j Backup](./appendix/operations/neo4j.md)**
+    - **[PostgreSQL Backup](./appendix/operations/postgres.md)**
 
 ## ❓ FAQ
 - **[Frequently Asked Questions](./faq.md)**
