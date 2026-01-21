@@ -1,3 +1,6 @@
+# Copyright 2025 Lanka Data Foundation
+# SPDX-License-Identifier: Apache-2.0
+
 echo "Building all packages..."
 go build -v ./...
 echo "Building core-service binary..."

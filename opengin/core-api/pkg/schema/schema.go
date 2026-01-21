@@ -1,3 +1,6 @@
+// Copyright 2025 Lanka Data Foundation
+// SPDX-License-Identifier: Apache-2.0
+
 // Package schema provides functionality for generating and managing schema information
 // for different types of data structures. It combines storage type inference and data
 // type inference to create a complete schema representation that can be used for
