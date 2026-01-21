@@ -27,8 +27,7 @@ Detailed documentation for specific components and operations.
 
 ## Operations
 
-- **[Operations Guide](./appendix/operations/backup_integration.md)**:
-    - **[Backup Integration](./appendix/operations/backup_integration.md)**
+    - **[MongoDB Backup](./appendix/operations/mongodb.md)**
     - **[MongoDB Backup](./appendix/operations/mongodb.md)**
     - **[Neo4j Backup](./appendix/operations/neo4j.md)**
     - **[PostgreSQL Backup](./appendix/operations/postgres.md)**
