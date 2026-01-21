@@ -176,15 +176,12 @@ neo4j-admin dump --database=neo4j --to=/backup/neo4j/neo4j.dump
 pg_dump -h postgres -U postgres -d opengin -F tar -f /backup/postgres/opengin.tar
 ```
 
-See [Backup Integration Guide](../../reference/operations/backup_integration.md) for complete backup/restore workflow.
+See [Backup Integration Guide](../../appendix/operations/backup_integration.md) for complete backup/restore workflow.
 
----
+### Reference
 
-## Related Documentation
-
-- [Main Architecture Overview](./index.md)
-- [How It Works](data_flow.md)
-- [Data Types](../../reference/datatype.md)
-- [Storage Types](../../reference/storage.md)
+- [Data Models](../what_is_opengin.md#data-models)
+- [Data Types](../../appendix/datatype.md)
+- [Storage Types](../../appendix/storage.md)
 
 ---

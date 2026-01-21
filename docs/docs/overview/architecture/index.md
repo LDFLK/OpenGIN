@@ -9,7 +9,7 @@
 ## High-Level Architecture Diagram
 
 
-![High-Level Architecture Diagram](assets/images/opengin-architecture-diagram.png)
+![High-Level Architecture Diagram](/assets/images/opengin-architecture-diagram.png)
 
 
 ---
@@ -120,7 +120,7 @@ The entity data is strategically distributed across three databases:
 
 **Storage Distribution:**
 
-![Storage-Distribution-of-openGIN](assets/images/storage_distribution_opengin.png)
+![Storage-Distribution-of-openGIN](/assets/images/storage_distribution_opengin.png)
 
 ---
 
@@ -128,11 +128,11 @@ The entity data is strategically distributed across three databases:
 
 ### Create Entity Flow
 
-![Data-Flow-Sequence-Create](assets/images/data_flow_sequence_create.png)
+![Data-Flow-Sequence-Create](/assets/images/data_flow_sequence_create.png)
 
 ### Read Entity Flow
 
-![Data-Flow-Sequence-Read](assets/images/data_flow_sequence_read.png)
+![Data-Flow-Sequence-Read](/assets/images/data_flow_sequence_read.png)
 
 ---
 
@@ -251,9 +251,9 @@ Services use dependency management to start in the correct order: databases init
 ## Related Documentation
 
 - [How It Works](data_flow.md) - Detailed data flow documentation
-- [Data Types](../../reference/datatype.md) - Type inference system details
-- [Storage Types](../../reference/storage.md) - Storage type inference details
-- [Backup Integration](../../reference/operations/backup_integration.md) - Backup and restore guide
+- [Data Types](../../appendix/datatype.md) - Type inference system details
+- [Storage Types](../../appendix/storage.md) - Storage type inference details
+- [Backup Integration](../../appendix/operations/backup_integration.md) - Backup and restore guide
 - [Core API](../architecture/core-api.md) - Core API documentation
 - [Service APIs](./api-layer-details.md) - Service APIs documentation
 

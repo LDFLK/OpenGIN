@@ -197,4 +197,4 @@ graph for entity and its data.
 - [Service APIs](./api-layer-details.md) - API documentation
 - [Database Schemas](./database-schemas.md) - Database structures
 - [How It Works](data_flow.md) - End-to-end data flow
-- [Storage Types](../../reference/storage.md) - Storage inference details
+- [Storage Types](../../appendix/storage.md) - Storage inference details

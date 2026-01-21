@@ -68,7 +68,7 @@ Detailed database schema documentation:
 
 ### By Role
 
-**I'm a new developer** → Start with [Overview](./index.md), then [Diagrams](./diagrams.md)
+**I'm a new developer** → Start with [Overview](./index.md)
 
 **I'm working on APIs** → Read [Service APIs](./api-layer-details.md)
 
@@ -76,11 +76,11 @@ Detailed database schema documentation:
 
 **I'm working on databases** → Read [Database Schemas](./database-schemas.md)
 
-**I'm presenting the architecture** → Use [Diagrams](./diagrams.md) and [Overview](./index.md)
+**I'm presenting the architecture** → Use [Overview](./index.md)
 
 ### By Task
 
-**Understanding data flow** → [Overview](./index.md) + [Diagrams](./diagrams.md)
+**Understanding data flow** → [Overview](./index.md)
 
 **Adding new endpoint** → [Service APIs](./api-layer-details.md)
 
@@ -333,11 +333,11 @@ Update architecture docs when:
 
 ### In This Repository
 
-- [Main README](../../README.md) - Project overview and quick start
+- [Main README](https://github.com/LDFLK/OpenGIN/blob/main/README.md) - Project overview and quick start
 - [How It Works](data_flow.md) - Detailed data flow
-- [Data Types](../../reference/datatype.md) - Type inference system
-- [Storage Types](../../reference/storage.md) - Storage inference system
-- [Deployment Guide](../../reference/operations/backup_integration.md) - Backup and restore
+- [Data Types](../../appendix/datatype.md) - Type inference system
+- [Storage Types](../../appendix/storage.md) - Storage inference system
+- [Deployment Guide](../../appendix/operations/backup_integration.md) - Backup and restore
 
 ### External Resources
 
