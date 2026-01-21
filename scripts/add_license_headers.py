@@ -63,7 +63,16 @@ def process_file(filepath, dry_run=False):
             return
 
         with open(filepath, 'w', encoding='utf-8') as f:
-            f.write(header + content)
+            if content.startswith("#!"):
+                lines = content.splitlines(keepends=True)
+                # Write shebang (first line)
+                f.write(lines[0])
+                # Write license
+                f.write(header)
+                # Write rest of the file
+                f.writelines(lines[1:])
+            else:
+                f.write(header + content)
         print(f"[ADDED] Added license to: {filepath}")
 
     except Exception as e:

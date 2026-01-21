@@ -1,7 +1,7 @@
+#!/bin/sh
 # Copyright 2025 Lanka Data Foundation
 # SPDX-License-Identifier: Apache-2.0
 
-#!/bin/sh
 set -e
 
 # CORE Service Startup Script - CHOREO ENVIRONMENT
