@@ -16,9 +16,7 @@ The Core API serves as the business logic layer that:
 ## Architecture
 
 ### Service Components
-
-![Core API Architecture](/img/core_api_architecture.png)
-
+### Service Components
 ---
 
 ## gRPC Service Methods
