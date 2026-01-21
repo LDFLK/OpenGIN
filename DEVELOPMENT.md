@@ -361,7 +361,7 @@ Antigravity comes with built-in workflows to automate common tasks. You can invo
 
 ## 📚 Documentation
 
-The OpenGIN documentation is built using [Docusaurus](https://docusaurus.io/) and located in the `website/` directory.
+The OpenGIN documentation is built using [Docusaurus](https://docusaurus.io/) and located in the `docs/` directory.
 
 ### Prerequisites
 
