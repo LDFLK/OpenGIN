@@ -392,7 +392,7 @@ To build the static site for production:
 npm run build
 ```
 
-The output will be in `website/build`.
+The output will be in `docs/build`.
 
 ### Adding Content
 
