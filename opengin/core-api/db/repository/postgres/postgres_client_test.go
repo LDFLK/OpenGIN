@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	commons "lk/datafoundation/core-api/commons"
 	pb "lk/datafoundation/core-api/lk/datafoundation/core-api"
 	schema "lk/datafoundation/core-api/pkg/schema"
 	"lk/datafoundation/core-api/pkg/typeinference"
@@ -436,10 +435,14 @@ func TestInsertSampleData(t *testing.T) {
 			err = repo.HandleTabularData(ctx, tt.entityID, tt.attrName, timeBasedValue, schemaInfo)
 			assert.NoError(t, err, "Failed to handle attributes")
 
-			// Verify table exists
-			tableName := fmt.Sprintf("attr_%s_%s",
-				commons.SanitizeIdentifier(tt.entityID),
-				commons.SanitizeIdentifier(tt.attrName))
+			// Verify table exists by retrieving the actual table name from entity_attributes
+			var tableName string
+			err = repo.DB().QueryRowContext(ctx,
+				`SELECT table_name FROM entity_attributes WHERE entity_id = $1 AND attribute_name = $2`,
+				tt.entityID, tt.attrName).Scan(&tableName)
+			assert.NoError(t, err, "Failed to retrieve table name from entity_attributes")
+			assert.NotEmpty(t, tableName, "Table name should not be empty")
+
 			exists, err := repo.TableExists(ctx, tableName)
 			assert.NoError(t, err, "Failed to check table existence")
 			assert.True(t, exists, "Table should exist")
