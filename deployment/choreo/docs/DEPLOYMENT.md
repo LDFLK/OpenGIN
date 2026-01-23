@@ -63,8 +63,10 @@ endpoints:
       - Project
 ```
 
-In Choreo/OpenChoreo there is a Docker-based build pack. 
-And the `Build Context` we provide is the `.`, the root directory.
+In Choreo/OpenChoreo there is a Docker-based build pack.
+Ensure the following build configurations:
+- Dockerfile: `opengin/core-api/docker/Dockerfile.choreo`
+- Build Context: `opengin/core-api`
 
 #### Ingestion API
 
