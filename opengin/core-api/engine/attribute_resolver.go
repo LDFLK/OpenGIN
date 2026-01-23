@@ -197,7 +197,7 @@ func (p *EntityAttributeProcessor) ProcessEntityAttributes(ctx context.Context, 
 func (p *EntityAttributeProcessor) handleAttributeLookUp(ctx context.Context, entityID, attrName string, storageType storageinference.StorageType, operation string, startTime time.Time) error {
 	// Generate attribute metadata
 	fmt.Printf("DEBUG: Handling graph metadata for attribute %s\n", attrName)
-	attributeID := GenerateAttributeID(entityID, attrName)
+	attributeID := GenerateAttributeID()
 	storagePath := GenerateStoragePath(entityID, attrName, storageType)
 
 	metadata := &AttributeMetadata{

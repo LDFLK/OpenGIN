@@ -90,15 +90,6 @@ func TestDatasetTypeMapping(t *testing.T) {
 	}
 }
 
-// TestAttributeIDGeneration tests the attribute ID generation
-func TestAttributeIDGeneration(t *testing.T) {
-	entityID := "engine-test-entity-123"
-	attributeName := "user_profile"
-
-	attributeID := GenerateAttributeID(entityID, attributeName)
-	expectedID := "engine-test-entity-123_attr_user_profile"
-	assert.Equal(t, expectedID, attributeID)
-}
 
 // TestStoragePathGeneration tests the storage path generation
 func TestStoragePathGeneration(t *testing.T) {

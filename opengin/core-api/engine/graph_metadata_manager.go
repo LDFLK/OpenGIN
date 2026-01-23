@@ -11,6 +11,7 @@ import (
 	pb "lk/datafoundation/core-api/lk/datafoundation/core-api"
 	"lk/datafoundation/core-api/pkg/storageinference"
 
+	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/anypb"
 )
 
@@ -139,7 +140,7 @@ func (g *GraphMetadataManager) createAttributeLookUpGraph(ctx context.Context, m
 	// the relationships map needs a unique key for each relationship
 	// since the attribute id and the name of the attribute is unique for each attribute
 	// among all entities, we can use this to form a unique key for the relationship
-	relationshipId := GenerateAttributeRelationshipID(metadata.EntityID, metadata.AttributeName)
+	relationshipId := GenerateAttributeRelationshipID()
 
 	parentNode := &pb.Entity{
 		Id:         metadata.EntityID,
@@ -232,7 +233,7 @@ func MakeMetadataOfAttributeMetadata(metadata *AttributeMetadata) map[string]*an
 // MakeRelationshipProto creates a Relationship protobuf object for IS_ATTRIBUTE relationship
 func MakeRelationshipFromAttributeMetadata(metadata *AttributeMetadata) *pb.Relationship {
 	return &pb.Relationship{
-		Id:              GenerateAttributeRelationshipID(metadata.EntityID, metadata.AttributeName),
+		Id:              GenerateAttributeRelationshipID(),
 		RelatedEntityId: metadata.AttributeID,
 		Name:            IS_ATTRIBUTE_RELATIONSHIP,
 		StartTime:       metadata.Created.Format(time.RFC3339),
@@ -438,13 +439,15 @@ func GetDatasetType(storageType storageinference.StorageType) string {
 }
 
 // GenerateAttributeID generates a unique ID for an attribute
-func GenerateAttributeRelationshipID(entityID, attributeName string) string {
-	return fmt.Sprintf("%s_is_attribute_of_%s", attributeName, entityID)
+func GenerateAttributeRelationshipID() string {
+	unique_id := uuid.New().String()
+	return fmt.Sprintf("attr_rel_%s", unique_id)
 }
 
-func GenerateAttributeID(entityID, attributeName string) string {
+func GenerateAttributeID() string {
 	// attribute name should be unique within an entity
-	return fmt.Sprintf("%s_attr_%s", entityID, attributeName)
+	unique_id := uuid.New().String()
+	return fmt.Sprintf("attr_%s", unique_id)
 }
 
 // GenerateStoragePath generates a storage path for an attribute
