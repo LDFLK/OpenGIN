@@ -96,13 +96,3 @@ services:
 networks:
   ldf-network:
     driver: bridge
-
-volumes:
-  mongodb_data:
-  mongodb_config:
-  mongodb_backup:
-  neo4j_data:
-    external: true
-  neo4j_logs:
-  neo4j_import:
-  neo4j_plugins:
