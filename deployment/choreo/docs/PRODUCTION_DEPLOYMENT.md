@@ -95,3 +95,25 @@ environment:
   - BAL_CONFIG_VAR_CORESERVICEURL=http://core:50051
 ```
 This is already configured in the provided `docker-compose-prod.yml`.
+
+## Database Restoration
+
+To restore the latest backup from the GitHub repository (`LDFLK/data-backups`) to your remote PostgreSQL database (Supabase or NeonDB), use the helper script:
+
+`deployment/choreo/development/docker/postgres/restore_from_github_to_supabase.sh`
+
+### Usage
+
+1.  **Set the Connection String**:
+    The script requires the `SUPABASE_DB_URL` environment variable. You can use the value from your `.env` file (construct it from the individual variables if needed, or if you have a full connection string variable).
+
+2.  **Run the Script**:
+    You can optionally specify a version tag (defaults to `latest`).
+
+```bash
+# Example: Restoring to the DB defined in your current shell
+export SUPABASE_DB_URL='postgresql://user:password@host:port/dbname?sslmode=require'
+./deployment/choreo/development/docker/postgres/restore_from_github_to_supabase.sh [version]
+```
+
+*   `[version]`: Optional. The tag version to download from GitHub (e.g., `0.0.1`). Defaults to `latest`.
