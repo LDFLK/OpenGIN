@@ -23,6 +23,7 @@ target/
 artifacts and env configs not to be committed
 opengin/core-api/.env
 .env
+.env.*
 opengin/core-api/core-service
 
 # Neo4j
