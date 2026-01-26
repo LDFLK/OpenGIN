@@ -29,6 +29,7 @@ ARG BACKUP_ENVIRONMENT=development
 ENV PGDATA=/opt/pgdata
 # Set superuser password so the entrypoint never fails on uninitialized-DB check.
 # Must match the password set during build-time data ingestion below.
+# FIXME: https://github.com/LDFLK/OpenGIN/issues/448 - Hardcoded password. Use build args instead.
 ENV POSTGRES_PASSWORD=postgres
 
 # Create directory and set permissions
@@ -43,6 +44,7 @@ RUN echo "Initializing database in $PGDATA..." && \
     \
     # Configure networking and security for remote access
     # Allow all connections with md5 password auth
+    # FIXME: https://github.com/LDFLK/OpenGIN/issues/449 - Outdated md5 auth and permissive network check
     echo "host all all 0.0.0.0/0 md5" >> "$PGDATA/pg_hba.conf" && \
     # Listen on all interfaces
     echo "listen_addresses='*'" >> "$PGDATA/postgresql.conf" && \
@@ -51,6 +53,7 @@ RUN echo "Initializing database in $PGDATA..." && \
     pg_ctl -D "$PGDATA" -o "-c listen_addresses='localhost'" -w start && \
     \
     # Set default password to match docker-compose config
+    # FIXME: https://github.com/LDFLK/OpenGIN/issues/448 - Hardcoded password.
     psql -U postgres -c "ALTER USER postgres WITH PASSWORD 'postgres';" && \
     \
     # Create temp workspace
