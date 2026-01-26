@@ -62,7 +62,7 @@ RUN echo "Initializing database in $PGDATA..." && \
     unzip -q "$temp_dir/archive.zip" -d "$temp_dir" && \
     \
     # Locate the dump file
-    # Structure ex: data-backups-0.0.3/opengin/development/postgres/opengin.tar.gz
+    # Structure ex: data-backups-0.0.4/opengin/development/postgres/opengin.tar.gz
     dump_path="$temp_dir/data-backups-$BACKUP_VERSION/opengin/$BACKUP_ENVIRONMENT/postgres/opengin.tar.gz" && \
     if [ -f "$dump_path" ]; then \
     echo "Found backup archive: $dump_path"; \

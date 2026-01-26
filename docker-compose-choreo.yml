@@ -36,7 +36,7 @@ services:
       dockerfile: Dockerfile
       args:
         GITHUB_BACKUP_REPO: ${OPENGIN_GITHUB_BACKUP_REPO:-LDFLK/data-backups}
-        BACKUP_VERSION: ${OPENGIN_DB_BACKUP_VERSION:-0.0.3}
+        BACKUP_VERSION: ${OPENGIN_DB_BACKUP_VERSION:-0.0.4}
         BACKUP_ENVIRONMENT: ${OPENGIN_CHOREO_ENVIRONMENT:-development}
     container_name: neo4j-choreo
     ports:
@@ -57,7 +57,7 @@ services:
       - NEO4J_server_http_listen__address=0.0.0.0:7474
       # GitHub backup restore configuration
       - GITHUB_BACKUP_REPO=${OPENGIN_GITHUB_BACKUP_REPO:-LDFLK/data-backups}
-      - BACKUP_VERSION=${OPENGIN_DB_BACKUP_VERSION:-0.0.3}
+      - BACKUP_VERSION=${OPENGIN_DB_BACKUP_VERSION:-0.0.4}
       - BACKUP_ENVIRONMENT=${OPENGIN_CHOREO_ENVIRONMENT:-development}
       - RESTORE_FROM_GITHUB=true
     healthcheck:

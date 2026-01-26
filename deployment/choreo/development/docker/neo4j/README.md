@@ -30,7 +30,7 @@ This is the core customization. During the `docker build` phase:
 **Build Arguments:**
 You can customize the data source by passing these arguments during build:
 - `GITHUB_BACKUP_REPO`: The repository containing backups (default: `LDFLK/data-backups`).
-- `BACKUP_VERSION`: The release tag version (default: `0.0.3`).
+- `BACKUP_VERSION`: The release tag version (default: `0.0.4`).
 - `BACKUP_ENVIRONMENT`: The environment folder name (default: `development`).
 
 ### 3. Runtime Configuration
