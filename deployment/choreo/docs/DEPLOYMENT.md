@@ -137,9 +137,8 @@ This happens because Choreo (and many Kubernetes environments) may mount the con
 
 **Requirement**: You must explicitly mount volumes for the directories that the database needs to write to.
 
-For **Postgres**, ensure you add a volume mount for:
--   `/var/lib/postgresql/data_baked` (or your configured `PGDATA` directory)
--   `/var/run/postgresql` (for socket files)
+For **Postgres**, the startup script copies baked-in data from `/opt/pgdata` (read-only image layer) to `/tmp/pgdata` at runtime, and uses `/tmp` for the Unix socket. Ensure you add a volume mount for:
+-   `/tmp` — Empty Directory (In-Memory) — runtime data, socket, and pid file
 
 For **Neo4j**, ensure you mount:
 -   `/var/lib/neo4j/`

@@ -92,7 +92,9 @@ RUN echo "Initializing database in $PGDATA..." && \
 
 # Finalize permissions for Choreo user
 USER root
-RUN chown -R 10014:10014 "$PGDATA" /var/run/postgresql
+COPY startup.sh /usr/local/bin/startup.sh
+RUN chmod +x /usr/local/bin/startup.sh && \
+    chown -R 10014:10014 "$PGDATA" /var/run/postgresql
 
 # Switch to choreo user
 USER 10014
@@ -100,12 +102,12 @@ USER 10014
 # Expose ports
 EXPOSE 5432
 
-# Health check
+# Health check (use /tmp as socket directory to match startup.sh)
 HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=5 \
-    CMD pg_isready -U postgres || exit 1
+    CMD pg_isready -U postgres -h /tmp || exit 1
 
-# Bypass the base image's docker-entrypoint.sh which tries to chmod/initdb
-# at runtime. The database is fully baked in at build time, so we start
-# postgres directly.
+# Bypass the base image's docker-entrypoint.sh. The database is fully baked
+# in at build time. startup.sh copies it to a writable path (/tmp/pgdata)
+# since Choreo runs a read-only filesystem.
 ENTRYPOINT []
-CMD ["postgres"]
+CMD ["/usr/local/bin/startup.sh"]
