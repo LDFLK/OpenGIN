@@ -23,9 +23,10 @@ ARG GITHUB_BACKUP_REPO=LDFLK/data-backups
 ARG BACKUP_VERSION=0.0.3
 ARG BACKUP_ENVIRONMENT=development
 
-# Create custom data directory to avoid base image VOLUME definition
-# postgres:17 defines VOLUME ["/var/lib/postgresql/data"]
-ENV PGDATA=/var/lib/postgresql/data_baked
+# Place data outside /var/lib/postgresql/ entirely so that the base image's
+# VOLUME ["/var/lib/postgresql/data"] and Choreo's runtime volume management
+# cannot hide the baked-in files.
+ENV PGDATA=/opt/pgdata
 # Set superuser password so the entrypoint never fails on uninitialized-DB check.
 # Must match the password set during build-time data ingestion below.
 ENV POSTGRES_PASSWORD=postgres

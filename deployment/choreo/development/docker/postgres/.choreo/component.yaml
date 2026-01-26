@@ -5,6 +5,6 @@ endpoints:
     service:
       basePath: /
       port: 5432
-    type: REST
+    type: TCP
     networkVisibilities: 
       - Project
