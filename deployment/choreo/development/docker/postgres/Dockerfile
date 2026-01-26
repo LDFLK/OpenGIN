@@ -103,5 +103,8 @@ EXPOSE 5432
 HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=5 \
     CMD pg_isready -U postgres || exit 1
 
-# Start PostgreSQL
+# Bypass the base image's docker-entrypoint.sh which tries to chmod/initdb
+# at runtime. The database is fully baked in at build time, so we start
+# postgres directly.
+ENTRYPOINT []
 CMD ["postgres"]
