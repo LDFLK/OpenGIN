@@ -11,7 +11,7 @@ The production setup differs from development in the following ways:
 
 ## Prerequisites
 
-*   Docker Desktop (or Docker Engine + Compose plugin) installed.
+*   Rancher Desktop (or Docker Engine + Compose plugin) installed.
 *   Access to the remote database instances.
 
 ## Configuration (.env)
