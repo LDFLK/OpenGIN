@@ -27,9 +27,6 @@ ARG BACKUP_ENVIRONMENT=development
 # VOLUME ["/var/lib/postgresql/data"] and Choreo's runtime volume management
 # cannot hide the baked-in files.
 ENV PGDATA=/opt/pgdata
-# Set superuser password so the entrypoint never fails on uninitialized-DB check.
-# Must match the password set during build-time data ingestion below.
-ENV POSTGRES_PASSWORD=postgres
 
 # Create directory and set permissions
 RUN mkdir -p "$PGDATA" && chown -R postgres:postgres "$PGDATA"
