@@ -26,6 +26,9 @@ ARG BACKUP_ENVIRONMENT=development
 # Create custom data directory to avoid base image VOLUME definition
 # postgres:17 defines VOLUME ["/var/lib/postgresql/data"]
 ENV PGDATA=/var/lib/postgresql/data_baked
+# Set superuser password so the entrypoint never fails on uninitialized-DB check.
+# Must match the password set during build-time data ingestion below.
+ENV POSTGRES_PASSWORD=postgres
 
 # Create directory and set permissions
 RUN mkdir -p "$PGDATA" && chown -R postgres:postgres "$PGDATA"
