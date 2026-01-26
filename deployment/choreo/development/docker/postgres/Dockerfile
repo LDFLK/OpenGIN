@@ -20,7 +20,7 @@ RUN groupadd -g 10014 choreo && \
 
 # Build arguments for backup source
 ARG GITHUB_BACKUP_REPO=LDFLK/data-backups
-ARG BACKUP_VERSION=0.0.3
+ARG BACKUP_VERSION=0.0.4
 ARG BACKUP_ENVIRONMENT=development
 
 # Place data outside /var/lib/postgresql/ entirely so that the base image's
