@@ -20,7 +20,7 @@ services:
       - MONGO_INITDB_DATABASE=opengin
       # GitHub backup restore configuration
       - GITHUB_BACKUP_REPO=${OPENGIN_GITHUB_BACKUP_REPO:-LDFLK/data-backups}
-      - BACKUP_VERSION=${OPENGIN_DB_BACKUP_VERSION:-0.0.1}
+      - BACKUP_VERSION=${OPENGIN_DB_BACKUP_VERSION:-0.0.4}
       - BACKUP_ENVIRONMENT=${OPENGIN_CHOREO_ENVIRONMENT:-development}
       - RESTORE_FROM_GITHUB=true
     healthcheck:
@@ -84,9 +84,9 @@ services:
       - POSTGRES_DB=opengin
       # GitHub backup restore configuration (disabled for development)
       - GITHUB_BACKUP_REPO=${OPENGIN_GITHUB_BACKUP_REPO:-LDFLK/data-backups}
-      - BACKUP_VERSION=${OPENGIN_DB_BACKUP_VERSION:-0.0.1}
+      - BACKUP_VERSION=${OPENGIN_DB_BACKUP_VERSION:-0.0.4}
       - BACKUP_ENVIRONMENT=${OPENGIN_CHOREO_ENVIRONMENT:-development}
-      - RESTORE_FROM_GITHUB=false
+      - RESTORE_FROM_GITHUB=true
       - FORCE_RESTORE=${FORCE_RESTORE:-false}
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U postgres -h /tmp" ]
