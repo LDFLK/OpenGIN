@@ -31,10 +31,10 @@ ENV NEO4J_AUTH=neo4j/neo4j123 \
     NEO4J_server_memory_heap_initial__size=512M \
     NEO4J_server_memory_heap_max__size=512M \
     NEO4J_server_security_procedures_unrestricted=gds.*,apoc.* \
-    NEO4J_server_directories_data=/tmp/neo4j_data \
-    NEO4J_server_directories_logs=/tmp/neo4j_logs \
-    NEO4J_server_directories_import=/tmp/neo4j_import \
-    NEO4J_server_directories_plugins=/tmp/neo4j_plugins \
+    NEO4J_server_directories_data=/neo4j_data \
+    NEO4J_server_directories_logs=/neo4j_logs \
+    NEO4J_server_directories_import=/var/lib/neo4j/import \
+    NEO4J_server_directories_plugins=/neo4j_plugins \
     NEO4J_server_default__listen__address=0.0.0.0 \
     NEO4J_server_bolt_listen__address=0.0.0.0:7687 \
     NEO4J_server_http_listen__address=0.0.0.0:7474 \
@@ -51,7 +51,7 @@ ENV NEO4J_AUTH=neo4j/neo4j123 \
 USER root
 
 # 1. Create all necessary directories
-RUN mkdir -p /tmp/neo4j_data /tmp/neo4j_logs /tmp/neo4j_plugins /tmp/neo4j_import /var/log/neo4j /var/lib/neo4j/data /var/lib/neo4j/run
+RUN mkdir -p /neo4j_data /neo4j_logs /neo4j_plugins /var/log/neo4j /var/lib/neo4j/data /var/lib/neo4j/run
 
 # 2. Download and Restore NOW (During Build)
 # FIXME: https://github.com/LDFLK/OpenGIN/issues/425
@@ -78,7 +78,7 @@ RUN apt-get update && apt-get install -y wget unzip neo4j=1:5.12.0 && \
     # Cleanup to keep image small
     rm -rf "$temp_dir" && \
     # Fix permissions so 'choreo' user can own the data we just wrote
-    chown -R 10014:10014 /tmp/neo4j_data /tmp/neo4j_logs /tmp/neo4j_plugins /tmp/neo4j_import /var/log/neo4j /var/lib/neo4j /etc/neo4j
+    chown -R 10014:10014 /neo4j_data /neo4j_logs /neo4j_plugins /var/log/neo4j /var/lib/neo4j /etc/neo4j
 
 # ----------------------------------------------------------------------
 
@@ -117,10 +117,10 @@ RUN echo '#!/bin/bash\n\
     exec neo4j console' > /home/choreouser/docker-entrypoint.sh \
     && chmod +x /home/choreouser/docker-entrypoint.sh
 
-# Now declare volumes (Data is already inside /tmp/neo4j_data)
-# WARNING: Any data written to /tmp/neo4j_data BEFORE this line persists.
+# Now declare volumes (Data is already inside /neo4j_data)
+# WARNING: Any data written to /neo4j_data BEFORE this line persists. 
 # Any data written AFTER this line in a RUN instruction would be lost.
-VOLUME ["/tmp/neo4j_data", "/tmp/neo4j_logs", "/tmp/neo4j_import", "/tmp/neo4j_plugins"]
+VOLUME ["/neo4j_data", "/neo4j_logs", "/var/lib/neo4j/import", "/neo4j_plugins"]
 
 # Expose ports
 EXPOSE 7474 7687
