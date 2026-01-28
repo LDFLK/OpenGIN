@@ -29,7 +29,7 @@ Open General Information Network here after referred to as **OpenGIN** is an ope
 
 ## Getting Started
 
-Please see our [Getting Started Guide](docs/docs/getting_started).
+Please see our [Getting Started Guide](docs/docs/getting_started/installation.md).
 
 ## Contributing
 
