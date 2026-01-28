@@ -54,11 +54,7 @@ Fixes #123
 
 ### Testing
 
-All changes should include appropriate tests. Run the test suite before submitting:
-
-```bash
-pytest
-```
+All changes should include appropriate tests. Run the test suite before submitting.
 
 ## Submitting Changes
 
