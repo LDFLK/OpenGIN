@@ -1,6 +1,8 @@
-# OpenGIN
+<div align="center">
+  <img width="675" alt="logo" src="https://github.com/user-attachments/assets/68bbb41f-4891-4367-b94e-08f985e0d802" />
+</div>
 
-<!-- put the banner logo here -->
+---
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) 
 [![Code of Conduct](https://img.shields.io/badge/Code%20of%20Conduct-Contributor-ff69b4.svg)](CODE_OF_CONDUCT.md)
