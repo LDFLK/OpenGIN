@@ -70,6 +70,8 @@ FROM golang:1.24
 
 # Install runtime dependencies and qemu for emulation
 RUN apt-get update && \
+    # Upgrade OpenSSL packages to fix CVE-2025-15467 (CRITICAL)
+    apt-get upgrade -y libssl3t64 openssl openssl-provider-legacy && \
     apt-get install -y ca-certificates gnupg curl wget unzip default-jdk postgresql-client netcat-openbsd && \
     # Add MongoDB repository
     curl -fsSL https://pgp.mongodb.com/server-6.0.asc | \
