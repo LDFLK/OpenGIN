@@ -1,7 +1,0 @@
-Month,Category,Amount,RelatedEntityID
-January,Internet,50,org-netprovider
-January,Electricity,120,place-home
-February,Internet,50,org-netprovider
-February,Groceries,300,place-supermarket
-March,Rent,1200,place-home
-March,Utilities,150,place-home

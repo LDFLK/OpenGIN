@@ -1,7 +1,0 @@
-Month,Source,Amount,RelatedEntityID
-January,Salary,5000,org-techcorp
-January,Freelance,1200,
-February,Salary,5000,org-techcorp
-February,Dividends,300,org-techcorp
-March,Salary,5500,org-techcorp
-March,Bonus,2000,org-techcorp

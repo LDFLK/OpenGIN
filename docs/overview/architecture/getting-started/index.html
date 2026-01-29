@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en" dir="ltr" class="docs-wrapper plugin-docs plugin-id-default docs-version-current docs-doc-page docs-doc-id-overview/architecture/getting-started" data-has-hydrated="false">
+<head>
+<meta charset="UTF-8">
+<meta name="generator" content="Docusaurus v3.9.2">
+<title data-rh="true">OpenGIN Architecture Documentation | OpenGIN</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:image" content="https://LDFLK.github.io/OpenGIN/img/docusaurus-social-card.jpg"><meta data-rh="true" name="twitter:image" content="https://LDFLK.github.io/OpenGIN/img/docusaurus-social-card.jpg"><meta data-rh="true" property="og:url" content="https://LDFLK.github.io/OpenGIN/docs/overview/architecture/getting-started"><meta data-rh="true" property="og:locale" content="en"><meta data-rh="true" name="docusaurus_locale" content="en"><meta data-rh="true" name="docsearch:language" content="en"><meta data-rh="true" name="docusaurus_version" content="current"><meta data-rh="true" name="docusaurus_tag" content="docs-default-current"><meta data-rh="true" name="docsearch:version" content="current"><meta data-rh="true" name="docsearch:docusaurus_tag" content="docs-default-current"><meta data-rh="true" property="og:title" content="OpenGIN Architecture Documentation | OpenGIN"><meta data-rh="true" name="description" content="Welcome to the OpenGIN architecture documentation. This folder contains comprehensive documentation about the system&#x27;s architecture, components, data flows, and design decisions."><meta data-rh="true" property="og:description" content="Welcome to the OpenGIN architecture documentation. This folder contains comprehensive documentation about the system&#x27;s architecture, components, data flows, and design decisions."><link data-rh="true" rel="icon" href="/OpenGIN/img/opengin_blue.png"><link data-rh="true" rel="canonical" href="https://LDFLK.github.io/OpenGIN/docs/overview/architecture/getting-started"><link data-rh="true" rel="alternate" href="https://LDFLK.github.io/OpenGIN/docs/overview/architecture/getting-started" hreflang="en"><link data-rh="true" rel="alternate" href="https://LDFLK.github.io/OpenGIN/docs/overview/architecture/getting-started" hreflang="x-default"><link rel="stylesheet" href="/OpenGIN/assets/css/styles.9d8852e4.css">
+<script src="/OpenGIN/assets/js/runtime~main.928d5ce8.js" defer="defer"></script>
+<script src="/OpenGIN/assets/js/main.6891cf06.js" defer="defer"></script>
+</head>
+<body class="navigation-with-keyboard">
+<svg style="display: none;"><defs>
+<symbol id="theme-svg-external-link" viewBox="0 0 24 24"><path fill="currentColor" d="M21 13v10h-21v-19h12v2h-10v15h17v-8h2zm3-12h-10.988l4.035 4-6.977 7.07 2.828 2.828 6.977-7.07 4.125 4.172v-11z"/></symbol>
+</defs></svg>
+<script>!function(){var t=function(){try{return new URLSearchParams(window.location.search).get("docusaurus-theme")}catch(t){}}()||function(){try{return window.localStorage.getItem("theme")}catch(t){}}();document.documentElement.setAttribute("data-theme",t||(window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light")),document.documentElement.setAttribute("data-theme-choice",t||"system")}(),function(){try{const c=new URLSearchParams(window.location.search).entries();for(var[t,e]of c)if(t.startsWith("docusaurus-data-")){var a=t.replace("docusaurus-data-","data-");document.documentElement.setAttribute(a,e)}}catch(t){}}()</script><div id="__docusaurus"><div role="region" aria-label="Skip to main content"><a class="skipToContent_fXgn" href="#__docusaurus_skipToContent_fallback">Skip to main content</a></div><nav aria-label="Main" class="theme-layout-navbar navbar navbar--fixed-top"><div class="navbar__inner"><div class="theme-layout-navbar-left navbar__items"><button aria-label="Toggle navigation bar" aria-expanded="false" class="navbar__toggle clean-btn" type="button"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-miterlimit="10" stroke-width="2" d="M4 7h22M4 15h22M4 23h22"></path></svg></button><a class="navbar__brand" href="/OpenGIN/"><div class="navbar__logo"><img src="/OpenGIN/img/opengin_blue.png" alt="OpenGIN Logo" class="themedComponent_mlkZ themedComponent--light_NVdE"><img src="/OpenGIN/img/opengin_blue.png" alt="OpenGIN Logo" class="themedComponent_mlkZ themedComponent--dark_xIcU"></div><b class="navbar__title text--truncate">OpenGIN</b></a><a class="navbar__item navbar__link" href="/OpenGIN/docs/">Documentation</a></div><div class="theme-layout-navbar-right navbar__items navbar__items--right"><a href="https://github.com/LDFLK/OpenGIN" target="_blank" rel="noopener noreferrer" class="navbar__item navbar__link">GitHub<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a><div class="toggle_vylO colorModeToggle_DEke"><button class="clean-btn toggleButton_gllP toggleButtonDisabled_aARS" type="button" disabled="" title="system mode" aria-label="Switch between dark and light mode (currently system mode)"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP lightToggleIcon_pyhR"><path fill="currentColor" d="M12,9c1.65,0,3,1.35,3,3s-1.35,3-3,3s-3-1.35-3-3S10.35,9,12,9 M12,7c-2.76,0-5,2.24-5,5s2.24,5,5,5s5-2.24,5-5 S14.76,7,12,7L12,7z M2,13l2,0c0.55,0,1-0.45,1-1s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S1.45,13,2,13z M20,13l2,0c0.55,0,1-0.45,1-1 s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S19.45,13,20,13z M11,2v2c0,0.55,0.45,1,1,1s1-0.45,1-1V2c0-0.55-0.45-1-1-1S11,1.45,11,2z M11,20v2c0,0.55,0.45,1,1,1s1-0.45,1-1v-2c0-0.55-0.45-1-1-1C11.45,19,11,19.45,11,20z M5.99,4.58c-0.39-0.39-1.03-0.39-1.41,0 c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0s0.39-1.03,0-1.41L5.99,4.58z M18.36,16.95 c-0.39-0.39-1.03-0.39-1.41,0c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0c0.39-0.39,0.39-1.03,0-1.41 L18.36,16.95z M19.42,5.99c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06c-0.39,0.39-0.39,1.03,0,1.41 s1.03,0.39,1.41,0L19.42,5.99z M7.05,18.36c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06 c-0.39,0.39-0.39,1.03,0,1.41s1.03,0.39,1.41,0L7.05,18.36z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP darkToggleIcon_wfgR"><path fill="currentColor" d="M9.37,5.51C9.19,6.15,9.1,6.82,9.1,7.5c0,4.08,3.32,7.4,7.4,7.4c0.68,0,1.35-0.09,1.99-0.27C17.45,17.19,14.93,19,12,19 c-3.86,0-7-3.14-7-7C5,9.07,6.81,6.55,9.37,5.51z M12,3c-4.97,0-9,4.03-9,9s4.03,9,9,9s9-4.03,9-9c0-0.46-0.04-0.92-0.1-1.36 c-0.98,1.37-2.58,2.26-4.4,2.26c-2.98,0-5.4-2.42-5.4-5.4c0-1.81,0.89-3.42,2.26-4.4C12.92,3.04,12.46,3,12,3L12,3z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP systemToggleIcon_QzmC"><path fill="currentColor" d="m12 21c4.971 0 9-4.029 9-9s-4.029-9-9-9-9 4.029-9 9 4.029 9 9 9zm4.95-13.95c1.313 1.313 2.05 3.093 2.05 4.95s-0.738 3.637-2.05 4.95c-1.313 1.313-3.093 2.05-4.95 2.05v-14c1.857 0 3.637 0.737 4.95 2.05z"></path></svg></button></div><div class="navbarSearchContainer_Bca1"></div></div></div><div role="presentation" class="navbar-sidebar__backdrop"></div></nav><div id="__docusaurus_skipToContent_fallback" class="theme-layout-main main-wrapper mainWrapper_z2l0"><div class="docsWrapper_hBAB"><button aria-label="Scroll back to top" class="clean-btn theme-back-to-top-button backToTopButton_sjWU" type="button"></button><div class="docRoot_UBD9"><main class="docMainContainer_TBSr docMainContainerEnhanced_lQrH"><div class="container padding-top--md padding-bottom--lg"><div class="row"><div class="col docItemCol_VOVn"><div class="docItemContainer_Djhp"><article><div class="tocCollapsible_ETCw theme-doc-toc-mobile tocMobile_ITEo"><button type="button" class="clean-btn tocCollapsibleButton_TO0P">On this page</button></div><div class="theme-doc-markdown markdown"><header><h1>OpenGIN Architecture Documentation</h1></header>
+<p>Welcome to the OpenGIN architecture documentation. This folder contains comprehensive documentation about the system&#x27;s architecture, components, data flows, and design decisions.</p>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="documentation-structure">Documentation Structure<a href="#documentation-structure" class="hash-link" aria-label="Direct link to Documentation Structure" title="Direct link to Documentation Structure" translate="no">​</a></h2>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="1-overview---start-here">1. <a class="" href="/OpenGIN/docs/overview/architecture/">Overview</a> - <strong>START HERE</strong><a href="#1-overview---start-here" class="hash-link" aria-label="Direct link to 1-overview---start-here" title="Direct link to 1-overview---start-here" translate="no">​</a></h3>
+<p>Complete system architecture overview including:</p>
+<ul>
+<li class="">High-level architecture diagram</li>
+<li class="">Layer-by-layer breakdown (API, Service, Database)</li>
+<li class="">Data model and storage strategy</li>
+<li class="">Data flow sequences</li>
+<li class="">Type and storage inference systems</li>
+<li class="">Technology stack</li>
+<li class="">Key features</li>
+</ul>
+<p><strong>Recommended for</strong>: Everyone - developers, architects, stakeholders</p>
+<hr>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="2-core-api">2. <a class="" href="/OpenGIN/docs/overview/architecture/core-api">Core API</a><a href="#2-core-api" class="hash-link" aria-label="Direct link to 2-core-api" title="Direct link to 2-core-api" translate="no">​</a></h3>
+<p>In-depth documentation of the CRUD Service:</p>
+<ul>
+<li class="">Directory structure</li>
+<li class="">gRPC server implementation</li>
+<li class="">All service methods (CreateEntity, ReadEntity, UpdateEntity, DeleteEntity)</li>
+<li class="">Repository layer (MongoDB, Neo4j, PostgreSQL)</li>
+<li class="">Engine layer (AttributeProcessor, TypeInference, StorageInference)</li>
+<li class="">Configuration and environment variables</li>
+<li class="">Testing strategies</li>
+</ul>
+<p><strong>Recommended for</strong>: Backend developers, service implementers</p>
+<hr>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="3-service-apis">3. <a class="" href="/OpenGIN/docs/overview/architecture/api-layer-details">Service APIs</a><a href="#3-service-apis" class="hash-link" aria-label="Direct link to 3-service-apis" title="Direct link to 3-service-apis" translate="no">​</a></h3>
+<p>Complete API layer documentation:</p>
+<ul>
+<li class="">Ingestion API (CREATE, UPDATE, DELETE operations)</li>
+<li class="">Read API (READ operations)</li>
+<li class="">Request/response formats</li>
+<li class="">JSON to Protobuf conversion</li>
+<li class="">OpenAPI contracts</li>
+<li class="">Swagger UI documentation</li>
+<li class="">Query parameters and filtering</li>
+<li class="">Temporal queries (activeAt)</li>
+<li class="">Best practices</li>
+</ul>
+<p><strong>Recommended for</strong>: API consumers, frontend developers, integration engineers</p>
+<hr>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="4-database-schemas">4. <a class="" href="/OpenGIN/docs/overview/architecture/database-schemas">Database Schemas</a><a href="#4-database-schemas" class="hash-link" aria-label="Direct link to 4-database-schemas" title="Direct link to 4-database-schemas" translate="no">​</a></h3>
+<p>Detailed database schema documentation:</p>
+<ul>
+<li class=""><strong>MongoDB</strong>: Collections, document structures, indexes</li>
+<li class=""><strong>Neo4j</strong>: Node types, relationship types, Cypher queries</li>
+<li class=""><strong>PostgreSQL</strong>: Core tables, dynamic attribute tables, type mapping</li>
+<li class="">Cross-database consistency</li>
+<li class="">Schema evolution strategies (Not Implemented)</li>
+<li class="">Backup and restore procedures</li>
+<li class="">Performance optimization</li>
+</ul>
+<p><strong>Recommended for</strong>: Database administrators, backend developers, data engineers</p>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="quick-navigation">Quick Navigation<a href="#quick-navigation" class="hash-link" aria-label="Direct link to Quick Navigation" title="Direct link to Quick Navigation" translate="no">​</a></h2>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="by-role">By Role<a href="#by-role" class="hash-link" aria-label="Direct link to By Role" title="Direct link to By Role" translate="no">​</a></h3>
+<p><strong>I&#x27;m a new developer</strong> → Start with <a class="" href="/OpenGIN/docs/overview/architecture/">Overview</a></p>
+<p><strong>I&#x27;m working on APIs</strong> → Read <a class="" href="/OpenGIN/docs/overview/architecture/api-layer-details">Service APIs</a></p>
+<p><strong>I&#x27;m working on backend</strong> → Read <a class="" href="/OpenGIN/docs/overview/architecture/core-api">Core API</a></p>
+<p><strong>I&#x27;m working on databases</strong> → Read <a class="" href="/OpenGIN/docs/overview/architecture/database-schemas">Database Schemas</a></p>
+<p><strong>I&#x27;m presenting the architecture</strong> → Use <a class="" href="/OpenGIN/docs/overview/architecture/">Overview</a></p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="by-task">By Task<a href="#by-task" class="hash-link" aria-label="Direct link to By Task" title="Direct link to By Task" translate="no">​</a></h3>
+<p><strong>Understanding data flow</strong> → <a class="" href="/OpenGIN/docs/overview/architecture/">Overview</a></p>
+<p><strong>Adding new endpoint</strong> → <a class="" href="/OpenGIN/docs/overview/architecture/api-layer-details">Service APIs</a></p>
+<p><strong>Adding new entity type</strong> → <a class="" href="/OpenGIN/docs/overview/architecture/database-schemas">Database Schemas</a> + <a class="" href="/OpenGIN/docs/overview/architecture/core-api">Core API</a></p>
+<p><strong>Debugging data storage</strong> → <a class="" href="/OpenGIN/docs/overview/architecture/database-schemas">Database Schemas</a></p>
+<p><strong>Performance tuning</strong> → <a class="" href="/OpenGIN/docs/overview/architecture/core-api">Core API</a> + <a class="" href="/OpenGIN/docs/overview/architecture/database-schemas">Database Schemas</a></p>
+<p><strong>Understanding types</strong> → <a class="" href="/OpenGIN/docs/overview/architecture/">Overview</a> + <a class="" href="/OpenGIN/docs/overview/architecture/core-api">Core API</a></p>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="key-concepts">Key Concepts<a href="#key-concepts" class="hash-link" aria-label="Direct link to Key Concepts" title="Direct link to Key Concepts" translate="no">​</a></h2>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="polyglot-database-strategy">Polyglot Database Strategy<a href="#polyglot-database-strategy" class="hash-link" aria-label="Direct link to Polyglot Database Strategy" title="Direct link to Polyglot Database Strategy" translate="no">​</a></h3>
+<p>OpenGIN uses three databases, each optimized for specific data types:</p>
+<table><thead><tr><th>Database</th><th>Purpose</th><th>Reason</th></tr></thead><tbody><tr><td><strong>MongoDB</strong></td><td>Metadata</td><td>Schema-less, flexible key-value storage</td></tr><tr><td><strong>Neo4j</strong></td><td>Entities &amp; Relationships</td><td>Optimized graph traversal, Cypher queries</td></tr><tr><td><strong>PostgreSQL</strong></td><td>Attributes</td><td>ACID compliance, time-series data, strong typing</td></tr></tbody></table>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="layered-architecture">Layered Architecture<a href="#layered-architecture" class="hash-link" aria-label="Direct link to Layered Architecture" title="Direct link to Layered Architecture" translate="no">​</a></h3>
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">Client Layer (HTTP/JSON)</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">    ↓</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">API Layer (Ingestion API, Read API)</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">    ↓  gRPC/Protobuf</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">Service Layer (Core API)</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">    ↓  Native Protocols</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">Database Layer (MongoDB, Neo4j, PostgreSQL)</span><br></span></code></pre></div></div>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="time-based-data">Time-Based Data<a href="#time-based-data" class="hash-link" aria-label="Direct link to Time-Based Data" title="Direct link to Time-Based Data" translate="no">​</a></h3>
+<p>All attributes and relationships support temporal tracking:</p>
+<ul>
+<li class=""><code>startTime</code>: When value/relationship became effective</li>
+<li class=""><code>endTime</code>: When value/relationship ended (NULL = current)</li>
+<li class=""><code>activeAt</code> queries: Retrieve data as it existed at specific point in time</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="type-and-storage-inference">Type and Storage Inference<a href="#type-and-storage-inference" class="hash-link" aria-label="Direct link to Type and Storage Inference" title="Direct link to Type and Storage Inference" translate="no">​</a></h3>
+<p>The system automatically:</p>
+<ol>
+<li class=""><strong>Infers data types</strong>: int, float, string, bool, date, time, datetime</li>
+<li class=""><strong>Determines storage strategy</strong>: SCALAR, LIST, MAP, TABULAR, GRAPH</li>
+<li class=""><strong>Creates schemas dynamically</strong>: No manual schema definition needed</li>
+</ol>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="architecture-principles">Architecture Principles<a href="#architecture-principles" class="hash-link" aria-label="Direct link to Architecture Principles" title="Direct link to Architecture Principles" translate="no">​</a></h2>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="1-separation-of-concerns">1. Separation of Concerns<a href="#1-separation-of-concerns" class="hash-link" aria-label="Direct link to 1. Separation of Concerns" title="Direct link to 1. Separation of Concerns" translate="no">​</a></h3>
+<ul>
+<li class="">APIs handle HTTP/JSON ↔ gRPC/Protobuf conversion</li>
+<li class="">Core API orchestrates business logic</li>
+<li class="">Repositories handle database-specific operations</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="2-database-specialization">2. Database Specialization<a href="#2-database-specialization" class="hash-link" aria-label="Direct link to 2. Database Specialization" title="Direct link to 2. Database Specialization" translate="no">​</a></h3>
+<ul>
+<li class="">Each database does what it does best</li>
+<li class="">No single database bottleneck</li>
+<li class="">Independent scaling of each database</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="3-contract-first-api-design">3. Contract-First API Design<a href="#3-contract-first-api-design" class="hash-link" aria-label="Direct link to 3. Contract-First API Design" title="Direct link to 3. Contract-First API Design" translate="no">​</a></h3>
+<ul>
+<li class="">OpenAPI specifications define APIs</li>
+<li class="">Code generated from contracts</li>
+<li class="">Swagger UI for documentation</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="4-type-safety">4. Type Safety<a href="#4-type-safety" class="hash-link" aria-label="Direct link to 4. Type Safety" title="Direct link to 4. Type Safety" translate="no">​</a></h3>
+<ul>
+<li class="">Protobuf for internal communication</li>
+<li class="">Strong typing in Go (Core API)</li>
+<li class="">Type inference for flexibility</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="5-temporal-support">5. Temporal Support<a href="#5-temporal-support" class="hash-link" aria-label="Direct link to 5. Temporal Support" title="Direct link to 5. Temporal Support" translate="no">​</a></h3>
+<ul>
+<li class="">All data versioned by time</li>
+<li class="">Historical queries supported</li>
+<li class="">Audit trail built-in</li>
+</ul>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="common-patterns">Common Patterns<a href="#common-patterns" class="hash-link" aria-label="Direct link to Common Patterns" title="Direct link to Common Patterns" translate="no">​</a></h2>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="entity-creation-flow">Entity Creation Flow<a href="#entity-creation-flow" class="hash-link" aria-label="Direct link to Entity Creation Flow" title="Direct link to Entity Creation Flow" translate="no">​</a></h3>
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">Client → Ingestion API → Core API → [MongoDB, Neo4j, PostgreSQL] → Response</span><br></span></code></pre></div></div>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="entity-query-flow">Entity Query Flow<a href="#entity-query-flow" class="hash-link" aria-label="Direct link to Entity Query Flow" title="Direct link to Entity Query Flow" translate="no">​</a></h3>
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">Client → Read API → Core API → Fetch from DBs based on output param → Response</span><br></span></code></pre></div></div>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="selective-retrieval">Selective Retrieval<a href="#selective-retrieval" class="hash-link" aria-label="Direct link to Selective Retrieval" title="Direct link to Selective Retrieval" translate="no">​</a></h3>
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">GET /v1/entities/{id}?output=metadata,relationships</span><br></span></code></pre></div></div>
+<p>Only fetches requested fields, reducing load and improving performance.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="temporal-query">Temporal Query<a href="#temporal-query" class="hash-link" aria-label="Direct link to Temporal Query" title="Direct link to Temporal Query" translate="no">​</a></h3>
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">GET /v1/entities/{id}/attributes?name=salary&amp;activeAt=2024-03-15T00:00:00Z</span><br></span></code></pre></div></div>
+<p>Returns attribute value as it was on specific date.</p>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="technology-stack-summary">Technology Stack Summary<a href="#technology-stack-summary" class="hash-link" aria-label="Direct link to Technology Stack Summary" title="Direct link to Technology Stack Summary" translate="no">​</a></h2>
+<table><thead><tr><th>Layer</th><th>Technology</th><th>Language</th></tr></thead><tbody><tr><td>Ingestion API</td><td>Ballerina</td><td>Ballerina</td></tr><tr><td>Read API</td><td>Ballerina</td><td>Ballerina</td></tr><tr><td>Core API</td><td>Go + gRPC</td><td>Go</td></tr><tr><td>MongoDB</td><td>MongoDB 5.0+</td><td>-</td></tr><tr><td>Neo4j</td><td>Neo4j 5.x</td><td>Cypher</td></tr><tr><td>PostgreSQL</td><td>PostgreSQL 14+</td><td>SQL</td></tr><tr><td>Messaging</td><td>Protobuf</td><td>IDL</td></tr><tr><td>Container</td><td>Docker + Compose</td><td>YAML</td></tr><tr><td>Testing</td><td>Various</td><td>Go, Ballerina, Python</td></tr></tbody></table>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="architecture-diagrams-at-a-glance">Architecture Diagrams at a Glance<a href="#architecture-diagrams-at-a-glance" class="hash-link" aria-label="Direct link to Architecture Diagrams at a Glance" title="Direct link to Architecture Diagrams at a Glance" translate="no">​</a></h2>
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">┌─────────────┐</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">│   Clients   │</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">└──────┬──────┘</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">       │ HTTP/JSON</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">┌──────┴──────────────┐</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">│    API Layer        │</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">│ Ingestion | Read    │</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">└──────┬──────────────┘</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">       │ gRPC/Protobuf</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">┌──────┴──────────────┐</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">│   Core API          │</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">│  (Orchestration)    │</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">└──────┬──────────────┘</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">       │ Native Protocols</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">┌──────┴──────────────────────────┐</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">│ MongoDB | Neo4j | PostgreSQL    │</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">│ Metadata| Graph | Attributes    │</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">└─────────────────────────────────┘</span><br></span></code></pre></div></div>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="development-workflow">Development Workflow<a href="#development-workflow" class="hash-link" aria-label="Direct link to Development Workflow" title="Direct link to Development Workflow" translate="no">​</a></h2>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="1-understanding-the-system">1. Understanding the System<a href="#1-understanding-the-system" class="hash-link" aria-label="Direct link to 1. Understanding the System" title="Direct link to 1. Understanding the System" translate="no">​</a></h3>
+<ul>
+<li class="">Read <a class="" href="/OpenGIN/docs/overview/architecture/">Overview</a></li>
+<li class="">Understand data flow</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="2-setting-up-development-environment">2. Setting Up Development Environment<a href="#2-setting-up-development-environment" class="hash-link" aria-label="Direct link to 2. Setting Up Development Environment" title="Direct link to 2. Setting Up Development Environment" translate="no">​</a></h3>
+<ul>
+<li class="">Clone repository</li>
+<li class="">Start databases: <code>docker-compose up -d mongodb neo4j postgres</code></li>
+<li class="">Start CORE service: <code>cd opengin/core-api &amp;&amp; ./core-service</code></li>
+<li class="">Start APIs: Ingestion API (port 8080), Query API (port 8081)</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="3-making-changes">3. Making Changes<a href="#3-making-changes" class="hash-link" aria-label="Direct link to 3. Making Changes" title="Direct link to 3. Making Changes" translate="no">​</a></h3>
+<p><strong>Adding new API endpoint</strong>:</p>
+<ol>
+<li class="">Update OpenAPI contract in <code>opengin/contracts/rest/</code></li>
+<li class="">Regenerate service code</li>
+<li class="">Implement endpoint logic</li>
+<li class="">Update <a class="" href="/OpenGIN/docs/overview/architecture/api-layer-details">Service APIs</a></li>
+</ol>
+<p><strong>Adding Core API feature</strong>:</p>
+<ol>
+<li class="">Implement in appropriate layer (server, engine, repository)</li>
+<li class="">Add tests</li>
+<li class="">Update <a class="" href="/OpenGIN/docs/overview/architecture/core-api">Core API Details</a></li>
+</ol>
+<p><strong>Modifying database schema</strong>:</p>
+<ol>
+<li class="">Consider impact across all databases</li>
+<li class="">Update schema migration scripts</li>
+<li class="">Update <a class="" href="/OpenGIN/docs/overview/architecture/database-schemas">Database Schemas</a></li>
+</ol>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="4-testing">4. Testing<a href="#4-testing" class="hash-link" aria-label="Direct link to 4. Testing" title="Direct link to 4. Testing" translate="no">​</a></h3>
+<ul>
+<li class="">Unit tests: <code>go test ./...</code> or <code>bal test</code></li>
+<li class="">Integration tests: E2E tests in <code>opengin/tests/e2e/</code></li>
+<li class="">Database tests: Ensure all databases are running</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="5-documentation">5. Documentation<a href="#5-documentation" class="hash-link" aria-label="Direct link to 5. Documentation" title="Direct link to 5. Documentation" translate="no">​</a></h3>
+<ul>
+<li class="">Update relevant architecture docs</li>
+<li class="">Add examples to appropriate sections</li>
+<li class="">Keep diagrams in sync with changes</li>
+</ul>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="security-considerations">Security Considerations<a href="#security-considerations" class="hash-link" aria-label="Direct link to Security Considerations" title="Direct link to Security Considerations" translate="no">​</a></h2>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="current-state">Current State<a href="#current-state" class="hash-link" aria-label="Direct link to Current State" title="Direct link to Current State" translate="no">​</a></h3>
+<ul>
+<li class="">Development mode: No authentication</li>
+<li class="">All endpoints publicly accessible</li>
+<li class="">No encryption in transit (within Docker network)</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="planned-enhancements">Planned Enhancements<a href="#planned-enhancements" class="hash-link" aria-label="Direct link to Planned Enhancements" title="Direct link to Planned Enhancements" translate="no">​</a></h3>
+<ul>
+<li class="">JWT authentication</li>
+<li class="">Role-based access control (RBAC)</li>
+<li class="">TLS/SSL for external communication</li>
+<li class="">API rate limiting</li>
+<li class="">Field-level access control</li>
+</ul>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="monitoring-and-observability">Monitoring and Observability<a href="#monitoring-and-observability" class="hash-link" aria-label="Direct link to Monitoring and Observability" title="Direct link to Monitoring and Observability" translate="no">​</a></h2>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="logging">Logging<a href="#logging" class="hash-link" aria-label="Direct link to Logging" title="Direct link to Logging" translate="no">​</a></h3>
+<ul>
+<li class="">Structured logging in all services</li>
+<li class="">Log aggregation (planned)</li>
+<li class="">Error tracking</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="metrics-planned">Metrics (Planned)<a href="#metrics-planned" class="hash-link" aria-label="Direct link to Metrics (Planned)" title="Direct link to Metrics (Planned)" translate="no">​</a></h3>
+<ul>
+<li class="">Request rates</li>
+<li class="">Response times</li>
+<li class="">Database query performance</li>
+<li class="">Error rates</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="tracing-planned">Tracing (Planned)<a href="#tracing-planned" class="hash-link" aria-label="Direct link to Tracing (Planned)" title="Direct link to Tracing (Planned)" translate="no">​</a></h3>
+<ul>
+<li class="">Distributed tracing with OpenTelemetry</li>
+<li class="">End-to-end request tracking</li>
+</ul>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="contributing-to-documentation">Contributing to Documentation<a href="#contributing-to-documentation" class="hash-link" aria-label="Direct link to Contributing to Documentation" title="Direct link to Contributing to Documentation" translate="no">​</a></h2>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="when-to-update-documentation">When to Update Documentation<a href="#when-to-update-documentation" class="hash-link" aria-label="Direct link to When to Update Documentation" title="Direct link to When to Update Documentation" translate="no">​</a></h3>
+<p>Update architecture docs when:</p>
+<ul>
+<li class="">Adding new services or components</li>
+<li class="">Changing data flow or structure</li>
+<li class="">Modifying database schemas</li>
+<li class="">Adding new features</li>
+<li class="">Changing APIs or contracts</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="documentation-style">Documentation Style<a href="#documentation-style" class="hash-link" aria-label="Direct link to Documentation Style" title="Direct link to Documentation Style" translate="no">​</a></h3>
+<ul>
+<li class="">Clear, concise language</li>
+<li class="">Include code examples</li>
+<li class="">Add diagrams where helpful</li>
+<li class="">Cross-reference related docs</li>
+<li class="">Keep examples up to date</li>
+</ul>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="related-documentation">Related Documentation<a href="#related-documentation" class="hash-link" aria-label="Direct link to Related Documentation" title="Direct link to Related Documentation" translate="no">​</a></h2>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="in-this-repository">In This Repository<a href="#in-this-repository" class="hash-link" aria-label="Direct link to In This Repository" title="Direct link to In This Repository" translate="no">​</a></h3>
+<ul>
+<li class=""><a href="https://github.com/LDFLK/OpenGIN/blob/main/README.md" target="_blank" rel="noopener noreferrer" class="">Main README</a> - Project overview and quick start</li>
+<li class=""><a class="" href="/OpenGIN/docs/overview/architecture/data_flow">How It Works</a> - Detailed data flow</li>
+<li class=""><a class="" href="/OpenGIN/docs/appendix/datatype">Data Types</a> - Type inference system</li>
+<li class=""><a class="" href="/OpenGIN/docs/appendix/storage">Storage Types</a> - Storage inference system</li>
+<li class=""><a class="" href="/OpenGIN/docs/appendix/operations/backup_integration">Deployment Guide</a> - Backup and restore</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="external-resources">External Resources<a href="#external-resources" class="hash-link" aria-label="Direct link to External Resources" title="Direct link to External Resources" translate="no">​</a></h3>
+<ul>
+<li class=""><a href="https://ballerina.io/learn/" target="_blank" rel="noopener noreferrer" class="">Ballerina Documentation</a></li>
+<li class=""><a href="https://grpc.io/docs/" target="_blank" rel="noopener noreferrer" class="">gRPC Documentation</a></li>
+<li class=""><a href="https://developers.google.com/protocol-buffers" target="_blank" rel="noopener noreferrer" class="">Protocol Buffers</a></li>
+<li class=""><a href="https://docs.mongodb.com/" target="_blank" rel="noopener noreferrer" class="">MongoDB Documentation</a></li>
+<li class=""><a href="https://neo4j.com/docs/" target="_blank" rel="noopener noreferrer" class="">Neo4j Documentation</a></li>
+<li class=""><a href="https://www.postgresql.org/docs/" target="_blank" rel="noopener noreferrer" class="">PostgreSQL Documentation</a></li>
+<li class=""><a href="https://docs.docker.com/" target="_blank" rel="noopener noreferrer" class="">Docker Documentation</a></li>
+</ul>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="version-history">Version History<a href="#version-history" class="hash-link" aria-label="Direct link to Version History" title="Direct link to Version History" translate="no">​</a></h2>
+<table><thead><tr><th>Version</th><th>Date</th><th>Changes</th></tr></thead><tbody><tr><td>1.0.0 - alpha</td><td>October 2024</td><td>Initial comprehensive architecture documentation</td></tr></tbody></table>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="contact-and-support">Contact and Support<a href="#contact-and-support" class="hash-link" aria-label="Direct link to Contact and Support" title="Direct link to Contact and Support" translate="no">​</a></h2>
+<p>For questions about the architecture:</p>
+<ul>
+<li class="">Review this documentation first</li>
+<li class="">Check related service READMEs</li>
+<li class="">Review code comments and tests</li>
+<li class="">Consult the development team</li>
+</ul>
+<hr></div><footer class="theme-doc-footer docusaurus-mt-lg"><div class="row margin-top--sm theme-doc-footer-edit-meta-row"><div class="col noPrint_WFHX"><a href="https://github.com/LDFLK/OpenGIN/tree/main/docs/docs/overview/architecture/getting-started.md" target="_blank" rel="noopener noreferrer" class="theme-edit-this-page"><svg fill="currentColor" height="20" width="20" viewBox="0 0 40 40" class="iconEdit_Z9Sw" aria-hidden="true"><g><path d="m34.5 11.7l-3 3.1-6.3-6.3 3.1-3q0.5-0.5 1.2-0.5t1.1 0.5l3.9 3.9q0.5 0.4 0.5 1.1t-0.5 1.2z m-29.5 17.1l18.4-18.5 6.3 6.3-18.4 18.4h-6.3v-6.2z"></path></g></svg>Edit this page</a></div><div class="col lastUpdated_JAkA"></div></div></footer></article><nav class="docusaurus-mt-lg pagination-nav" aria-label="Docs pages"></nav></div></div><div class="col col--3"><div class="tableOfContents_bqdL thin-scrollbar theme-doc-toc-desktop"><ul class="table-of-contents table-of-contents__left-border"><li><a href="#documentation-structure" class="table-of-contents__link toc-highlight">Documentation Structure</a><ul><li><a href="#1-overview---start-here" class="table-of-contents__link toc-highlight">1. Overview - <strong>START HERE</strong></a></li><li><a href="#2-core-api" class="table-of-contents__link toc-highlight">2. Core API</a></li><li><a href="#3-service-apis" class="table-of-contents__link toc-highlight">3. Service APIs</a></li><li><a href="#4-database-schemas" class="table-of-contents__link toc-highlight">4. Database Schemas</a></li></ul></li><li><a href="#quick-navigation" class="table-of-contents__link toc-highlight">Quick Navigation</a><ul><li><a href="#by-role" class="table-of-contents__link toc-highlight">By Role</a></li><li><a href="#by-task" class="table-of-contents__link toc-highlight">By Task</a></li></ul></li><li><a href="#key-concepts" class="table-of-contents__link toc-highlight">Key Concepts</a><ul><li><a href="#polyglot-database-strategy" class="table-of-contents__link toc-highlight">Polyglot Database Strategy</a></li><li><a href="#layered-architecture" class="table-of-contents__link toc-highlight">Layered Architecture</a></li><li><a href="#time-based-data" class="table-of-contents__link toc-highlight">Time-Based Data</a></li><li><a href="#type-and-storage-inference" class="table-of-contents__link toc-highlight">Type and Storage Inference</a></li></ul></li><li><a href="#architecture-principles" class="table-of-contents__link toc-highlight">Architecture Principles</a><ul><li><a href="#1-separation-of-concerns" class="table-of-contents__link toc-highlight">1. Separation of Concerns</a></li><li><a href="#2-database-specialization" class="table-of-contents__link toc-highlight">2. Database Specialization</a></li><li><a href="#3-contract-first-api-design" class="table-of-contents__link toc-highlight">3. Contract-First API Design</a></li><li><a href="#4-type-safety" class="table-of-contents__link toc-highlight">4. Type Safety</a></li><li><a href="#5-temporal-support" class="table-of-contents__link toc-highlight">5. Temporal Support</a></li></ul></li><li><a href="#common-patterns" class="table-of-contents__link toc-highlight">Common Patterns</a><ul><li><a href="#entity-creation-flow" class="table-of-contents__link toc-highlight">Entity Creation Flow</a></li><li><a href="#entity-query-flow" class="table-of-contents__link toc-highlight">Entity Query Flow</a></li><li><a href="#selective-retrieval" class="table-of-contents__link toc-highlight">Selective Retrieval</a></li><li><a href="#temporal-query" class="table-of-contents__link toc-highlight">Temporal Query</a></li></ul></li><li><a href="#technology-stack-summary" class="table-of-contents__link toc-highlight">Technology Stack Summary</a></li><li><a href="#architecture-diagrams-at-a-glance" class="table-of-contents__link toc-highlight">Architecture Diagrams at a Glance</a></li><li><a href="#development-workflow" class="table-of-contents__link toc-highlight">Development Workflow</a><ul><li><a href="#1-understanding-the-system" class="table-of-contents__link toc-highlight">1. Understanding the System</a></li><li><a href="#2-setting-up-development-environment" class="table-of-contents__link toc-highlight">2. Setting Up Development Environment</a></li><li><a href="#3-making-changes" class="table-of-contents__link toc-highlight">3. Making Changes</a></li><li><a href="#4-testing" class="table-of-contents__link toc-highlight">4. Testing</a></li><li><a href="#5-documentation" class="table-of-contents__link toc-highlight">5. Documentation</a></li></ul></li><li><a href="#security-considerations" class="table-of-contents__link toc-highlight">Security Considerations</a><ul><li><a href="#current-state" class="table-of-contents__link toc-highlight">Current State</a></li><li><a href="#planned-enhancements" class="table-of-contents__link toc-highlight">Planned Enhancements</a></li></ul></li><li><a href="#monitoring-and-observability" class="table-of-contents__link toc-highlight">Monitoring and Observability</a><ul><li><a href="#logging" class="table-of-contents__link toc-highlight">Logging</a></li><li><a href="#metrics-planned" class="table-of-contents__link toc-highlight">Metrics (Planned)</a></li><li><a href="#tracing-planned" class="table-of-contents__link toc-highlight">Tracing (Planned)</a></li></ul></li><li><a href="#contributing-to-documentation" class="table-of-contents__link toc-highlight">Contributing to Documentation</a><ul><li><a href="#when-to-update-documentation" class="table-of-contents__link toc-highlight">When to Update Documentation</a></li><li><a href="#documentation-style" class="table-of-contents__link toc-highlight">Documentation Style</a></li></ul></li><li><a href="#related-documentation" class="table-of-contents__link toc-highlight">Related Documentation</a><ul><li><a href="#in-this-repository" class="table-of-contents__link toc-highlight">In This Repository</a></li><li><a href="#external-resources" class="table-of-contents__link toc-highlight">External Resources</a></li></ul></li><li><a href="#version-history" class="table-of-contents__link toc-highlight">Version History</a></li><li><a href="#contact-and-support" class="table-of-contents__link toc-highlight">Contact and Support</a></li></ul></div></div></div></div></main></div></div></div><footer class="theme-layout-footer footer footer--dark"><div class="container container-fluid"><div class="row footer__links"><div class="theme-layout-footer-column col footer__col"><div class="footer__title">Docs</div><ul class="footer__items clean-list"><li class="footer__item"><a class="footer__link-item" href="/OpenGIN/docs/">Tutorial</a></li></ul></div><div class="theme-layout-footer-column col footer__col"><div class="footer__title">More</div><ul class="footer__items clean-list"><li class="footer__item"><a href="https://github.com/LDFLK/OpenGIN" target="_blank" rel="noopener noreferrer" class="footer__link-item">GitHub<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li></ul></div></div><div class="footer__bottom text--center"><div class="footer__copyright">Copyright © 2026 Lanka Data Foundation</div></div></div></footer></div>
+</body>
+</html>

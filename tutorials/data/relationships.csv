@@ -1,7 +1,0 @@
-from_id,relation,to_id,start_time
-person-alex,WORKS_AT,org-techcorp,2022-03-01T00:00:00Z
-person-alex,MEMBER_OF,org-fitgym,2023-01-15T00:00:00Z
-person-alex,LIVES_AT,place-home,2023-05-01T00:00:00Z
-person-alex,FREQUENTS,place-cafe,2023-06-01T00:00:00Z
-person-alex,SHOPS_AT,place-supermarket,2023-05-01T00:00:00Z
-person-alex,SUBSCRIBED_TO,org-netprovider,2023-05-01T00:00:00Z
