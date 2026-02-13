@@ -74,9 +74,11 @@ RUN apt-get update && \
     apt-get upgrade -y libssl3t64 openssl openssl-provider-legacy && \
     apt-get install -y ca-certificates gnupg curl wget unzip default-jdk postgresql-client netcat-openbsd && \
     # Download and install mongosh directly (avoid repository GPG key SHA1 issue)
-    wget https://downloads.mongodb.com/compass/mongodb-mongosh_2.1.1_amd64.deb && \
-    dpkg -i mongodb-mongosh_2.1.1_amd64.deb || apt-get install -f -y && \
-    rm mongodb-mongosh_2.1.1_amd64.deb && \
+    # Detect architecture for multi-arch support (amd64/arm64)
+    ARCH=$(dpkg --print-architecture) && \
+    wget --tries=3 --timeout=10 https://downloads.mongodb.com/compass/mongodb-mongosh_2.1.1_${ARCH}.deb && \
+    dpkg -i mongodb-mongosh_2.1.1_${ARCH}.deb || apt-get install -f -y && \
+    rm mongodb-mongosh_2.1.1_${ARCH}.deb && \
     # Download and install Cypher Shell
     wget https://dist.neo4j.org/cypher-shell/cypher-shell-5.26.5.zip && \
     unzip cypher-shell-5.26.5.zip && \

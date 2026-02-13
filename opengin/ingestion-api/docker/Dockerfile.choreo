@@ -149,10 +149,22 @@ FROM ballerina/ballerina:2201.11.0
 USER root
 
 # Install runtime dependencies and create user
-RUN for i in 1 2 3; do \
-        apk add --no-cache ca-certificates netcat-openbsd dos2unix shadow \
-        && break || sleep 5; \
-    done && \
+RUN success=0; \
+    for i in 1 2 3; do \
+        if apk add --no-cache ca-certificates netcat-openbsd dos2unix shadow; then \
+            success=1; \
+            break; \
+        else \
+            if [ "$i" -lt 3 ]; then \
+                echo "Attempt $i failed. Retrying in 5 seconds..."; \
+                sleep 5; \
+            fi; \
+        fi; \
+    done; \
+    if [ "$success" -ne 1 ]; then \
+        echo "ERROR: Failed to install runtime dependencies after 3 attempts." >&2; \
+        exit 1; \
+    fi; \
     groupadd -g 10014 choreo && \
     useradd -u 10014 -g choreo -s /bin/bash -m choreouser
 
