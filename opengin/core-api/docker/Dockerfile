@@ -73,13 +73,10 @@ RUN apt-get update && \
     # Upgrade OpenSSL packages to fix CVE-2025-15467 (CRITICAL)
     apt-get upgrade -y libssl3t64 openssl openssl-provider-legacy && \
     apt-get install -y ca-certificates gnupg curl wget unzip default-jdk postgresql-client netcat-openbsd && \
-    # Add MongoDB repository
-    curl -fsSL https://pgp.mongodb.com/server-6.0.asc | \
-    gpg -o /usr/share/keyrings/mongodb-server-6.0.gpg --dearmor && \
-    echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-6.0.gpg ] https://repo.mongodb.org/apt/debian bullseye/mongodb-org/6.0 main" | \
-    tee /etc/apt/sources.list.d/mongodb-org-6.0.list && \
-    apt-get update && \
-    apt-get install -y mongodb-mongosh && \
+    # Download and install mongosh directly (avoid repository GPG key SHA1 issue)
+    wget https://downloads.mongodb.com/compass/mongodb-mongosh_2.1.1_amd64.deb && \
+    dpkg -i mongodb-mongosh_2.1.1_amd64.deb || apt-get install -f -y && \
+    rm mongodb-mongosh_2.1.1_amd64.deb && \
     # Download and install Cypher Shell
     wget https://dist.neo4j.org/cypher-shell/cypher-shell-5.26.5.zip && \
     unzip cypher-shell-5.26.5.zip && \
@@ -104,9 +101,10 @@ COPY --from=builder /app/opengin/core-api /app/opengin/core-api
 COPY --from=builder /etc/passwd /etc/passwd
 COPY --from=builder /etc/group /etc/group
 
-# Copy the startup script
-COPY opengin/core-api/docker/core_startup.sh /app/start.sh
-RUN chmod +x /app/start.sh
+# Copy the startup script from builder stage
+COPY --from=builder /app/opengin/core-api/docker/core_startup.sh /app/start.sh
+# Fix line endings and make executable
+RUN sed -i 's/\r$//' /app/start.sh && chmod +x /app/start.sh
 
 # Set environment variables with defaults for Neo4j connection
 ENV NEO4J_URI=${NEO4J_URI:-bolt://neo4j:7687}

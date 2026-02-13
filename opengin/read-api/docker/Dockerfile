@@ -9,10 +9,13 @@ FROM ballerina/ballerina:2201.11.0
 
 # Install system packages
 USER root
-RUN apk update && apk add --no-cache \
-    curl gnupg wget net-tools nano \
-    unzip netcat-openbsd iputils bind-tools \
-    dos2unix \
+RUN for i in 1 2 3; do \
+        apk update && apk add --no-cache \
+        curl gnupg wget net-tools nano \
+        unzip netcat-openbsd iputils bind-tools \
+        dos2unix \
+        && break || sleep 5; \
+    done \
     && rm -rf /var/cache/apk/*
 
 WORKDIR /app

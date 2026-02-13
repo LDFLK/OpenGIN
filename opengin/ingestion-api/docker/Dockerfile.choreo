@@ -113,7 +113,10 @@ COPY . .
 USER root
 
 # Install shadow package and create user/group
-RUN apk add --no-cache shadow && \
+RUN for i in 1 2 3; do \
+        apk add --no-cache shadow \
+        && break || sleep 5; \
+    done && \
     groupadd -g 10014 choreo && \
     useradd -u 10014 -g choreo -s /bin/bash -m choreouser && \
     mkdir -p /home/choreouser/.ballerina && \
@@ -121,7 +124,10 @@ RUN apk add --no-cache shadow && \
     chmod -R 755 /home/choreouser
 
 # Install runtime dependencies
-RUN apk add --no-cache ca-certificates netcat-openbsd dos2unix
+RUN for i in 1 2 3; do \
+        apk add --no-cache ca-certificates netcat-openbsd dos2unix \
+        && break || sleep 5; \
+    done
 
 # Create and set permissions for build directories
 RUN mkdir -p /app/target && \
@@ -143,7 +149,10 @@ FROM ballerina/ballerina:2201.11.0
 USER root
 
 # Install runtime dependencies and create user
-RUN apk add --no-cache ca-certificates netcat-openbsd dos2unix shadow && \
+RUN for i in 1 2 3; do \
+        apk add --no-cache ca-certificates netcat-openbsd dos2unix shadow \
+        && break || sleep 5; \
+    done && \
     groupadd -g 10014 choreo && \
     useradd -u 10014 -g choreo -s /bin/bash -m choreouser
 
