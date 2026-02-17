@@ -113,10 +113,7 @@ COPY . .
 USER root
 
 # Install shadow package and create user/group
-RUN for i in 1 2 3; do \
-        apk add --no-cache shadow \
-        && break || sleep 5; \
-    done && \
+RUN apk add --no-cache shadow && \
     groupadd -g 10014 choreo && \
     useradd -u 10014 -g choreo -s /bin/bash -m choreouser && \
     mkdir -p /home/choreouser/.ballerina && \
@@ -124,10 +121,7 @@ RUN for i in 1 2 3; do \
     chmod -R 755 /home/choreouser
 
 # Install runtime dependencies
-RUN for i in 1 2 3; do \
-        apk add --no-cache ca-certificates netcat-openbsd dos2unix \
-        && break || sleep 5; \
-    done
+RUN apk add --no-cache ca-certificates netcat-openbsd dos2unix
 
 # Create and set permissions for build directories
 RUN mkdir -p /app/target && \
@@ -149,22 +143,7 @@ FROM ballerina/ballerina:2201.11.0
 USER root
 
 # Install runtime dependencies and create user
-RUN success=0; \
-    for i in 1 2 3; do \
-        if apk add --no-cache ca-certificates netcat-openbsd dos2unix shadow; then \
-            success=1; \
-            break; \
-        else \
-            if [ "$i" -lt 3 ]; then \
-                echo "Attempt $i failed. Retrying in 5 seconds..."; \
-                sleep 5; \
-            fi; \
-        fi; \
-    done; \
-    if [ "$success" -ne 1 ]; then \
-        echo "ERROR: Failed to install runtime dependencies after 3 attempts." >&2; \
-        exit 1; \
-    fi; \
+RUN apk add --no-cache ca-certificates netcat-openbsd dos2unix shadow && \
     groupadd -g 10014 choreo && \
     useradd -u 10014 -g choreo -s /bin/bash -m choreouser
 
