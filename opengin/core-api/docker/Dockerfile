@@ -41,7 +41,7 @@
 # docker network create core-network
 
 # Build stage for CORE service
-FROM golang:1.23 AS builder
+FROM golang:1.23-bookworm AS builder
 
 # Set working directory
 WORKDIR /app
@@ -66,12 +66,12 @@ RUN cd opengin/core-api && \
 #     adduser  --disabled-password  --no-create-home --uid 10014 --ingroup choreo choreouser
 
 # Final stage
-FROM golang:1.24
+FROM golang:1.24-bookworm
 
 # Install runtime dependencies and qemu for emulation
 RUN apt-get update && \
     # Upgrade OpenSSL packages to fix CVE-2025-15467 (CRITICAL)
-    apt-get upgrade -y libssl3t64 openssl openssl-provider-legacy && \
+    apt-get upgrade -y libssl3 openssl && \
     apt-get install -y ca-certificates gnupg curl wget unzip default-jdk postgresql-client netcat-openbsd && \
     # Download and install mongosh directly (avoid repository GPG key SHA1 issue)
     # Detect architecture for multi-arch support (amd64/arm64)

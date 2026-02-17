@@ -58,7 +58,7 @@
 # The hostnames 'neo4j' and 'mongodb' are resolved within the ldf-network.
 
 # Build stage for CORE service
-FROM golang:1.23 AS builder
+FROM golang:1.23-bookworm AS builder
 
 # Set working directory
 WORKDIR /app
@@ -80,12 +80,12 @@ RUN go mod download
 RUN CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' -o core-service cmd/server/service.go cmd/server/utils.go
 
 # Final stage
-FROM golang:1.24
+FROM golang:1.24-bookworm
 
 # Install runtime dependencies and database client tools
 RUN apt-get update && \
     # Upgrade OpenSSL packages to fix CVE-2025-15467 (CRITICAL)
-    apt-get upgrade -y libssl3t64 openssl openssl-provider-legacy && \
+    apt-get upgrade -y libssl3 openssl && \
     apt-get install -y ca-certificates gnupg curl wget unzip default-jdk postgresql-client netcat-openbsd && \
     # Download and install mongosh directly (avoid repository GPG key SHA1 issue)
     # Detect architecture for multi-arch support (amd64/arm64)

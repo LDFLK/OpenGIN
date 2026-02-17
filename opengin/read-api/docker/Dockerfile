@@ -9,26 +9,11 @@ FROM ballerina/ballerina:2201.11.0
 
 # Install system packages
 USER root
-RUN success=0; \
-    for i in 1 2 3; do \
-        if apk update && apk add --no-cache \
-            curl gnupg wget net-tools nano \
-            unzip netcat-openbsd iputils bind-tools \
-            dos2unix; then \
-            success=1; \
-            break; \
-        else \
-            if [ "$i" -lt 3 ]; then \
-                echo "Attempt $i failed. Retrying in 5 seconds..."; \
-                sleep 5; \
-            fi; \
-        fi; \
-    done; \
-    if [ "$success" -ne 1 ]; then \
-        echo "ERROR: Failed to install system packages after 3 attempts." >&2; \
-        exit 1; \
-    fi; \
-    rm -rf /var/cache/apk/*
+RUN apk update && apk add --no-cache \
+    curl gnupg wget net-tools nano \
+    unzip netcat-openbsd iputils bind-tools \
+    dos2unix \
+    && rm -rf /var/cache/apk/*
 
 WORKDIR /app
 
