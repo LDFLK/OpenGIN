@@ -41,7 +41,7 @@
 # docker network create core-network
 
 # Build stage for CORE service
-FROM golang:1.23 AS builder
+FROM golang:1.23-bookworm AS builder
 
 # Set working directory
 WORKDIR /app
@@ -66,12 +66,12 @@ RUN cd opengin/core-api && \
 #     adduser  --disabled-password  --no-create-home --uid 10014 --ingroup choreo choreouser
 
 # Final stage
-FROM golang:1.24
+FROM golang:1.24-bookworm
 
 # Install runtime dependencies and qemu for emulation
 RUN apt-get update && \
     # Upgrade OpenSSL packages to fix CVE-2025-15467 (CRITICAL)
-    apt-get upgrade -y libssl3t64 openssl openssl-provider-legacy && \
+    apt-get upgrade -y libssl3 openssl && \
     apt-get install -y ca-certificates gnupg curl wget unzip default-jdk postgresql-client netcat-openbsd && \
     # Add MongoDB repository
     curl -fsSL https://pgp.mongodb.com/server-6.0.asc | \
@@ -104,9 +104,10 @@ COPY --from=builder /app/opengin/core-api /app/opengin/core-api
 COPY --from=builder /etc/passwd /etc/passwd
 COPY --from=builder /etc/group /etc/group
 
-# Copy the startup script
-COPY opengin/core-api/docker/core_startup.sh /app/start.sh
-RUN chmod +x /app/start.sh
+# Copy the startup script from builder stage
+COPY --from=builder /app/opengin/core-api/docker/core_startup.sh /app/start.sh
+# Fix line endings and make executable
+RUN sed -i 's/\r$//' /app/start.sh && chmod +x /app/start.sh
 
 # Set environment variables with defaults for Neo4j connection
 ENV NEO4J_URI=${NEO4J_URI:-bolt://neo4j:7687}
