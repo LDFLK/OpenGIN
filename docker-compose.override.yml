@@ -2,8 +2,6 @@
 # This file uses tmpfs volumes to ensure fresh databases on every run
 # Usage: docker compose -f docker-compose.yml -f docker-compose.override.yml up
 
-version: '3.8'
-
 services:
   mongodb:
     volumes:
