@@ -5,6 +5,6 @@ endpoints:
     service:
       basePath: /
       port: 27017
-    type: REST
+    type: TCP
     networkVisibilities: 
       - Project

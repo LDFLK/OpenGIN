@@ -31,9 +31,9 @@ RUN groupadd -g 10014 choreo && \
     echo "choreouser ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 
 # Create directories with proper permissions for choreo user
-RUN mkdir -p /var/lib/mongodb /var/log/mongodb /data/db /data/configdb /data/backup /var/run/mongodb \
-    && chown -R 10014:10014 /var/lib/mongodb /var/log/mongodb /data/db /data/configdb /data/backup /var/run/mongodb \
-    && chmod -R 755 /var/lib/mongodb /var/log/mongodb /data/db /data/configdb /data/backup /var/run/mongodb
+RUN mkdir -p /var/lib/mongodb /var/log/mongodb /data/db /data/configdb /data/backup /var/run/mongodb /tmp/db \
+    && chown -R 10014:10014 /var/lib/mongodb /var/log/mongodb /data/db /data/configdb /data/backup /var/run/mongodb /tmp/db \
+    && chmod -R 755 /var/lib/mongodb /var/log/mongodb /data/db /data/configdb /data/backup /var/run/mongodb /tmp/db
 
 # Set environment variables
 ENV MONGO_INITDB_ROOT_USERNAME=admin
@@ -42,7 +42,7 @@ ENV MONGO_INITDB_DATABASE=opengin
 
 # GitHub backup restore configuration
 ENV GITHUB_BACKUP_REPO=${OPENGIN_GITHUB_BACKUP_REPO:-LDFLK/data-backups} \
-    BACKUP_VERSION=${OPENGIN_DB_BACKUP_VERSION:-0.0.1} \
+    BACKUP_VERSION=${OPENGIN_DB_BACKUP_VERSION:-0.0.4} \
     BACKUP_ENVIRONMENT=${OPENGIN_CHOREO_ENVIRONMENT:-development} \
     RESTORE_FROM_GITHUB=true
 
@@ -51,7 +51,7 @@ RUN echo "net:\n\
   port: 27017\n\
   bindIp: 0.0.0.0\n\
 storage:\n\
-  dbPath: /data/db\n\
+  dbPath: /tmp/db\n\
 systemLog:\n\
   destination: file\n\
   logAppend: true\n\
@@ -72,13 +72,13 @@ log() {\n\
 \n\
 # Ensure choreo user has proper permissions (volumes may reset ownership)\n\
 log "INFO" "Setting up permissions for choreo user..."\n\
-sudo chown -R 10014:10014 /var/lib/mongodb /var/log/mongodb /data/db /data/configdb /data/backup /var/run/mongodb\n\
-sudo chmod -R 755 /var/lib/mongodb /var/log/mongodb /data/db /data/configdb /data/backup /var/run/mongodb\n\
+sudo chown -R 10014:10014 /var/lib/mongodb /var/log/mongodb /data/db /data/configdb /data/backup /var/run/mongodb /tmp/db\n\
+sudo chmod -R 755 /var/lib/mongodb /var/log/mongodb /data/db /data/configdb /data/backup /var/run/mongodb /tmp/db\n\
 \n\
 # Function to restore from GitHub backup\n\
 restore_from_github() {\n\
     local github_repo="${GITHUB_BACKUP_REPO:-LDFLK/data-backups}"\n\
-    local version="${BACKUP_VERSION:-0.0.1}"\n\
+    local version="${BACKUP_VERSION:-0.0.4}"\n\
     local environment="${BACKUP_ENVIRONMENT:-development}"\n\
     \n\
     log "INFO" "Starting MongoDB GitHub backup restore..."\n\
@@ -166,6 +166,8 @@ restore_from_github() {\n\
         log "SUCCESS" "MongoDB database restored successfully using mongorestore"\n\
         # Clean up backup files\n\
         rm -rf /data/backup/opengin\n\
+        rm -rf "$temp_dir"\n\
+        return 1\n\
     else\n\
         log "ERROR" "Failed to restore MongoDB database using mongorestore"\n\
         rm -rf /data/backup/opengin\n\
@@ -179,7 +181,7 @@ restore_from_github() {\n\
 \n\
 # Start MongoDB in background first\n\
 log "INFO" "Starting MongoDB in background..."\n\
-mongod --dbpath /data/db --logpath /var/log/mongodb/mongod.log --bind_ip_all &\n\
+mongod --dbpath /tmp/db --logpath /var/log/mongodb/mongod.log --bind_ip_all &\n\
 MONGODB_PID=$!\n\
 \n\
 # Wait for MongoDB to start\n\
@@ -200,6 +202,7 @@ if [ -n "${MONGO_INITDB_ROOT_USERNAME}" ] && [ -n "${MONGO_INITDB_ROOT_PASSWORD}
         log "INFO" "Creating admin user..."\n\
         mongo admin --quiet > /dev/null 2>&1 <<< "db.createUser({user: '\''${MONGO_INITDB_ROOT_USERNAME}'\'', pwd: '\''${MONGO_INITDB_ROOT_PASSWORD}'\'', roles: [{role: '\''root'\'', db: '\''admin'\''}]})"\n\
         log "SUCCESS" "Admin user created"\n\
+        # Create user in opengin db as well if needed, but not strictly required if using admin auth\n\
     fi\n\
 fi\n\
 \n\
@@ -211,6 +214,8 @@ if [ "${RESTORE_FROM_GITHUB:-false}" = "true" ]; then\n\
         restore_from_github || log "WARNING" "GitHub restore failed, continuing with empty database"\n\
     else\n\
         log "INFO" "opengin database already exists, skipping restore"\n\
+        # List collections for verification\n\
+        mongo opengin --quiet --eval "db.getCollectionNames()" || true\n\
     fi\n\
 fi\n\
 \n\
@@ -222,14 +227,66 @@ sleep 3\n\
 \n\
 # Start MongoDB in foreground\n\
 log "INFO" "Starting MongoDB in foreground mode..."\n\
-exec mongod --dbpath /data/db --logpath /var/log/mongodb/mongod.log --bind_ip_all' > /custom-entrypoint.sh \
+exec mongod --dbpath /tmp/db --logpath /var/log/mongodb/mongod.log --bind_ip_all' > /custom-entrypoint.sh \
     && chmod +x /custom-entrypoint.sh
 
 # Switch to choreo user (required for Choreo platform)
+# ----------------------------------------------------------------------
+# NEW STEP: Build-time Data Ingestion
+# ----------------------------------------------------------------------
+USER root
+
+# Run the build-time restore
+RUN mkdir -p /tmp/db && chown -R 10014:10014 /tmp/db && chmod -R 755 /tmp/db && \
+    GITHUB_REPO="${GITHUB_BACKUP_REPO}" && \
+    VERSION="${BACKUP_VERSION}" && \
+    ENV_NAME="${BACKUP_ENVIRONMENT}" && \
+    \
+    # Create temp workspace
+    temp_dir=$(mktemp -d) && \
+    echo "Downloading backup..." && \
+    wget -q "https://github.com/$GITHUB_REPO/archive/refs/tags/$VERSION.zip" -O "$temp_dir/archive.zip" && \
+    \
+    echo "Unzipping..." && \
+    unzip -q "$temp_dir/archive.zip" -d "$temp_dir" && \
+    \
+    echo "Starting temporary MongoDB..." && \
+    mongod --fork --logpath /var/log/mongodb/mongod_build.log --dbpath /tmp/db --bind_ip 127.0.0.1 && \
+    \
+    # Wait for MongoDB
+    until mongo --eval "db.adminCommand('ping')" > /dev/null 2>&1; do sleep 1; done && \
+    \
+    # Setup Admin User (so we can restore)
+    mongo admin --quiet --eval "db.createUser({user: '${MONGO_INITDB_ROOT_USERNAME}', pwd: '${MONGO_INITDB_ROOT_PASSWORD}', roles: [{role: 'root', db: 'admin'}]})" && \
+    \
+    echo "Restoring Database..." && \
+    # The backup extraction path logic needs to match entrypoint logic roughly
+    archive_dir="$temp_dir/data-backups-$VERSION" && \
+    mongodb_backup="$archive_dir/opengin/$ENV_NAME/mongodb/opengin.tar.gz" && \
+    \
+    # Extract the tar.gz payload inside the zip
+    mkdir -p "$temp_dir/restore_source" && \
+    tar -xzf "$mongodb_backup" -C "$temp_dir/restore_source" && \
+    \
+    restore_path="$temp_dir/restore_source" && \
+    if [ -d "$temp_dir/restore_source/opengin" ]; then restore_path="$temp_dir/restore_source/opengin"; fi && \
+    if [ -d "$temp_dir/restore_source/opengin/opengin" ]; then restore_path="$temp_dir/restore_source/opengin/opengin"; fi && \
+    \
+    echo "Running mongorestore from $restore_path..." && \
+    mongorestore --host=localhost:27017 --username=${MONGO_INITDB_ROOT_USERNAME} --password=${MONGO_INITDB_ROOT_PASSWORD} --authenticationDatabase=admin --drop "$restore_path" && \
+    \
+    echo "Shutting down MongoDB..." && \
+    mongo admin --username=${MONGO_INITDB_ROOT_USERNAME} --password=${MONGO_INITDB_ROOT_PASSWORD} --authenticationDatabase=admin --eval "db.shutdownServer()" && \
+    \
+    echo "Cleanup..." && \
+    rm -rf "$temp_dir" && \
+    # Ensure permissions are correct after all root operations
+    chown -R 10014:10014 /tmp/db /var/log/mongodb
+
 USER 10014
 
 # Define volumes for data persistence
-VOLUME ["/data/db", "/data/configdb", "/data/backup"]
+VOLUME ["/tmp/db", "/data/configdb", "/data/backup"]
 
 # Expose ports
 EXPOSE 27017
