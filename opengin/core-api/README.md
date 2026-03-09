@@ -30,7 +30,7 @@ cp env.template .env
 # after updating the required fields to be added to the environment
 # (you can find the example env configurations here)
 source .env
-go test -v ./...
+go test -v ./... -count=1 -p=1
 ./core-service
 
 
