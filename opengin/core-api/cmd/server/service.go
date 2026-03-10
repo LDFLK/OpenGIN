@@ -182,11 +182,17 @@ func (s *Server) ReadEntity(ctx context.Context, req *pb.ReadEntityRequest) (*pb
 			// Use the EntityAttributeProcessor to read and process attributes
 			processor := engine.NewEntityAttributeProcessor()
 
-			// Extract fields from the request attributes based on storage type
-			fields := extractFieldsFromAttributes(req.Entity.Attributes)
+			// Extract fields and record filters from the request attributes based on storage type
+			fields, recordFilters := extractFieldsFromAttributes(req.Entity.Attributes)
 			log.Printf("Extracted fields from attributes: %v", fields)
 
-			readOptions := engine.NewReadOptions(make(map[string]interface{}), fields...)
+			// Convert record filters to the filters map for ReadOptions
+			filtersMap := make(map[string]interface{})
+			if len(recordFilters) > 0 {
+				filtersMap["record_filters"] = recordFilters
+			}
+
+			readOptions := engine.NewReadOptions(filtersMap, fields...)
 
 			// Process the entity with attributes to get the results map
 			attributeResults := processor.ProcessEntityAttributes(ctx, req.Entity, "read", readOptions)
@@ -399,8 +405,9 @@ func (s *Server) ReadEntities(ctx context.Context, req *pb.ReadEntityRequest) (*
 // extractFieldsFromAttributes extracts field names from entity attributes based on storage type
 // TODO: Limitation in multi-value attribute reads.
 // FIXME: https://github.com/LDFLK/nexoan/issues/285
-func extractFieldsFromAttributes(attributes map[string]*pb.TimeBasedValueList) []string {
+func extractFieldsFromAttributes(attributes map[string]*pb.TimeBasedValueList) ([]string, []postgres.RecordFilter) {
 	var fields []string
+	var records []postgres.RecordFilter
 
 	for attrName, attrValueList := range attributes {
 		if attrValueList == nil || len(attrValueList.Values) == 0 {
@@ -428,6 +435,12 @@ func extractFieldsFromAttributes(attributes map[string]*pb.TimeBasedValueList) [
 			} else {
 				log.Printf("Warning: could not extract columns from tabular attribute %s: %v", attrName, err)
 			}
+
+			if rows, err := extractRowsFromTabularAttributes(value.Value); err == nil {
+				records = append(records, rows...)
+			} else {
+				log.Printf("Warning: could not extract rows from tabular attribute %s: %v", attrName, err)
+			}
 		case "graph":
 			// TODO: Handle graph data fields
 			log.Printf("Graph data fields extraction not implemented yet for attribute %s", attrName)
@@ -438,8 +451,7 @@ func extractFieldsFromAttributes(attributes map[string]*pb.TimeBasedValueList) [
 			log.Printf("Unknown storage type %s for attribute %s", storageType, attrName)
 		}
 	}
-
-	return fields
+	return fields, records
 }
 
 // determineStorageTypeFromValue determines the storage type from a protobuf Any value
@@ -507,6 +519,65 @@ func extractColumnsFromTabularAttribute(anyValue *anypb.Any) ([]string, error) {
 	}
 
 	return columns, nil
+}
+
+// extractRowsFromTabularAttributes extracts row filters from a tabular attribute value
+func extractRowsFromTabularAttributes(anyValue *anypb.Any) ([]postgres.RecordFilter, error) {
+	message, err := anyValue.UnmarshalNew()
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal Any value: %v", err)
+	}
+
+	structValue, ok := message.(*structpb.Struct)
+	if !ok {
+		return nil, fmt.Errorf("expected struct value")
+	}
+
+	rowsField, exists := structValue.Fields["rows"]
+	if !exists {
+		return nil, fmt.Errorf("no rows found")
+	}
+
+	listValue := rowsField.GetListValue()
+
+	if listValue == nil {
+		return nil, fmt.Errorf("rows field is not a list")
+	}
+
+	var filters []postgres.RecordFilter
+	for _, val := range listValue.Values {
+		datum := val.GetStructValue()
+		if datum == nil {
+			continue
+		}
+
+		filter := postgres.RecordFilter{}
+		fieldName, ok := datum.Fields["field_name"]
+		if !ok || fieldName.GetStringValue() == "" {
+			log.Printf("Warning: skipping record filter, missing or empty 'field_name'")
+			continue
+		}
+
+		operator, ok := datum.Fields["operator"]
+		if !ok || operator.GetStringValue() == "" {
+			log.Printf("Warning: skipping record filter, missing or empty 'operator'")
+			continue
+		}
+
+		value, ok := datum.Fields["value"]
+		if !ok || value.GetStringValue() == "" {
+			log.Printf("Warning: skipping record filter, missing or empty 'value'")
+			continue
+		}
+
+		filter.FieldName = fieldName.GetStringValue()
+		filter.Operator = operator.GetStringValue()
+		filter.Value = value.GetStringValue()
+
+		filters = append(filters, filter)
+	}
+
+	return filters, nil
 }
 
 // Start the gRPC server

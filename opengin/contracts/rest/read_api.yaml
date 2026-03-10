@@ -31,8 +31,7 @@ paths:
   /entities/search:
     post:
       summary: Get entities based on id or filter criteria
-      description:
-        This endpoint allows you to search for entities using either a specific `id` or a set of filter criteria. 
+      description: This endpoint allows you to search for entities using either a specific `id` or a set of filter criteria.
 
       requestBody:
         required: true
@@ -125,7 +124,7 @@ paths:
                   Structure may vary based on entity type.
 
   /entities/{entityId}/attributes/{attributeName}:
-    get:
+    post:
       summary: Get entity attribute
       parameters:
         - name: entityId
@@ -159,6 +158,36 @@ paths:
             items:
               type: string
             default: ["*"]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                records:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      field_name:
+                        type: string
+                      operator:
+                        type: string
+                        description: "The comparison operator to use."
+                        enum:
+                          - "eq"
+                          - "neq"
+                          - "gt"
+                          - "lt"
+                          - "gte"
+                          - "lte"
+                          - "contains"
+                          - "notcontains"
+                        default: "eq"
+                      value:
+                        type: string
+                  description: "List of record filters to apply row base filtering"
       responses:
         200:
           description: Attribute value(s)
@@ -273,4 +302,3 @@ paths:
                       format: date-time
                     direction:
                       type: string
-                    

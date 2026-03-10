@@ -638,6 +638,13 @@ type TabularData struct {
 	Rows    [][]interface{} `json:"rows"`
 }
 
+// RecordFilter represents a single row level filter
+type RecordFilter struct {
+	FieldName string
+	Operator  string
+	Value     string
+}
+
 // GetData retrieves data from a table with optional field selection and filters, returns it as pb.Any with JSON-formatted tabular data.
 func (repo *PostgresRepository) GetData(ctx context.Context, tableName string, filters map[string]interface{}, fields ...string) (*anypb.Any, error) {
 	log.Printf("DEBUG: GetData: tableName=%s, \t\nfilters=%v, \t\nfields=%v", tableName, filters, fields)
@@ -668,6 +675,44 @@ func (repo *PostgresRepository) GetData(ctx context.Context, tableName string, f
 
 	// Add filters to the query
 	for key, value := range filters {
+		// Handle RecordFilter slices (operator-based row filtering)
+		if key == "record_filters" {
+			if recordFilters, ok := value.([]RecordFilter); ok {
+				for _, rf := range recordFilters {
+					sqlOp := "="
+					switch rf.Operator {
+					case "eq":
+						sqlOp = "="
+					case "neq":
+						sqlOp = "!="
+					case "gt":
+						sqlOp = ">"
+					case "lt":
+						sqlOp = "<"
+					case "lte":
+						sqlOp = "<="
+					case "gte":
+						sqlOp = ">="
+					case "contains":
+						sqlOp = "ILIKE"
+					case "notcontains":
+						sqlOp = "NOT ILIKE"
+					}
+
+					if rf.Operator == "contains" || rf.Operator == "notcontains" {
+						whereClauses = append(whereClauses, fmt.Sprintf("%s %s $%d", commons.SanitizeIdentifier(rf.FieldName), sqlOp, argCount))
+						args = append(args, "%"+rf.Value+"%")
+					} else {
+						whereClauses = append(whereClauses, fmt.Sprintf("%s %s $%d", commons.SanitizeIdentifier(rf.FieldName), sqlOp, argCount))
+						args = append(args, rf.Value)
+					}
+					argCount++
+				}
+			}
+			continue
+		}
+
+		// Default: simple equality filter
 		whereClauses = append(whereClauses, fmt.Sprintf("%s = $%d", commons.SanitizeIdentifier(key), argCount))
 		args = append(args, value)
 		argCount++
@@ -723,9 +768,12 @@ func (repo *PostgresRepository) GetData(ctx context.Context, tableName string, f
 	}
 
 	var tabularRows [][]interface{}
+	log.Printf("DEBUG: [DataHandler.GetData] rows: %v", rows)
 	for rows.Next() {
 		rowValues := make([]interface{}, len(resultColumns))
 		rowPointers := make([]interface{}, len(resultColumns))
+		log.Printf("DEBUG: [DataHandler.GetData] rowValues: %v", rowValues)
+		log.Printf("DEBUG: [DataHandler.GetData] rowPointers: %v", rowPointers)
 		for i := range rowValues {
 			rowPointers[i] = &rowValues[i]
 		}

@@ -649,3 +649,427 @@ func TestGetDataTabularFormat(t *testing.T) {
 	assert.Len(t, filteredRows, 1)
 	assert.Equal(t, expectedRows[0], filteredRows[0].([]interface{}))
 }
+
+func TestGetDataWithRowFiltering(t *testing.T) {
+	repo := setupTestDB(t)
+	// Do not defer repo.Close() here - let cleanup handle it
+
+	// Use unique table name for this test
+	tableName := fmt.Sprintf("test_data_table_%d", time.Now().UnixNano())
+
+	// Create a dummy table and insert data
+	_, err := repo.DB().Exec(fmt.Sprintf(`
+		CREATE TABLE %s (
+			id SERIAL PRIMARY KEY,
+			col1 TEXT,
+			col2 INTEGER,
+			col3 FLOAT,
+			col4 BOOLEAN
+		)
+	`, tableName))
+	assert.NoError(t, err)
+
+	_, err = repo.DB().Exec(fmt.Sprintf(`
+		INSERT INTO %s (col1, col2, col3, col4) VALUES 
+		('val1', 10, 10.5, true), 
+		('val2', 20, 20.5, false), 
+		('val3', 30, 30.5, true), 
+		('val4', 40, 40.5, false), 
+		('val5', 50, 50.5, true)
+	`, tableName))
+
+	assert.NoError(t, err)
+
+	t.Run("Test 1: Record filtering equality (single)", func(t *testing.T) {
+		row_filter := map[string]interface{}{
+			"record_filters": []RecordFilter{
+				{FieldName: "col4", Operator: "eq", Value: "true"},
+			},
+		}
+
+		fields := []string{"col1", "col2", "col4"}
+		anyData, err := repo.GetData(context.Background(), tableName, row_filter, fields...)
+		assert.NoError(t, err)
+		assert.NotNil(t, anyData)
+
+		// Unmarshal the Any data to get the JSON string
+		var structValue structpb.Struct
+		err = anyData.UnmarshalTo(&structValue)
+		assert.NoError(t, err)
+
+		jsonStr := structValue.Fields["data"].GetStringValue()
+		assert.NotEmpty(t, jsonStr)
+
+		// Parse the JSON to verify the structure
+		var tabularData map[string]interface{}
+		err = json.Unmarshal([]byte(jsonStr), &tabularData)
+		assert.NoError(t, err)
+		assert.NotNil(t, tabularData)
+
+		// Add safety checks for the map keys
+		firstColumnsInterface, hasFirstColumns := tabularData["columns"]
+		assert.True(t, hasFirstColumns, "columns key should exist")
+		assert.NotNil(t, firstColumnsInterface, "columns should not be nil")
+
+		firstRowsInterface, hasFirstRows := tabularData["rows"]
+		assert.True(t, hasFirstRows, "rows key should exist")
+		assert.NotNil(t, firstRowsInterface, "rows should not be nil")
+
+		columns := firstColumnsInterface.([]interface{})
+		rows := firstRowsInterface.([]interface{})
+
+		assert.Equal(t, "col1", columns[0])
+		assert.Equal(t, "col2", columns[1])
+		assert.Equal(t, "col4", columns[2])
+		assert.Len(t, rows, 3)
+	})
+
+	t.Run("Test 2: Record filtering lte (single)", func(t *testing.T) {
+		row_filter := map[string]interface{}{
+			"record_filters": []RecordFilter{
+				{FieldName: "col2", Operator: "lte", Value: "20"},
+			},
+		}
+
+		anyData, err := repo.GetData(context.Background(), tableName, row_filter)
+		assert.NoError(t, err)
+		assert.NotNil(t, anyData)
+
+		// Unmarshal the Any data to get the JSON string
+		var structValue structpb.Struct
+		err = anyData.UnmarshalTo(&structValue)
+		assert.NoError(t, err)
+
+		jsonStr := structValue.Fields["data"].GetStringValue()
+		assert.NotEmpty(t, jsonStr)
+
+		// Parse the JSON to verify the structure
+		var tabularData map[string]interface{}
+		err = json.Unmarshal([]byte(jsonStr), &tabularData)
+		assert.NoError(t, err)
+		assert.NotNil(t, tabularData)
+
+		// Add safety checks for the map keys
+		firstColumnsInterface, hasFirstColumns := tabularData["columns"]
+		assert.True(t, hasFirstColumns, "columns key should exist")
+		assert.NotNil(t, firstColumnsInterface, "columns should not be nil")
+
+		firstRowsInterface, hasFirstRows := tabularData["rows"]
+		assert.True(t, hasFirstRows, "rows key should exist")
+		assert.NotNil(t, firstRowsInterface, "rows should not be nil")
+
+		columns := firstColumnsInterface.([]interface{})
+		rows := firstRowsInterface.([]interface{})
+
+		// since the fields are not specified, all the fields should be returned
+		assert.Equal(t, "id", columns[0])
+		assert.Equal(t, "col1", columns[1])
+		assert.Equal(t, "col2", columns[2])
+		assert.Equal(t, "col3", columns[3])
+		assert.Equal(t, "col4", columns[4])
+		assert.Len(t, rows, 2)
+	})
+
+	t.Run("Test 3: Record filtering gte (single)", func(t *testing.T) {
+		row_filter := map[string]interface{}{
+			"record_filters": []RecordFilter{
+				{FieldName: "col2", Operator: "gte", Value: "20"},
+			},
+		}
+
+		anyData, err := repo.GetData(context.Background(), tableName, row_filter)
+		assert.NoError(t, err)
+		assert.NotNil(t, anyData)
+
+		// Unmarshal the Any data to get the JSON string
+		var structValue structpb.Struct
+		err = anyData.UnmarshalTo(&structValue)
+		assert.NoError(t, err)
+
+		jsonStr := structValue.Fields["data"].GetStringValue()
+		assert.NotEmpty(t, jsonStr)
+
+		// Parse the JSON to verify the structure
+		var tabularData map[string]interface{}
+		err = json.Unmarshal([]byte(jsonStr), &tabularData)
+		assert.NoError(t, err)
+		assert.NotNil(t, tabularData)
+
+		// Add safety checks for the map keys
+		firstColumnsInterface, hasFirstColumns := tabularData["columns"]
+		assert.True(t, hasFirstColumns, "columns key should exist")
+		assert.NotNil(t, firstColumnsInterface, "columns should not be nil")
+
+		firstRowsInterface, hasFirstRows := tabularData["rows"]
+		assert.True(t, hasFirstRows, "rows key should exist")
+		assert.NotNil(t, firstRowsInterface, "rows should not be nil")
+
+		columns := firstColumnsInterface.([]interface{})
+		rows := firstRowsInterface.([]interface{})
+
+		assert.Equal(t, "id", columns[0])
+		assert.Equal(t, "col1", columns[1])
+		assert.Equal(t, "col2", columns[2])
+		assert.Equal(t, "col3", columns[3])
+		assert.Equal(t, "col4", columns[4])
+		assert.Len(t, rows, 4)
+	})
+
+	t.Run("Test 4: Record filtering lt (single)", func(t *testing.T) {
+		row_filter := map[string]interface{}{
+			"record_filters": []RecordFilter{
+				{FieldName: "col2", Operator: "lt", Value: "20"},
+			},
+		}
+
+		anyData, err := repo.GetData(context.Background(), tableName, row_filter)
+		assert.NoError(t, err)
+		assert.NotNil(t, anyData)
+
+		// Unmarshal the Any data to get the JSON string
+		var structValue structpb.Struct
+		err = anyData.UnmarshalTo(&structValue)
+		assert.NoError(t, err)
+
+		jsonStr := structValue.Fields["data"].GetStringValue()
+		assert.NotEmpty(t, jsonStr)
+
+		// Parse the JSON to verify the structure
+		var tabularData map[string]interface{}
+		err = json.Unmarshal([]byte(jsonStr), &tabularData)
+		assert.NoError(t, err)
+		assert.NotNil(t, tabularData)
+
+		// Add safety checks for the map keys
+		firstColumnsInterface, hasFirstColumns := tabularData["columns"]
+		assert.True(t, hasFirstColumns, "columns key should exist")
+		assert.NotNil(t, firstColumnsInterface, "columns should not be nil")
+
+		firstRowsInterface, hasFirstRows := tabularData["rows"]
+		assert.True(t, hasFirstRows, "rows key should exist")
+		assert.NotNil(t, firstRowsInterface, "rows should not be nil")
+
+		columns := firstColumnsInterface.([]interface{})
+		rows := firstRowsInterface.([]interface{})
+
+		assert.Equal(t, "id", columns[0])
+		assert.Equal(t, "col1", columns[1])
+		assert.Equal(t, "col2", columns[2])
+		assert.Equal(t, "col3", columns[3])
+		assert.Equal(t, "col4", columns[4])
+		assert.Len(t, rows, 1)
+	})
+
+	t.Run("Test 5: Record filtering gt (single)", func(t *testing.T) {
+		row_filter := map[string]interface{}{
+			"record_filters": []RecordFilter{
+				{FieldName: "col3", Operator: "gt", Value: "20.5"},
+			},
+		}
+
+		anyData, err := repo.GetData(context.Background(), tableName, row_filter)
+		assert.NoError(t, err)
+		assert.NotNil(t, anyData)
+
+		// Unmarshal the Any data to get the JSON string
+		var structValue structpb.Struct
+		err = anyData.UnmarshalTo(&structValue)
+		assert.NoError(t, err)
+
+		jsonStr := structValue.Fields["data"].GetStringValue()
+		assert.NotEmpty(t, jsonStr)
+
+		// Parse the JSON to verify the structure
+		var tabularData map[string]interface{}
+		err = json.Unmarshal([]byte(jsonStr), &tabularData)
+		assert.NoError(t, err)
+		assert.NotNil(t, tabularData)
+
+		// Add safety checks for the map keys
+		firstColumnsInterface, hasFirstColumns := tabularData["columns"]
+		assert.True(t, hasFirstColumns, "columns key should exist")
+		assert.NotNil(t, firstColumnsInterface, "columns should not be nil")
+
+		firstRowsInterface, hasFirstRows := tabularData["rows"]
+		assert.True(t, hasFirstRows, "rows key should exist")
+		assert.NotNil(t, firstRowsInterface, "rows should not be nil")
+
+		columns := firstColumnsInterface.([]interface{})
+		rows := firstRowsInterface.([]interface{})
+
+		assert.Equal(t, "id", columns[0])
+		assert.Equal(t, "col1", columns[1])
+		assert.Equal(t, "col2", columns[2])
+		assert.Equal(t, "col3", columns[3])
+		assert.Equal(t, "col4", columns[4])
+		assert.Len(t, rows, 3)
+	})
+
+	t.Run("Test 6: Record filtering neq (single)", func(t *testing.T) {
+		row_filter := map[string]interface{}{
+			"record_filters": []RecordFilter{
+				{FieldName: "col1", Operator: "neq", Value: "val5"},
+			},
+		}
+
+		anyData, err := repo.GetData(context.Background(), tableName, row_filter)
+		assert.NoError(t, err)
+		assert.NotNil(t, anyData)
+
+		// Unmarshal the Any data to get the JSON string
+		var structValue structpb.Struct
+		err = anyData.UnmarshalTo(&structValue)
+		assert.NoError(t, err)
+
+		jsonStr := structValue.Fields["data"].GetStringValue()
+		assert.NotEmpty(t, jsonStr)
+
+		// Parse the JSON to verify the structure
+		var tabularData map[string]interface{}
+		err = json.Unmarshal([]byte(jsonStr), &tabularData)
+		assert.NoError(t, err)
+		assert.NotNil(t, tabularData)
+
+		// Add safety checks for the map keys
+		firstColumnsInterface, hasFirstColumns := tabularData["columns"]
+		assert.True(t, hasFirstColumns, "columns key should exist")
+		assert.NotNil(t, firstColumnsInterface, "columns should not be nil")
+
+		firstRowsInterface, hasFirstRows := tabularData["rows"]
+		assert.True(t, hasFirstRows, "rows key should exist")
+		assert.NotNil(t, firstRowsInterface, "rows should not be nil")
+
+		columns := firstColumnsInterface.([]interface{})
+		rows := firstRowsInterface.([]interface{})
+
+		assert.Equal(t, "id", columns[0])
+		assert.Equal(t, "col1", columns[1])
+		assert.Equal(t, "col2", columns[2])
+		assert.Equal(t, "col3", columns[3])
+		assert.Equal(t, "col4", columns[4])
+		assert.Len(t, rows, 4)
+	})
+
+	t.Run("Test 7: Record filtering contains (single)", func(t *testing.T) {
+		row_filter := map[string]interface{}{
+			"record_filters": []RecordFilter{
+				{FieldName: "col1", Operator: "contains", Value: "val"},
+			},
+		}
+		fields := []string{"col4"}
+		anyData, err := repo.GetData(context.Background(), tableName, row_filter, fields...)
+		assert.NoError(t, err)
+		assert.NotNil(t, anyData)
+
+		// Unmarshal the Any data to get the JSON string
+		var structValue structpb.Struct
+		err = anyData.UnmarshalTo(&structValue)
+		assert.NoError(t, err)
+
+		jsonStr := structValue.Fields["data"].GetStringValue()
+		assert.NotEmpty(t, jsonStr)
+
+		// Parse the JSON to verify the structure
+		var tabularData map[string]interface{}
+		err = json.Unmarshal([]byte(jsonStr), &tabularData)
+		assert.NoError(t, err)
+		assert.NotNil(t, tabularData)
+
+		// Add safety checks for the map keys
+		firstColumnsInterface, hasFirstColumns := tabularData["columns"]
+		assert.True(t, hasFirstColumns, "columns key should exist")
+		assert.NotNil(t, firstColumnsInterface, "columns should not be nil")
+
+		firstRowsInterface, hasFirstRows := tabularData["rows"]
+		assert.True(t, hasFirstRows, "rows key should exist")
+		assert.NotNil(t, firstRowsInterface, "rows should not be nil")
+
+		columns := firstColumnsInterface.([]interface{})
+		rows := firstRowsInterface.([]interface{})
+
+		assert.Equal(t, "col4", columns[0])
+		assert.Len(t, rows, 5)
+	})
+
+	t.Run("Test 8: Record filtering not contains (single)", func(t *testing.T) {
+		row_filter := map[string]interface{}{
+			"record_filters": []RecordFilter{
+				{FieldName: "col1", Operator: "notcontains", Value: "val"},
+			},
+		}
+		fields := []string{"col4"}
+		anyData, err := repo.GetData(context.Background(), tableName, row_filter, fields...)
+		assert.NoError(t, err)
+		assert.NotNil(t, anyData)
+
+		// Unmarshal the Any data to get the JSON string
+		var structValue structpb.Struct
+		err = anyData.UnmarshalTo(&structValue)
+		assert.NoError(t, err)
+
+		jsonStr := structValue.Fields["data"].GetStringValue()
+		assert.NotEmpty(t, jsonStr)
+
+		// Parse the JSON to verify the structure
+		var tabularData map[string]interface{}
+		err = json.Unmarshal([]byte(jsonStr), &tabularData)
+		assert.NoError(t, err)
+		assert.NotNil(t, tabularData)
+
+		// Add safety checks for the map keys
+		firstColumnsInterface, hasFirstColumns := tabularData["columns"]
+		assert.True(t, hasFirstColumns, "columns key should exist")
+		assert.NotNil(t, firstColumnsInterface, "columns should not be nil")
+
+		firstRowsInterface, hasFirstRows := tabularData["rows"]
+		assert.True(t, hasFirstRows, "rows key should exist")
+		assert.Nil(t, firstRowsInterface, "rows should be nil")
+
+		columns := firstColumnsInterface.([]interface{})
+		assert.Equal(t, "col4", columns[0])
+	})
+
+	t.Run("Test 9: Record filtering eq/contains (multiple)", func(t *testing.T) {
+		row_filter := map[string]interface{}{
+			"record_filters": []RecordFilter{
+				{FieldName: "col2", Operator: "eq", Value: "20"},
+				{FieldName: "col1", Operator: "contains", Value: "val"},
+				{FieldName: "col4", Operator: "neq", Value: "true"},
+			},
+		}
+		fields := []string{"col4"}
+		anyData, err := repo.GetData(context.Background(), tableName, row_filter, fields...)
+		assert.NoError(t, err)
+		assert.NotNil(t, anyData)
+
+		// Unmarshal the Any data to get the JSON string
+		var structValue structpb.Struct
+		err = anyData.UnmarshalTo(&structValue)
+		assert.NoError(t, err)
+
+		jsonStr := structValue.Fields["data"].GetStringValue()
+		assert.NotEmpty(t, jsonStr)
+
+		// Parse the JSON to verify the structure
+		var tabularData map[string]interface{}
+		err = json.Unmarshal([]byte(jsonStr), &tabularData)
+		assert.NoError(t, err)
+		assert.NotNil(t, tabularData)
+
+		// Add safety checks for the map keys
+		firstColumnsInterface, hasFirstColumns := tabularData["columns"]
+		assert.True(t, hasFirstColumns, "columns key should exist")
+		assert.NotNil(t, firstColumnsInterface, "columns should not be nil")
+
+		firstRowsInterface, hasFirstRows := tabularData["rows"]
+		assert.True(t, hasFirstRows, "rows key should exist")
+		assert.NotNil(t, firstRowsInterface, "rows should not be nil")
+
+		columns := firstColumnsInterface.([]interface{})
+		rows := firstRowsInterface.([]interface{})
+
+		assert.Equal(t, "col4", columns[0])
+		assert.Len(t, rows, 1)
+
+	})
+}
