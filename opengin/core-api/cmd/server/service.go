@@ -185,7 +185,6 @@ func (s *Server) ReadEntity(ctx context.Context, req *pb.ReadEntityRequest) (*pb
 			// Extract fields and record filters from the request attributes based on storage type
 			fields, recordFilters := extractFieldsFromAttributes(req.Entity.Attributes)
 			log.Printf("Extracted fields from attributes: %v", fields)
-			log.Printf("Extracted record filters from attributes: %v", recordFilters)
 
 			// Convert record filters to the filters map for ReadOptions
 			filtersMap := make(map[string]interface{})
@@ -553,17 +552,27 @@ func extractRowsFromTabularAttributes(anyValue *anypb.Any) ([]postgres.RecordFil
 		}
 
 		filter := postgres.RecordFilter{}
-		if fieldName, ok := datum.Fields["field_name"]; ok {
-			filter.FieldName = fieldName.GetStringValue()
+		fieldName, ok := datum.Fields["field_name"]
+		if !ok || fieldName.GetStringValue() == "" {
+			log.Printf("Warning: skipping record filter, missing or empty 'field_name'")
+			continue
 		}
 
-		if operator, ok := datum.Fields["operator"]; ok {
-			filter.Operator = operator.GetStringValue()
+		operator, ok := datum.Fields["operator"]
+		if !ok || operator.GetStringValue() == "" {
+			log.Printf("Warning: skipping record filter, missing or empty 'operator'")
+			continue
 		}
 
-		if value, ok := datum.Fields["value"]; ok {
-			filter.Value = value.GetStringValue()
+		value, ok := datum.Fields["value"]
+		if !ok || value.GetStringValue() == "" {
+			log.Printf("Warning: skipping record filter, missing or empty 'value'")
+			continue
 		}
+
+		filter.FieldName = fieldName.GetStringValue()
+		filter.Operator = operator.GetStringValue()
+		filter.Value = value.GetStringValue()
 
 		filters = append(filters, filter)
 	}

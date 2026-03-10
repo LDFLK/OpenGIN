@@ -695,7 +695,7 @@ func TestGetDataWithRowFiltering(t *testing.T) {
 		// Unmarshal the Any data to get the JSON string
 		var structValue structpb.Struct
 		err = anyData.UnmarshalTo(&structValue)
-			assert.NoError(t, err)
+		assert.NoError(t, err)
 
 		jsonStr := structValue.Fields["data"].GetStringValue()
 		assert.NotEmpty(t, jsonStr)
@@ -722,7 +722,7 @@ func TestGetDataWithRowFiltering(t *testing.T) {
 		assert.Equal(t, "col2", columns[1])
 		assert.Equal(t, "col4", columns[2])
 		assert.Len(t, rows, 3)
-	})	
+	})
 
 	t.Run("Test 2: Record filtering lte (single)", func(t *testing.T) {
 		row_filter := map[string]interface{}{
@@ -738,7 +738,7 @@ func TestGetDataWithRowFiltering(t *testing.T) {
 		// Unmarshal the Any data to get the JSON string
 		var structValue structpb.Struct
 		err = anyData.UnmarshalTo(&structValue)
-			assert.NoError(t, err)
+		assert.NoError(t, err)
 
 		jsonStr := structValue.Fields["data"].GetStringValue()
 		assert.NotEmpty(t, jsonStr)
@@ -760,7 +760,7 @@ func TestGetDataWithRowFiltering(t *testing.T) {
 
 		columns := firstColumnsInterface.([]interface{})
 		rows := firstRowsInterface.([]interface{})
-		
+
 		// since the fields are not specified, all the fields should be returned
 		assert.Equal(t, "id", columns[0])
 		assert.Equal(t, "col1", columns[1])
@@ -768,7 +768,7 @@ func TestGetDataWithRowFiltering(t *testing.T) {
 		assert.Equal(t, "col3", columns[3])
 		assert.Equal(t, "col4", columns[4])
 		assert.Len(t, rows, 2)
-	})	
+	})
 
 	t.Run("Test 3: Record filtering gte (single)", func(t *testing.T) {
 		row_filter := map[string]interface{}{
@@ -784,7 +784,7 @@ func TestGetDataWithRowFiltering(t *testing.T) {
 		// Unmarshal the Any data to get the JSON string
 		var structValue structpb.Struct
 		err = anyData.UnmarshalTo(&structValue)
-			assert.NoError(t, err)
+		assert.NoError(t, err)
 
 		jsonStr := structValue.Fields["data"].GetStringValue()
 		assert.NotEmpty(t, jsonStr)
@@ -806,14 +806,14 @@ func TestGetDataWithRowFiltering(t *testing.T) {
 
 		columns := firstColumnsInterface.([]interface{})
 		rows := firstRowsInterface.([]interface{})
-		
+
 		assert.Equal(t, "id", columns[0])
 		assert.Equal(t, "col1", columns[1])
 		assert.Equal(t, "col2", columns[2])
 		assert.Equal(t, "col3", columns[3])
 		assert.Equal(t, "col4", columns[4])
 		assert.Len(t, rows, 4)
-	})	
+	})
 
 	t.Run("Test 4: Record filtering lt (single)", func(t *testing.T) {
 		row_filter := map[string]interface{}{
@@ -829,7 +829,7 @@ func TestGetDataWithRowFiltering(t *testing.T) {
 		// Unmarshal the Any data to get the JSON string
 		var structValue structpb.Struct
 		err = anyData.UnmarshalTo(&structValue)
-			assert.NoError(t, err)
+		assert.NoError(t, err)
 
 		jsonStr := structValue.Fields["data"].GetStringValue()
 		assert.NotEmpty(t, jsonStr)
@@ -851,14 +851,14 @@ func TestGetDataWithRowFiltering(t *testing.T) {
 
 		columns := firstColumnsInterface.([]interface{})
 		rows := firstRowsInterface.([]interface{})
-		
+
 		assert.Equal(t, "id", columns[0])
 		assert.Equal(t, "col1", columns[1])
 		assert.Equal(t, "col2", columns[2])
 		assert.Equal(t, "col3", columns[3])
 		assert.Equal(t, "col4", columns[4])
 		assert.Len(t, rows, 1)
-	})	
+	})
 
 	t.Run("Test 5: Record filtering gt (single)", func(t *testing.T) {
 		row_filter := map[string]interface{}{
@@ -874,7 +874,7 @@ func TestGetDataWithRowFiltering(t *testing.T) {
 		// Unmarshal the Any data to get the JSON string
 		var structValue structpb.Struct
 		err = anyData.UnmarshalTo(&structValue)
-			assert.NoError(t, err)
+		assert.NoError(t, err)
 
 		jsonStr := structValue.Fields["data"].GetStringValue()
 		assert.NotEmpty(t, jsonStr)
@@ -896,7 +896,7 @@ func TestGetDataWithRowFiltering(t *testing.T) {
 
 		columns := firstColumnsInterface.([]interface{})
 		rows := firstRowsInterface.([]interface{})
-		
+
 		assert.Equal(t, "id", columns[0])
 		assert.Equal(t, "col1", columns[1])
 		assert.Equal(t, "col2", columns[2])
@@ -919,7 +919,7 @@ func TestGetDataWithRowFiltering(t *testing.T) {
 		// Unmarshal the Any data to get the JSON string
 		var structValue structpb.Struct
 		err = anyData.UnmarshalTo(&structValue)
-			assert.NoError(t, err)
+		assert.NoError(t, err)
 
 		jsonStr := structValue.Fields["data"].GetStringValue()
 		assert.NotEmpty(t, jsonStr)
@@ -941,7 +941,7 @@ func TestGetDataWithRowFiltering(t *testing.T) {
 
 		columns := firstColumnsInterface.([]interface{})
 		rows := firstRowsInterface.([]interface{})
-		
+
 		assert.Equal(t, "id", columns[0])
 		assert.Equal(t, "col1", columns[1])
 		assert.Equal(t, "col2", columns[2])
@@ -964,7 +964,7 @@ func TestGetDataWithRowFiltering(t *testing.T) {
 		// Unmarshal the Any data to get the JSON string
 		var structValue structpb.Struct
 		err = anyData.UnmarshalTo(&structValue)
-			assert.NoError(t, err)
+		assert.NoError(t, err)
 
 		jsonStr := structValue.Fields["data"].GetStringValue()
 		assert.NotEmpty(t, jsonStr)
@@ -986,7 +986,7 @@ func TestGetDataWithRowFiltering(t *testing.T) {
 
 		columns := firstColumnsInterface.([]interface{})
 		rows := firstRowsInterface.([]interface{})
-		
+
 		assert.Equal(t, "col4", columns[0])
 		assert.Len(t, rows, 5)
 	})
@@ -1005,7 +1005,7 @@ func TestGetDataWithRowFiltering(t *testing.T) {
 		// Unmarshal the Any data to get the JSON string
 		var structValue structpb.Struct
 		err = anyData.UnmarshalTo(&structValue)
-			assert.NoError(t, err)
+		assert.NoError(t, err)
 
 		jsonStr := structValue.Fields["data"].GetStringValue()
 		assert.NotEmpty(t, jsonStr)
@@ -1023,7 +1023,7 @@ func TestGetDataWithRowFiltering(t *testing.T) {
 
 		firstRowsInterface, hasFirstRows := tabularData["rows"]
 		assert.True(t, hasFirstRows, "rows key should exist")
-		assert.Nil(t, firstRowsInterface, "rows should not be nil")
+		assert.Nil(t, firstRowsInterface, "rows should be nil")
 
 		columns := firstColumnsInterface.([]interface{})
 		assert.Equal(t, "col4", columns[0])
@@ -1045,7 +1045,7 @@ func TestGetDataWithRowFiltering(t *testing.T) {
 		// Unmarshal the Any data to get the JSON string
 		var structValue structpb.Struct
 		err = anyData.UnmarshalTo(&structValue)
-			assert.NoError(t, err)
+		assert.NoError(t, err)
 
 		jsonStr := structValue.Fields["data"].GetStringValue()
 		assert.NotEmpty(t, jsonStr)
@@ -1073,4 +1073,3 @@ func TestGetDataWithRowFiltering(t *testing.T) {
 
 	})
 }
-

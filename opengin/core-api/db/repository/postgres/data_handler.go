@@ -682,28 +682,20 @@ func (repo *PostgresRepository) GetData(ctx context.Context, tableName string, f
 					sqlOp := "="
 					switch rf.Operator {
 					case "eq":
-						log.Printf("DEBUG: [DataHandler.GetData] rf.Operator: %s", rf.Operator)
 						sqlOp = "="
 					case "neq":
-						log.Printf("DEBUG: [DataHandler.GetData] rf.Operator: %s", rf.Operator)
 						sqlOp = "!="
 					case "gt":
-						log.Printf("DEBUG: [DataHandler.GetData] rf.Operator: %s", rf.Operator)
 						sqlOp = ">"
 					case "lt":
-						log.Printf("DEBUG: [DataHandler.GetData] rf.Operator: %s", rf.Operator)
 						sqlOp = "<"
 					case "lte":
-						log.Printf("DEBUG: [DataHandler.GetData] rf.Operator: %s", rf.Operator)
 						sqlOp = "<="
 					case "gte":
-						log.Printf("DEBUG: [DataHandler.GetData] rf.Operator: %s", rf.Operator)
 						sqlOp = ">="
 					case "contains":
-						log.Printf("DEBUG: [DataHandler.GetData] rf.Operator: %s", rf.Operator)
 						sqlOp = "ILIKE"
 					case "notcontains":
-						log.Printf("DEBUG: [DataHandler.GetData] rf.Operator: %s", rf.Operator)
 						sqlOp = "NOT ILIKE"
 					}
 
@@ -729,9 +721,6 @@ func (repo *PostgresRepository) GetData(ctx context.Context, tableName string, f
 	if len(whereClauses) > 0 {
 		query += " WHERE " + strings.Join(whereClauses, " AND ")
 	}
-
-	log.Printf("DEBUG: [DataHandler.GetData] query: %s", query)
-	log.Printf("DEBUG: [DataHandler.GetData] args: %v", args)
 
 	// Execute the query
 	rows, err := repo.DB().QueryContext(ctx, query, args...)
