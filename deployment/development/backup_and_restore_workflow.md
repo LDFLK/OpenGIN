@@ -99,6 +99,7 @@ docker-compose up -d mongodb postgres neo4j
    ./init.sh backup_postgres
    ```
    This creates `opengin.tar.gz` in your PostgreSQL backup directory.
+   Note: PostgreSQL backups are created with clean drops (`pg_dump --clean --if-exists`), so running restore multiple times is safe and idempotent.
 
 3. **Backup Neo4j:**
    ```bash
