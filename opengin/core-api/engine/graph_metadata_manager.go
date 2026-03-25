@@ -134,7 +134,7 @@ func (g *GraphMetadataManager) createAttributeLookUpGraph(ctx context.Context, m
 		},
 		Name:          commons.CreateTimeBasedValue(metadata.Created.Format(time.RFC3339), "", metadata.AttributeName),
 		Created:       metadata.Created.Format(time.RFC3339), // contains the data object's time relation with the world
-		Terminated:    "",                                    // TODO: Implement invalidating a dataset for a specific time range
+		Terminated:    metadata.EndTime.Format(time.RFC3339),
 		Metadata:      MakeMetadataOfAttributeMetadata(metadata),
 		Attributes:    make(map[string]*pb.TimeBasedValueList),
 		Relationships: make(map[string]*pb.Relationship),
@@ -239,7 +239,7 @@ func MakeRelationshipFromAttributeMetadata(metadata *AttributeMetadata) *pb.Rela
 		RelatedEntityId: metadata.AttributeID,
 		Name:            IS_ATTRIBUTE_RELATIONSHIP,
 		StartTime:       metadata.Created.Format(time.RFC3339),
-		EndTime:         "", // TODO: Implement invalidating a relationship for a specific time range
+		EndTime:         metadata.EndTime.Format(time.RFC3339),
 		Direction:       IS_ATTRIBUTE_RELATIONSHIP_DIRECTION,
 	}
 }
