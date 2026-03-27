@@ -641,7 +641,7 @@ type TabularData struct {
 // RecordFilter represents a filter applied on the values in a particular column of the table
 type RecordFilter struct {
 	FieldName string `json:"field_name"`
-	Operator  string `json:"operator"`
+	Operator  string `json:"operator"` //accepted operators: 'eq','neq','gt','lt','gte','lte','contains','notcontains'
 	Value     string `json:"value"`
 }
 
