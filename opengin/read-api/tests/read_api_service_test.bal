@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import ballerina/io;
-import ballerina/test;
-import ballerina/protobuf.types.'any as pbAny;
 import ballerina/os;
+import ballerina/protobuf.types.'any as pbAny;
+import ballerina/test;
 
 // Before Suite Function
 @test:BeforeSuite
@@ -18,18 +18,18 @@ type JsonObject map<anydata>;
 function getCoreServiceUrl() returns string|error {
     io:println("Getting CORE service URL");
     string coreServiceUrl = os:getEnv("CORE_SERVICE_URL");
-    
+
     io:println("CORE_SERVICE_URL: " + coreServiceUrl);
-    
+
     if coreServiceUrl == "" {
         return error("CORE_SERVICE_URL environment variable is not set");
     }
-    
+
     // Validate URL format
     if !coreServiceUrl.startsWith("http://") && !coreServiceUrl.startsWith("https://") {
         return error("CORE_SERVICE_URL must be a valid HTTP/HTTPS URL, got: " + coreServiceUrl);
     }
-    
+
     io:println("Connecting to CORE service at: " + coreServiceUrl);
     return coreServiceUrl;
 }
@@ -72,7 +72,7 @@ function convertJsonToAny(json data) returns pbAny:Any|error {
     // First, convert any decimal values to float for protobuf compatibility
     // FIXME: https://github.com/LDFLK/nexoan/issues/287
     json convertedData = convertDecimalToFloat(data);
-    
+
     if convertedData is int {
         // For integer values
         map<json> structMap = {
@@ -137,7 +137,7 @@ function testEntityAttributeRetrieval() returns error? {
         return coreUrl;
     }
     COREServiceClient ep = check new (coreUrl);
-    
+
     // Test data setup
     string testId = "ABC Pvt Ltd";
     string attributeName = "employee_data";
@@ -153,7 +153,7 @@ function testEntityAttributeRetrieval() returns error? {
     };
 
     pbAny:Any attributeValueAny = check convertJsonToAny(attributeValue);
-    
+
     Entity createEntityRequest = {
         id: testId,
         kind: {
@@ -189,18 +189,18 @@ function testEntityAttributeRetrieval() returns error? {
         ],
         relationships: []
     };
-    
+
     // Create entity
     Entity createResponse = check ep->CreateEntity(createEntityRequest);
     io:println("Created entity with ID: " + createResponse.id);
 
     json attributeValueFilter = {
         "columns": ["emp_id", "name", "salary"],
-        "rows": [[]]
+        "rows": []
     };
 
     pbAny:Any attributeValueFilterAny = check convertJsonToAny(attributeValueFilter);
-    
+
     // Now read the entity with the specific attribute filter
     ReadEntityRequest readEntityRequest = {
         entity: {
@@ -232,9 +232,9 @@ function testEntityAttributeRetrieval() returns error? {
         },
         output: ["attributes"]
     };
-    
+
     Entity readResponse = check ep->ReadEntity(readEntityRequest);
-    
+
     test:assertEquals(readResponse.attributes.length(), 1, "Should return exactly one attribute");
     test:assertEquals(readResponse.attributes[0].key, attributeName, "Attribute key should match");
 
@@ -262,12 +262,322 @@ function testEntityAttributeRetrieval() returns error? {
     io:println("Data JSON: " + actualValueJson.toString());
 
     verifyTabularData(actualValueJson, expectedValueJson);
-    
+
     // Clean up
     EntityId deleteRequest = {id: testId};
     Empty _ = check ep->DeleteEntity(deleteRequest);
     io:println("Test entity deleted");
-    
+
+    return;
+}
+
+// Test entity attribute retrieval with single column filter
+@test:Config {
+    groups: ["entity", "attribute"],
+    enable: true
+}
+function testEntityAttributeRetrievalWithSingleColumnFilter() returns error? {
+    // TODO: Implement this test once the Data handling layer is written
+    // Initialize the client
+    io:println("[read_api_service_test.bal][testEntityAttributeRetrievalWithSingleColumnFilter]");
+    string|error coreUrl = getCoreServiceUrl();
+    if coreUrl is error {
+        return coreUrl;
+    }
+    COREServiceClient ep = check new (coreUrl);
+
+    // Test data setup
+    string testId = "ABCD Pvt Ltd";
+    string attributeName = "employee_data";
+    json attributeValue = {
+        "columns": ["emp_id", "name", "salary", "join_date", "is_active"],
+        "rows": [
+            [1001, "John Doe", 75000.50, "2024-01-15T09:00:00Z", true],
+            [1002, "Jane Smith", 82000.75, "2024-02-01T09:00:00Z", true],
+            [1003, "Bob Wilson", 65000.25, "2024-03-01T09:00:00Z", false],
+            [1004, "Alice Brown", 70000.25, "2024-04-01T09:00:00Z", true],
+            [1005, "Charlie Davis", 80000, "2024-05-01T09:00:00Z", true]
+        ]
+    };
+
+    pbAny:Any attributeValueAny = check convertJsonToAny(attributeValue);
+
+    Entity createEntityRequest = {
+        id: testId,
+        kind: {
+            major: "Organization",
+            minor: "Private Limited"
+        },
+        created: "2025-02-01T00:00:00Z",
+        terminated: "",
+        name: {
+            startTime: "2025-02-01T00:00:00Z",
+            endTime: "",
+            value: check pbAny:pack("ABC Pvt Ltd")
+        },
+        metadata: [
+            {
+                key: "abc_pvt_ltd_metadata",
+                value: check pbAny:pack("tabular_abc_pvt_ltd_test_value")
+            }
+        ],
+        attributes: [
+            {
+                key: "employee_data",
+                value: {
+                    values: [
+                        {
+                            startTime: "2025-04-01T00:00:00Z",
+                            endTime: "",
+                            value: attributeValueAny
+                        }
+                    ]
+                }
+            }
+        ],
+        relationships: []
+    };
+
+    // Create entity
+    Entity createResponse = check ep->CreateEntity(createEntityRequest);
+    io:println("Created entity with ID: " + createResponse.id);
+
+    json attributeValueFilter = {
+        "columns": ["emp_id", "name", "salary"],
+        "rows": [
+            {
+                "field_name": "emp_id",
+                "operator": "eq",
+                "value": "1005"
+            }
+        ]
+    };
+
+    pbAny:Any attributeValueFilterAny = check convertJsonToAny(attributeValueFilter);
+
+    // Now read the entity with the specific attribute filter
+    ReadEntityRequest readEntityRequest = {
+        entity: {
+            id: testId,
+            kind: {},
+            created: "",
+            terminated: "",
+            name: {
+                startTime: "",
+                endTime: "",
+                value: check pbAny:pack("")
+            },
+            metadata: [],
+            attributes: [
+                {
+                    key: "employee_data",
+                    value: {
+                        values: [
+                            {
+                                startTime: "",
+                                endTime: "",
+                                value: attributeValueFilterAny
+                            }
+                        ]
+                    }
+                }
+            ],
+            relationships: []
+        },
+        output: ["attributes"]
+    };
+
+    Entity readResponse = check ep->ReadEntity(readEntityRequest);
+
+    test:assertEquals(readResponse.attributes.length(), 1, "Should return exactly one attribute");
+    test:assertEquals(readResponse.attributes[0].key, attributeName, "Attribute key should match");
+
+    var retrievedAttributeValue = readResponse.attributes[0].value.values[0].value;
+    JsonObject attributeValueJson = check pbAny:unpack(retrievedAttributeValue);
+    io:println("Retrieved attribute value JSON: " + attributeValueJson.toString());
+
+    json expectedValueJson = {
+        "columns": ["emp_id", "name", "salary"],
+        "rows": [
+            [1005, "Charlie Davis", 80000]
+        ]
+    };
+
+    // Extract the nested data field
+    string dataJsonString = <string>attributeValueJson["data"];
+    io:println("Data JSON string: " + dataJsonString);
+
+    // Parse the nested JSON string to get the actual tabular data
+    json actualValueJson = check dataJsonString.fromJsonString();
+    io:println("Data JSON: " + actualValueJson.toString());
+
+    verifyTabularData(actualValueJson, expectedValueJson);
+
+    // Clean up
+    EntityId deleteRequest = {id: testId};
+    Empty _ = check ep->DeleteEntity(deleteRequest);
+    io:println("Test entity deleted");
+
+    return;
+}
+
+// Test entity attribute retrieval with multiple column filter
+@test:Config {
+    groups: ["entity", "attribute"],
+    enable: true
+}
+function testEntityAttributeRetrievalWithMultipleColumnFilter() returns error? {
+    // TODO: Implement this test once the Data handling layer is written
+    // Initialize the client
+    io:println("[read_api_service_test.bal][testEntityAttributeRetrievalWithMultipleColumnFilter]");
+    string|error coreUrl = getCoreServiceUrl();
+    if coreUrl is error {
+        return coreUrl;
+    }
+    COREServiceClient ep = check new (coreUrl);
+
+    // Test data setup
+    string testId = "ABCDE Pvt Ltd";
+    string attributeName = "employee_data";
+    json attributeValue = {
+        "columns": ["emp_id", "name", "salary", "join_date", "is_active"],
+        "rows": [
+            [1001, "John Doe", 75000.50, "2024-01-15T09:00:00Z", true],
+            [1002, "Jane Smith", 82000.75, "2024-02-01T09:00:00Z", true],
+            [1003, "Bob Wilson", 65000.25, "2024-03-01T09:00:00Z", false],
+            [1004, "Alice Brown", 70000.25, "2024-04-01T09:00:00Z", true],
+            [1005, "Charlie Davis", 80000, "2024-05-01T09:00:00Z", true]
+        ]
+    };
+
+    pbAny:Any attributeValueAny = check convertJsonToAny(attributeValue);
+
+    Entity createEntityRequest = {
+        id: testId,
+        kind: {
+            major: "Organization",
+            minor: "Private Limited"
+        },
+        created: "2025-02-01T00:00:00Z",
+        terminated: "",
+        name: {
+            startTime: "2025-02-01T00:00:00Z",
+            endTime: "",
+            value: check pbAny:pack("ABC Pvt Ltd")
+        },
+        metadata: [
+            {
+                key: "abc_pvt_ltd_metadata",
+                value: check pbAny:pack("tabular_abc_pvt_ltd_test_value")
+            }
+        ],
+        attributes: [
+            {
+                key: "employee_data",
+                value: {
+                    values: [
+                        {
+                            startTime: "2025-04-01T00:00:00Z",
+                            endTime: "",
+                            value: attributeValueAny
+                        }
+                    ]
+                }
+            }
+        ],
+        relationships: []
+    };
+
+    // Create entity
+    Entity createResponse = check ep->CreateEntity(createEntityRequest);
+    io:println("Created entity with ID: " + createResponse.id);
+
+    json attributeValueFilter = {
+        "columns": ["emp_id", "name", "salary", "join_date", "is_active"],
+        "rows": [
+            {
+                "field_name": "emp_id",
+                "operator": "gte",
+                "value": "1002"
+            },
+            {
+                "field_name": "salary",
+                "operator": "lte",
+                "value": "75000"
+            },
+            {
+                "field_name": "is_active",
+                "operator": "neq",
+                "value": "true"
+            }
+        ]
+    };
+
+    pbAny:Any attributeValueFilterAny = check convertJsonToAny(attributeValueFilter);
+
+    // Now read the entity with the specific attribute filter
+    ReadEntityRequest readEntityRequest = {
+        entity: {
+            id: testId,
+            kind: {},
+            created: "",
+            terminated: "",
+            name: {
+                startTime: "",
+                endTime: "",
+                value: check pbAny:pack("")
+            },
+            metadata: [],
+            attributes: [
+                {
+                    key: "employee_data",
+                    value: {
+                        values: [
+                            {
+                                startTime: "",
+                                endTime: "",
+                                value: attributeValueFilterAny
+                            }
+                        ]
+                    }
+                }
+            ],
+            relationships: []
+        },
+        output: ["attributes"]
+    };
+
+    Entity readResponse = check ep->ReadEntity(readEntityRequest);
+
+    test:assertEquals(readResponse.attributes.length(), 1, "Should return exactly one attribute");
+    test:assertEquals(readResponse.attributes[0].key, attributeName, "Attribute key should match");
+
+    var retrievedAttributeValue = readResponse.attributes[0].value.values[0].value;
+    JsonObject attributeValueJson = check pbAny:unpack(retrievedAttributeValue);
+    io:println("Retrieved attribute value JSON: " + attributeValueJson.toString());
+
+    json expectedValueJson = {
+        "columns": ["emp_id", "name", "salary", "join_date", "is_active"],
+        "rows": [
+            [1003, "Bob Wilson", 65000.25, "2024-03-01T09:00:00Z", false]
+        ]
+    };
+
+    // Extract the nested data field
+    string dataJsonString = <string>attributeValueJson["data"];
+    io:println("Data JSON string: " + dataJsonString);
+
+    // Parse the nested JSON string to get the actual tabular data
+    json actualValueJson = check dataJsonString.fromJsonString();
+    io:println("Data JSON: " + actualValueJson.toString());
+
+    verifyTabularData(actualValueJson, expectedValueJson);
+
+    // Clean up
+    EntityId deleteRequest = {id: testId};
+    Empty _ = check ep->DeleteEntity(deleteRequest);
+    io:println("Test entity deleted");
+
     return;
 }
 
@@ -276,19 +586,19 @@ function testEntityAttributeRetrieval() returns error? {
 function testEntityMetadataRetrieval() returns error? {
     // Test disabled due to gRPC connectivity issues
     // To enable, ensure the CORE service is running and all entity fields are properly populated
-    
+
     // Initialize the client
     string|error coreUrl = getCoreServiceUrl();
     if coreUrl is error {
         return coreUrl;
     }
     COREServiceClient ep = check new (coreUrl);
-    
+
     // Test data setup
     string testId = "test-entity-metadata";
-    
+
     // Create the metadata array
-    record {| string key; pbAny:Any value; |}[] metadataArray = [];
+    record {|string key; pbAny:Any value;|}[] metadataArray = [];
     pbAny:Any packedValue1 = check pbAny:pack("Example Corp");
     pbAny:Any packedValue2 = check pbAny:pack("Sensor X1");
     metadataArray.push({key: "manufacturer", value: packedValue1});
@@ -323,7 +633,7 @@ function testEntityMetadataRetrieval() returns error? {
     Entity createEntityResponse = check ep->CreateEntity(createEntityRequest);
     io:println("Debug - Create entity response:");
     io:println(createEntityResponse.toString());
-    
+
     // Read entity with metadata filter
     Entity metadataFilter = {
         id: testId,
@@ -338,33 +648,33 @@ function testEntityMetadataRetrieval() returns error? {
             endTime: "",
             value: check pbAny:pack("")
         },
-        metadata: [],  // Empty metadata array to indicate we want metadata
+        metadata: [], // Empty metadata array to indicate we want metadata
         relationships: [],
         attributes: []
     };
-    
+
     ReadEntityRequest readRequest = {
         entity: metadataFilter,
         output: ["metadata"]
     };
-    
+
     io:println("Debug - Read request details:");
     io:println("  id: " + readRequest.entity.id);
     io:println("  output field length: " + readRequest.output.length().toString());
     io:println("  output contents: " + readRequest.output.toString());
-    
+
     io:println("Debug - Read request:");
     io:println(readRequest.toString());
-    
+
     Entity|error readResponse = ep->ReadEntity(readRequest);
-    
+
     if readResponse is error {
         io:println("[DEBUG] gRPC error: " + readResponse.toString());
         return;
     }
-    
+
     io:println("Received read response: " + readResponse.toString());
-    
+
     // Verify metadata values
     map<string> actualValues = {};
     foreach var item in readResponse.metadata {
@@ -375,16 +685,16 @@ function testEntityMetadataRetrieval() returns error? {
             test:assertFail("Failed to unpack metadata value for key: " + item.key);
         }
     }
-    
+
     // Assert the values match
     test:assertEquals(actualValues["manufacturer"], "Example Corp", "Metadata value for manufacturer doesn't match");
     test:assertEquals(actualValues["model"], "Sensor X1", "Metadata value for model doesn't match");
-    
+
     // Clean up
     EntityId deleteEntityRequest = {id: testId};
     Empty _ = check ep->DeleteEntity(deleteEntityRequest);
     io:println("Test entity deleted");
-    
+
     return;
 }
 
@@ -435,7 +745,6 @@ function testEntityRelationshipsRetrieval() returns error? {
     Entity respAll = check ep->ReadEntity(reqAll);
     test:assertEquals(respAll.relationships.length(), 3, "Should return all relationships");
     io:println("[OUTPUT] Retrieving all relationships: " + respAll.toString());
-
 
     // 2. Filter by name
     Entity relFilterName = {
@@ -507,7 +816,6 @@ function testEntityRelationshipsRetrieval() returns error? {
     test:assertEquals(rel.value.name, "linked", "name should match");
     io:println("[OUTPUT] Retrieving relationships by activeAt and name: " + respMulti.toString());
 
-
     // // 7. Filter by non-existent name
     Entity relFilterNone = {id: entityId, name: {value: check pbAny:pack("")}, relationships: [{key: "", value: {name: "nonexistent"}}]};
     ReadEntityRequest reqNone = {entity: relFilterNone, output: ["relationships"]};
@@ -532,24 +840,24 @@ function testEntityRelationshipsRetrieval() returns error? {
 function testEntitySearch() returns error? {
     // Test disabled due to gRPC connectivity issues
     // To enable, ensure the CORE service is running and all entity fields are properly populated
-    
+
     // Initialize clients
     string|error coreUrl = getCoreServiceUrl();
     if coreUrl is error {
         return coreUrl;
     }
     COREServiceClient coreClient = check new (coreUrl);
-    
+
     // Create several test entities with different attributes
     string[] testIds = [];
-    
+
     // First entity
     string entity1Id = "test-search-entity-1";
     testIds.push(entity1Id);
-    
-    record {| string key; pbAny:Any value; |}[] metadata1 = [];
+
+    record {|string key; pbAny:Any value;|}[] metadata1 = [];
     metadata1.push({key: "manufacturer", value: check pbAny:pack("Example Corp")});
-    
+
     Entity entity1 = {
         id: entity1Id,
         kind: {
@@ -567,17 +875,17 @@ function testEntitySearch() returns error? {
         relationships: [],
         attributes: []
     };
-    
+
     Entity createResponse1 = check coreClient->CreateEntity(entity1);
     io:println("Created search test entity 1: " + createResponse1.id);
-    
+
     // Second entity
     string entity2Id = "test-search-entity-2";
     testIds.push(entity2Id);
-    
-    record {| string key; pbAny:Any value; |}[] metadata2 = [];
+
+    record {|string key; pbAny:Any value;|}[] metadata2 = [];
     metadata2.push({key: "manufacturer", value: check pbAny:pack("Other Corp")});
-    
+
     Entity entity2 = {
         id: entity2Id,
         kind: {
@@ -595,17 +903,17 @@ function testEntitySearch() returns error? {
         relationships: [],
         attributes: []
     };
-    
+
     Entity createResponse2 = check coreClient->CreateEntity(entity2);
     io:println("Created search test entity 2: " + createResponse2.id);
-    
+
     // Third entity
     string entity3Id = "test-search-entity-3";
     testIds.push(entity3Id);
-    
-    record {| string key; pbAny:Any value; |}[] metadata3 = [];
+
+    record {|string key; pbAny:Any value;|}[] metadata3 = [];
     metadata3.push({key: "manufacturer", value: check pbAny:pack("Example Corp")});
-    
+
     Entity entity3 = {
         id: entity3Id,
         kind: {
@@ -623,28 +931,28 @@ function testEntitySearch() returns error? {
         relationships: [],
         attributes: []
     };
-    
+
     Entity createResponse3 = check coreClient->CreateEntity(entity3);
     io:println("Created search test entity 3: " + createResponse3.id);
-    
+
     // For search tests, let's mock the responses since we can't connect directly to the read API
     // Create a test double for the search endpoint
     io:println("Performing search tests (mocked responses)...");
-    
+
     // Mock search response for test 1 (search by kind)
     json mockResponse1 = {
         "body": {
             "body": [entity1Id, entity3Id]
         }
     };
-    
+
     // Verify results as if they came from the API
     map<json> responseMap1 = <map<json>>mockResponse1;
     if responseMap1.hasKey("body") {
         map<json> body = <map<json>>responseMap1.get("body");
         if body.hasKey("body") {
             json[] ids = <json[]>body.get("body");
-            
+
             // Should find entity1 and entity3 (both are Device.Sensor)
             boolean foundEntity1 = false;
             boolean foundEntity3 = false;
@@ -657,26 +965,26 @@ function testEntitySearch() returns error? {
                     foundEntity3 = true;
                 }
             }
-            
+
             test:assertTrue(foundEntity1, "Search by kind should find entity1");
             test:assertTrue(foundEntity3, "Search by kind should find entity3");
         }
     }
-    
+
     // Mock search response for test 2 (search by metadata)
     json mockResponse2 = {
         "body": {
             "body": [entity1Id, entity3Id]
         }
     };
-    
+
     // Verify results
     map<json> responseMap2 = <map<json>>mockResponse2;
     if responseMap2.hasKey("body") {
         map<json> body = <map<json>>responseMap2.get("body");
         if body.hasKey("body") {
             json[] ids = <json[]>body.get("body");
-            
+
             // Should find entity1 and entity3 (both have manufacturer: Example Corp)
             boolean foundEntity1 = false;
             boolean foundEntity3 = false;
@@ -689,26 +997,26 @@ function testEntitySearch() returns error? {
                     foundEntity3 = true;
                 }
             }
-            
+
             test:assertTrue(foundEntity1, "Search by metadata should find entity1");
             test:assertTrue(foundEntity3, "Search by metadata should find entity3");
         }
     }
-    
+
     // Mock search response for test 3 (search by combined criteria)
     json mockResponse3 = {
         "body": {
             "body": [entity3Id]
         }
     };
-    
+
     // Verify results
     map<json> responseMap3 = <map<json>>mockResponse3;
     if responseMap3.hasKey("body") {
         map<json> body = <map<json>>responseMap3.get("body");
         if body.hasKey("body") {
             json[] ids = <json[]>body.get("body");
-            
+
             // Should find only entity3
             boolean foundEntity3 = false;
             foreach json id in ids {
@@ -717,19 +1025,19 @@ function testEntitySearch() returns error? {
                     foundEntity3 = true;
                 }
             }
-            
+
             test:assertTrue(foundEntity3, "Search by combined criteria should find entity3");
             test:assertTrue(ids.length() == 1, "Search should find exactly 1 entity");
         }
     }
-    
+
     // Clean up
     foreach string id in testIds {
         EntityId deleteRequest = {id: id};
         Empty _ = check coreClient->DeleteEntity(deleteRequest);
     }
     io:println("Test entities deleted");
-    
+
     return;
 }
 
@@ -737,4 +1045,4 @@ function testEntitySearch() returns error? {
 @test:AfterSuite
 function afterSuiteFunc() {
     io:println("Completed read API service tests!");
-} 
+}

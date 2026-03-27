@@ -166,7 +166,7 @@ def assert_tabular_data(data, expected_columns=None, expected_data=None, field_f
     if not structure_validation['valid']:
         raise AssertionError(f"Tabular data structure validation failed: {structure_validation['message']}")
 
-def test_api_endpoint_with_validation(url, params=None, expected_fields=None, min_rows=0, test_name="API Test"):
+def test_api_endpoint_with_validation(url, params=None, expected_fields=None, body={}, min_rows=0, test_name="API Test"):
     """
     Generic function to test any API endpoint with tabular data validation.
 
@@ -174,6 +174,7 @@ def test_api_endpoint_with_validation(url, params=None, expected_fields=None, mi
         url: The API endpoint URL
         params: Query parameters (optional)
         expected_fields: Expected field names (optional)
+        body: Request body (optional)
         min_rows: Minimum number of rows expected
         test_name: Name for the test (for logging)
 
@@ -182,7 +183,7 @@ def test_api_endpoint_with_validation(url, params=None, expected_fields=None, mi
     """
     print(f"  📋 {test_name}...")
 
-    res = requests.get(url, params=params)
+    res = requests.post(url, params=params, headers={"Content-Type": "application/json"}, json=body)
 
     assert res.status_code == 200, f"HTTP {res.status_code}: {res.text}"
 
@@ -395,6 +396,7 @@ def test_generic_validation_examples():
         url=base_url,
         params={"fields": ["id", "name", "age", "department", "salary"]},
         expected_fields=["id", "name", "age", "department", "salary"],
+        body={},
         min_rows=5,
         test_name="All Fields Test"
     )
@@ -404,6 +406,7 @@ def test_generic_validation_examples():
         url=base_url,
         params={"fields": ["id", "name"]},
         expected_fields=["id", "name"],
+        body={},
         min_rows=5,
         test_name="ID and Name Fields Test"
     )
@@ -413,8 +416,85 @@ def test_generic_validation_examples():
         url=base_url,
         params={"startTime": "2024-01-01T00:00:00Z", "fields": ["salary", "department"]},
         expected_fields=["salary", "department"],
+        body={},
         min_rows=5,
         test_name="Time Range with Salary/Department Test"
+    )
+
+    # Example 4: Test with row base filtering
+    test_api_endpoint_with_validation(
+        url=base_url,
+        params={"fields": ["id", "name"]},
+        expected_fields=["id", "name"],
+        body={
+            "records":[
+                    {
+                        "field_name": "name",
+                        "operator": "contains",
+                        "value": "Jan"
+                    },
+                    {
+                        "field_name": "age",
+                        "operator": "eq",
+                        "value": "25"
+                    },
+                    {
+                        "field_name": "department",
+                        "operator": "notcontains",
+                        "value": "eng"
+                    },
+                    {
+                        "field_name": "department",
+                        "operator": "neq",
+                        "value": "Engineering"
+                    },
+                    {
+                        "field_name": "salary",
+                        "operator": "gte",
+                        "value": "65000"
+                    },
+                    {
+                        "field_name": "salary",
+                        "operator": "gt",
+                        "value": "35000"
+                    },
+                    {
+                        "field_name": "salary",
+                        "operator": "lte",
+                        "value": "65000"
+                    },
+                    {
+                        "field_name": "salary",
+                        "operator": "lt",
+                        "value": "95000"
+                    },
+            ]
+        },
+        min_rows=1,
+        test_name="Row Base Filtering Test"
+    )
+
+    # Example 5: Test with row base filtering
+    test_api_endpoint_with_validation(
+        url=base_url,
+        params={"fields": ["id", "name", "age", "department", "salary"]},
+        expected_fields=["id", "name", "age", "department", "salary"],
+        body={
+            "records":[
+                    {
+                        "field_name": "age",
+                        "operator": "gt",
+                        "value": "28"
+                    },
+                    {
+                        "field_name": "salary",
+                        "operator": "gte",
+                        "value": "80000"
+                    }
+            ]
+        },
+        min_rows=2,
+        test_name="Row Base Filtering Test"
     )
 
     print("  ✅ Generic validation examples completed")
@@ -721,24 +801,28 @@ def test_attribute_fields_combinations():
             "name": "All fields (default)",
             "params": {"fields": []},
             "expected_fields": ["id", "e_id", "name", "age", "department", "salary"],
+            "body": {},
             "min_rows": 5
         },
         {
             "name": "ID and name only",
             "params": {"fields": ["e_id", "name"]},
             "expected_fields": ["e_id", "name"],
+            "body": {},
             "min_rows": 5
         },
         {
             "name": "Salary and department only",
             "params": {"fields": ["salary", "department"]},
             "expected_fields": ["salary", "department"],
+            "body": {},
             "min_rows": 5
         },
         {
             "name": "Single field (name)",
             "params": {"fields": ["name"]},
             "expected_fields": ["name"],
+            "body": {},
             "min_rows": 5
         },
         {
@@ -748,13 +832,14 @@ def test_attribute_fields_combinations():
                 "fields": ["e_id", "name", "salary"]
             },
             "expected_fields": ["e_id", "name", "salary"],
+            "body": {},
             "min_rows": 5
         },
     ]
 
     for test_case in test_cases:
         print(f"  📋 Testing: {test_case['name']}")
-        res = requests.get(base_url, params=test_case["params"])
+        res = requests.post(base_url, params=test_case["params"], json=test_case["body"])
 
         assert res.status_code == 200, f"{test_case['name']} - HTTP {res.status_code}: {res.text}"
         
@@ -845,6 +930,7 @@ def test_update_entity_attribute():
             "name": "All fields (default)",
             "params": {"fields": []},
             "expected_fields": ["id", "e_id", "department", "bonus"],
+            "body": {},
             "min_rows": 5
         },
         {
@@ -854,13 +940,14 @@ def test_update_entity_attribute():
                 "fields": ["department", "bonus"]
             },
             "expected_fields": ["department", "bonus"],
+            "body": {},
             "min_rows": 5
         },
     ]
 
     for test_case in test_cases:
         print(f"  📋 Testing: {test_case['name']}")
-        res = requests.get(base_url, params=test_case["params"])
+        res = requests.post(base_url, params=test_case["params"], json=test_case["body"])
 
         assert res.status_code == 200, f"{test_case['name']} - HTTP {res.status_code}: {res.text}"
         
@@ -890,7 +977,7 @@ def test_attribute_lookup():
     url = f"{READ_API_URL}/{ENTITY_ID}/attributes/employee_data"
     fields = []
     params = {"fields": fields}
-    res = requests.get(url, params=params)
+    res = requests.post(url, params=params, json={})
     
     assert res.status_code == 200, f"Failed to get all fields: {res.status_code} - {res.text}"
     
@@ -914,7 +1001,7 @@ def test_attribute_lookup():
     print("  📋 Testing specific fields retrieval...")
     fields = ["id", "name", "salary"]
     params = {"fields": fields}
-    res = requests.get(url, params=params)
+    res = requests.post(url, params=params, json={})
     
     assert res.status_code == 200, f"Failed to get specific fields: {res.status_code} - {res.text}"
     
@@ -941,7 +1028,7 @@ def test_attribute_lookup():
         "startTime": "2024-01-01T00:00:00Z",
         "fields": ["id", "name", "department"]
     }
-    res = requests.get(url, params=params)
+    res = requests.post(url, params=params, json={})
     
     assert res.status_code == 200, f"Failed to get filtered data: {res.status_code} - {res.text}"
     
