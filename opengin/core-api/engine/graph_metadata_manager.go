@@ -56,7 +56,7 @@ type AttributeMetadata struct {
 	StoragePath   string // Path/location in the specific storage system
 	Created       time.Time
 	Updated       time.Time
-	EndTime       *time.Time
+	Terminated    *time.Time
 	Schema        map[string]interface{} // Schema information
 }
 
@@ -126,12 +126,12 @@ func (g *GraphMetadataManager) createAttributeLookUpGraph(ctx context.Context, m
 
 	// create the attribute node in the graph
 	// stored parameters: id, kind, name, created
-	log.Printf("DEBUG: Creating attribute node for attribute %s: [endTime: %v] [startTime: %v]", metadata.AttributeName, metadata.EndTime, metadata.Created)
+	log.Printf("DEBUG: Creating attribute node for attribute %s: [endTime: %v] [startTime: %v]", metadata.AttributeName, metadata.Terminated, metadata.Created)
 
 	var terminated string
 
-	if metadata.EndTime != nil {
-		terminated = metadata.EndTime.Format(time.RFC3339)
+	if metadata.Terminated != nil {
+		terminated = metadata.Terminated.Format(time.RFC3339)
 	}
 
 	attributeNode := &pb.Entity{
@@ -243,8 +243,8 @@ func MakeMetadataOfAttributeMetadata(metadata *AttributeMetadata) map[string]*an
 // MakeRelationshipProto creates a Relationship protobuf object for IS_ATTRIBUTE relationship
 func MakeRelationshipFromAttributeMetadata(metadata *AttributeMetadata) *pb.Relationship {
 	var endTime string
-	if metadata.EndTime != nil {
-		endTime = metadata.EndTime.Format(time.RFC3339)
+	if metadata.Terminated != nil {
+		endTime = metadata.Terminated.Format(time.RFC3339)
 	}
 	return &pb.Relationship{
 		Id:              GenerateAttributeRelationshipID(metadata.EntityID, metadata.AttributeName),
