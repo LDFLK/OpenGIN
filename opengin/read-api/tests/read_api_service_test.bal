@@ -220,7 +220,7 @@ function testEntityAttributeRetrieval() returns error? {
                     value: {
                         values: [
                             {
-                                startTime: "",
+                                startTime: "2025-04-01T00:00:00Z",
                                 endTime: "",
                                 value: attributeValueFilterAny
                             }
