@@ -179,6 +179,7 @@ func SanitizeIdentifier(s string) string {
 
 	return safe
 }
+
 // GetNamespace returns a fixed, unique UUID for different types of OpenGIN objects.
 // Current categories:
 // - "attributes" : deterministic IDs for Attribute nodes and relationships

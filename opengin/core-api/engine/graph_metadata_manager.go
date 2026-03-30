@@ -442,7 +442,7 @@ func GetDatasetType(storageType storageinference.StorageType) string {
 
 // GenerateAttributeRelationshipID generates a deterministic ID for an attribute relationship
 func GenerateAttributeRelationshipID(entityID, attributeName string) string {
-	name := fmt.Sprintf("rel:%s:%s", entityID, attributeName)
+	name := fmt.Sprintf("rel:%s:%s", commons.SanitizeIdentifier(entityID), commons.SanitizeIdentifier(attributeName))
 	namespace := commons.GetNamespace("attributes")
 	unique_id := uuid.NewSHA1(namespace, []byte(name)).String()
 	unique_id = strings.ReplaceAll(unique_id, "-", "") // Remove hyphens for database compatibility
@@ -451,7 +451,7 @@ func GenerateAttributeRelationshipID(entityID, attributeName string) string {
 
 func GenerateAttributeID(entityID, attributeName string) string {
 	// attribute name should be unique within an entity
-	name := fmt.Sprintf("%s:%s", entityID, attributeName)
+	name := fmt.Sprintf("%s:%s", commons.SanitizeIdentifier(entityID), commons.SanitizeIdentifier(attributeName))
 	namespace := commons.GetNamespace("attributes")
 	unique_id := uuid.NewSHA1(namespace, []byte(name)).String()
 	unique_id = strings.ReplaceAll(unique_id, "-", "") // Remove hyphens for database compatibility
