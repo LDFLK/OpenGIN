@@ -14,6 +14,8 @@ import (
 
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
+
+	"github.com/google/uuid"
 )
 
 // CreateTimeBasedValue creates a TimeBasedValue with a string value
@@ -176,4 +178,17 @@ func SanitizeIdentifier(s string) string {
 	}
 
 	return safe
+}
+// GetNamespace returns a fixed, unique UUID for different types of OpenGIN objects.
+// Current categories:
+// - "attributes" : deterministic IDs for Attribute nodes and relationships
+func GetNamespace(category string) uuid.UUID {
+	switch strings.ToLower(category) {
+	case "attributes":
+		// This is the fixed, global namespace for OpenGIN Attributes
+		return uuid.MustParse("6a929e21-8361-4447-9112-cdec3e293066")
+	default:
+		// Fallback to nil UUID if category is unknown
+		return uuid.Nil
+	}
 }

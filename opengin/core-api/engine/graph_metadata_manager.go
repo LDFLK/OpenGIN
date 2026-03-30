@@ -34,7 +34,6 @@ const (
 const IS_ATTRIBUTE_RELATIONSHIP = "IS_ATTRIBUTE"
 
 // IS_ATTRIBUTE relationship direction
-// The reason for outgoing is the attribute we create here is an attribute of the parent entity.
 const IS_ATTRIBUTE_RELATIONSHIP_DIRECTION = "OUTGOING"
 
 // GraphMetadataManager handles the reference graph for tracking attributes
@@ -141,10 +140,9 @@ func (g *GraphMetadataManager) createAttributeLookUpGraph(ctx context.Context, m
 		Relationships: make(map[string]*pb.Relationship),
 	}
 
-	// the relationships map needs a unique key for each relationship
 	// since the attribute id and the name of the attribute is unique for each attribute
 	// among all entities, we can use this to form a unique key for the relationship
-	relationshipId := GenerateAttributeRelationshipID()
+	relationshipId := GenerateAttributeRelationshipID(metadata.EntityID, metadata.AttributeName)
 
 	parentNode := &pb.Entity{
 		Id:         metadata.EntityID,
@@ -237,7 +235,7 @@ func MakeMetadataOfAttributeMetadata(metadata *AttributeMetadata) map[string]*an
 // MakeRelationshipProto creates a Relationship protobuf object for IS_ATTRIBUTE relationship
 func MakeRelationshipFromAttributeMetadata(metadata *AttributeMetadata) *pb.Relationship {
 	return &pb.Relationship{
-		Id:              GenerateAttributeRelationshipID(),
+		Id:              GenerateAttributeRelationshipID(metadata.EntityID, metadata.AttributeName),
 		RelatedEntityId: metadata.AttributeID,
 		Name:            IS_ATTRIBUTE_RELATIONSHIP,
 		StartTime:       metadata.Created.Format(time.RFC3339),
@@ -442,16 +440,20 @@ func GetDatasetType(storageType storageinference.StorageType) string {
 	}
 }
 
-// GenerateAttributeID generates a unique ID for an attribute
-func GenerateAttributeRelationshipID() string {
-	unique_id := uuid.New().String()
+// GenerateAttributeRelationshipID generates a deterministic ID for an attribute relationship
+func GenerateAttributeRelationshipID(entityID, attributeName string) string {
+	name := fmt.Sprintf("rel:%s:%s", entityID, attributeName)
+	namespace := commons.GetNamespace("attributes")
+	unique_id := uuid.NewSHA1(namespace, []byte(name)).String()
 	unique_id = strings.ReplaceAll(unique_id, "-", "") // Remove hyphens for database compatibility
 	return fmt.Sprintf("attr_rel_%s", unique_id)
 }
 
-func GenerateAttributeID() string {
+func GenerateAttributeID(entityID, attributeName string) string {
 	// attribute name should be unique within an entity
-	unique_id := uuid.New().String()
+	name := fmt.Sprintf("%s:%s", entityID, attributeName)
+	namespace := commons.GetNamespace("attributes")
+	unique_id := uuid.NewSHA1(namespace, []byte(name)).String()
 	unique_id = strings.ReplaceAll(unique_id, "-", "") // Remove hyphens for database compatibility
 	return fmt.Sprintf("attr_%s", unique_id)
 }
