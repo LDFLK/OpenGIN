@@ -133,21 +133,24 @@ func (p *EntityAttributeProcessor) ProcessEntityAttributes(ctx context.Context, 
 			// not the entity level. The entity level timestamp is used for the entity itself.
 
 			// start time is required to create the attribute
-			if value.StartTime == "" {
+			if operation != "read" && value.StartTime == "" {
 				attributeResults[attrName] = &Result{
 					Success: false,
 					Error:   fmt.Errorf("StartTime is required for attribute: %s", attrName),
 				}
 				continue
 			}
+			var attributeStartTime time.Time
 
-			attributeStartTime, err := time.Parse(time.RFC3339, value.StartTime)
-			if err != nil {
-				attributeResults[attrName] = &Result{
-					Success: false,
-					Error:   fmt.Errorf("invalid StartTime format for attribute %s: %v", attrName, err),
+			if value.StartTime != "" {
+				attributeStartTime, err = time.Parse(time.RFC3339, value.StartTime)
+				if err != nil {
+					attributeResults[attrName] = &Result{
+						Success: false,
+						Error:   fmt.Errorf("invalid StartTime format for attribute %s: %v", attrName, err),
+					}
+					continue
 				}
-				continue
 			}
 
 			var attributeEndTime *time.Time
