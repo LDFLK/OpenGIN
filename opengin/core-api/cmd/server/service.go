@@ -81,8 +81,15 @@ func (s *Server) CreateEntity(ctx context.Context, req *pb.Entity) (*pb.Entity, 
 	}
 
 	if hasErrors {
-		log.Printf("[server.CreateEntity] Some attributes failed to process")
-		return nil, fmt.Errorf("some attributes failed to process")
+		var firstErr string
+		for _, result := range attributeResults {
+			if result.Error != nil {
+				firstErr = result.Error.Error()
+				break
+			}
+		}
+		log.Printf("Some attributes failed to process: %s", firstErr)
+		return nil, fmt.Errorf("some attributes failed to process: %s", firstErr)
 	}
 
 	return req, nil
@@ -289,8 +296,15 @@ func (s *Server) UpdateEntity(ctx context.Context, req *pb.UpdateEntityRequest) 
 	}
 
 	if hasErrors {
-		log.Printf("[server.CreateEntity] Some attributes failed to process")
-		return nil, fmt.Errorf("some attributes failed to process")
+		var firstErr string
+		for _, result := range attributeResults {
+			if result.Error != nil {
+				firstErr = result.Error.Error()
+				break
+			}
+		}
+		log.Printf("[server.UpdateEntity] Some attributes failed to process: %s", firstErr)
+		return nil, fmt.Errorf("some attributes failed to process: %s", firstErr)
 	}
 
 	// Prepare the Update Response
