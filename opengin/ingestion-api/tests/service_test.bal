@@ -2376,3 +2376,357 @@ function testEntityWithTabularAttributesUpdate() returns error? {
 
     return;
 }
+
+// =============================================================================
+// Tabular Attribute Integrity Tests
+// =============================================================================
+
+// Test 1 — Idempotency: submitting the same (entityId, attrName) pair a second
+// time must append rows to the existing Postgres table, not create a new table.
+// No new IS_ATTRIBUTE relationship should appear in the graph either.
+@test:Config {
+    groups: ["entity", "attributes", "tabular", "integrity"]
+}
+function testTabularAttributeIdempotency() returns error? {
+    COREServiceClient ep = check new (testCoreServiceUrl);
+    string testId = "test-tabular-idempotency";
+    string attrName = "employee_data";
+
+    json firstBatch = {
+        "columns": ["id", "name", "department"],
+        "rows": [
+            [1, "Alice", "Engineering"],
+            [2, "Bob", "Marketing"]
+        ]
+    };
+    json secondBatch = {
+        "columns": ["id", "name", "department"],
+        "rows": [
+            [3, "Charlie", "Finance"],
+            [4, "Diana", "Sales"]
+        ]
+    };
+
+    pbAny:Any firstAny  = check jsonToAny(firstBatch);
+    pbAny:Any secondAny = check jsonToAny(secondBatch);
+
+    // ── Create entity with the first batch of data ───────────────────────────
+    Entity createReq = {
+        id: testId,
+        kind: { major: "test", minor: "tabular-integrity" },
+        created: "2025-01-01T00:00:00Z",
+        terminated: "",
+        name: {
+            startTime: "2025-01-01T00:00:00Z",
+            endTime: "",
+            value: check pbAny:pack("Tabular Idempotency Test Entity")
+        },
+        metadata: [],
+        attributes: [
+            {
+                key: attrName,
+                value: {
+                    values: [
+                        { startTime: "2025-01-01T00:00:00Z", endTime: "", value: firstAny }
+                    ]
+                }
+            }
+        ],
+        relationships: []
+    };
+    Entity createResp = check ep->CreateEntity(createReq);
+    test:assertEquals(createResp.id, testId, "Entity should be created successfully");
+    io:println("[testTabularAttributeIdempotency] First create OK, ID=" + createResp.id);
+
+    // ── Read back to record the relationship count after first ingest ─────────
+    ReadEntityRequest readReq1 = {
+        entity: {
+            id: testId,
+            kind: {},
+            created: "",
+            terminated: "",
+            name: { startTime: "", endTime: "", value: check pbAny:pack("") },
+            metadata: [],
+            attributes: [],
+            relationships: []
+        },
+        output: ["relationships"]
+    };
+    Entity readResp1 = check ep->ReadEntity(readReq1);
+    int relCountAfterFirst = readResp1.relationships.length();
+    io:println("[testTabularAttributeIdempotency] Relationship count after first ingest: " + relCountAfterFirst.toString());
+
+    // ── Update entity with a SECOND batch for the SAME attribute ─────────────
+    UpdateEntityRequest updateReq = {
+        id: testId,
+        entity: {
+            id: testId,
+            kind: { major: "", minor: "" },
+            created: "",
+            terminated: "",
+            name: { startTime: "", endTime: "", value: check pbAny:pack("") },
+            metadata: [],
+            attributes: [
+                {
+                    key: attrName,
+                    value: {
+                        values: [
+                            { startTime: "2025-02-01T00:00:00Z", endTime: "", value: secondAny }
+                        ]
+                    }
+                }
+            ],
+            relationships: []
+        }
+    };
+    Entity updateResp = check ep->UpdateEntity(updateReq);
+    test:assertEquals(updateResp.id, testId, "Entity should be updated successfully");
+    io:println("[testTabularAttributeIdempotency] Second update OK");
+
+    // ── Read back to verify relationship count has NOT grown ──────────────────
+    Entity readResp2 = check ep->ReadEntity(readReq1);
+    int relCountAfterSecond = readResp2.relationships.length();
+    io:println("[testTabularAttributeIdempotency] Relationship count after second ingest: " + relCountAfterSecond.toString());
+
+    test:assertEquals(relCountAfterSecond, relCountAfterFirst,
+        "IS_ATTRIBUTE relationship count must NOT grow when appending to an existing attribute");
+
+    // ── Verify the table now contains ALL rows (first + second batch) ─────────
+    json allRowsFilter = {
+        "columns": ["id", "name", "department"],
+        "rows": [[]]
+    };
+    pbAny:Any allRowsFilterAny = check jsonToAny(allRowsFilter);
+
+    ReadEntityRequest readAttrReq = {
+        entity: {
+            id: testId,
+            kind: {},
+            created: "",
+            terminated: "",
+            name: { startTime: "", endTime: "", value: check pbAny:pack("") },
+            metadata: [],
+            attributes: [
+                {
+                    key: attrName,
+                    value: {
+                        values: [
+                            { startTime: "", endTime: "", value: allRowsFilterAny }
+                        ]
+                    }
+                }
+            ],
+            relationships: []
+        },
+        output: ["attributes"]
+    };
+    Entity readAttrResp = check ep->ReadEntity(readAttrReq);
+    test:assertTrue(readAttrResp.attributes.length() > 0, "Should return the attribute");
+
+    var attrValue = readAttrResp.attributes[0].value.values[0].value;
+    JsonObject attrJson = check pbAny:unpack(attrValue);
+    string dataJsonStr = <string>attrJson["data"];
+    json dataJson = check dataJsonStr.fromJsonString();
+
+    json rows = check dataJson.rows;
+    json[] rowArr = <json[]>rows;
+    io:println("[testTabularAttributeIdempotency] Total rows after both batches: " + rowArr.length().toString());
+
+    test:assertEquals(rowArr.length(), 4,
+        "After two appends the table must contain exactly 4 rows (2 + 2), not a fresh table");
+
+    // ── Clean up ───────────────────────────────────────────────────────────────
+    Empty _ = check ep->DeleteEntity({ id: testId });
+    io:println("[testTabularAttributeIdempotency] Cleaned up test entity");
+    return;
+}
+
+// Test 2 — Schema Mismatch: after a table is created with a numeric column,
+// pushing a string value into that column must cause an error.
+@test:Config {
+    groups: ["entity", "attributes", "tabular", "integrity"]
+}
+function testTabularSchemaMismatch() returns error? {
+    COREServiceClient ep = check new (testCoreServiceUrl);
+    string testId = "test-tabular-schema-mismatch";
+    string attrName = "numeric_data";
+
+    json validBatch = {
+        "columns": ["id", "score"],
+        "rows": [
+            [1, 99],
+            [2, 85]
+        ]
+    };
+    // ❌ score column is now a string — incompatible with the integer schema above
+    json invalidBatch = {
+        "columns": ["id", "score"],
+        "rows": [
+            [3, "not-a-number"],
+            [4, "also-wrong"]
+        ]
+    };
+
+    pbAny:Any validAny   = check jsonToAny(validBatch);
+    pbAny:Any invalidAny = check jsonToAny(invalidBatch);
+
+    // ── Create entity with a valid numeric schema ─────────────────────────────
+    Entity createReq = {
+        id: testId,
+        kind: { major: "test", minor: "tabular-integrity" },
+        created: "2025-01-01T00:00:00Z",
+        terminated: "",
+        name: {
+            startTime: "2025-01-01T00:00:00Z",
+            endTime: "",
+            value: check pbAny:pack("Schema Mismatch Test Entity")
+        },
+        metadata: [],
+        attributes: [
+            {
+                key: attrName,
+                value: {
+                    values: [
+                        { startTime: "2025-01-01T00:00:00Z", endTime: "", value: validAny }
+                    ]
+                }
+            }
+        ],
+        relationships: []
+    };
+    Entity createResp = check ep->CreateEntity(createReq);
+    test:assertEquals(createResp.id, testId, "Initial entity must be created successfully");
+    io:println("[testTabularSchemaMismatch] Initial entity created OK with numeric schema");
+
+    // ── Attempt to append type-incompatible data — MUST fail ─────────────────
+    UpdateEntityRequest updateReq = {
+        id: testId,
+        entity: {
+            id: testId,
+            kind: { major: "", minor: "" },
+            created: "",
+            terminated: "",
+            name: { startTime: "", endTime: "", value: check pbAny:pack("") },
+            metadata: [],
+            attributes: [
+                {
+                    key: attrName,
+                    value: {
+                        values: [
+                            { startTime: "2025-02-01T00:00:00Z", endTime: "", value: invalidAny }
+                        ]
+                    }
+                }
+            ],
+            relationships: []
+        }
+    };
+    Entity|error updateResult = ep->UpdateEntity(updateReq);
+
+    if updateResult is error {
+        io:println("[testTabularSchemaMismatch] ✅ Schema mismatch correctly rejected: " + updateResult.message());
+        // The error message should be informative — not a generic message
+        test:assertTrue(updateResult.message().length() > 0, "Error message should not be empty");
+    } else {
+        test:assertFail("Expected an error when appending schema-incompatible data, but got success");
+    }
+
+    // ── Clean up ───────────────────────────────────────────────────────────────
+    Empty _ = check ep->DeleteEntity({ id: testId });
+    io:println("[testTabularSchemaMismatch] Cleaned up test entity");
+    return;
+}
+
+// Test 3 — Duplicate Primary Key: inserting a row whose primary key already
+// exists in the table must be rejected with an error.
+@test:Config {
+    groups: ["entity", "attributes", "tabular", "integrity"]
+}
+function testTabularDuplicatePrimaryKey() returns error? {
+    COREServiceClient ep = check new (testCoreServiceUrl);
+    string testId = "test-tabular-duplicate-pk";
+    string attrName = "pk_data";
+
+    json firstBatch = {
+        "columns": ["id", "value"],
+        "rows": [
+            [1, "first"],
+            [2, "second"]
+        ]
+    };
+    // ❌ id=1 already exists — this is a duplicate PK
+    json duplicateBatch = {
+        "columns": ["id", "value"],
+        "rows": [
+            [1, "duplicate!"]
+        ]
+    };
+
+    pbAny:Any firstAny     = check jsonToAny(firstBatch);
+    pbAny:Any duplicateAny = check jsonToAny(duplicateBatch);
+
+    // ── Create entity with initial rows ──────────────────────────────────────
+    Entity createReq = {
+        id: testId,
+        kind: { major: "test", minor: "tabular-integrity" },
+        created: "2025-01-01T00:00:00Z",
+        terminated: "",
+        name: {
+            startTime: "2025-01-01T00:00:00Z",
+            endTime: "",
+            value: check pbAny:pack("Duplicate PK Test Entity")
+        },
+        metadata: [],
+        attributes: [
+            {
+                key: attrName,
+                value: {
+                    values: [
+                        { startTime: "2025-01-01T00:00:00Z", endTime: "", value: firstAny }
+                    ]
+                }
+            }
+        ],
+        relationships: []
+    };
+    Entity createResp = check ep->CreateEntity(createReq);
+    test:assertEquals(createResp.id, testId, "Initial entity must be created successfully");
+    io:println("[testTabularDuplicatePrimaryKey] Initial rows created with ids 1 and 2");
+
+    // ── Attempt to insert a row with a duplicate PK — MUST fail ──────────────
+    UpdateEntityRequest updateReq = {
+        id: testId,
+        entity: {
+            id: testId,
+            kind: { major: "", minor: "" },
+            created: "",
+            terminated: "",
+            name: { startTime: "", endTime: "", value: check pbAny:pack("") },
+            metadata: [],
+            attributes: [
+                {
+                    key: attrName,
+                    value: {
+                        values: [
+                            { startTime: "2025-02-01T00:00:00Z", endTime: "", value: duplicateAny }
+                        ]
+                    }
+                }
+            ],
+            relationships: []
+        }
+    };
+    Entity|error updateResult = ep->UpdateEntity(updateReq);
+
+    if updateResult is error {
+        io:println("[testTabularDuplicatePrimaryKey] ✅ Duplicate PK correctly rejected: " + updateResult.message());
+        test:assertTrue(updateResult.message().length() > 0, "Error message should not be empty");
+    } else {
+        test:assertFail("Expected an error when inserting a duplicate primary key, but got success");
+    }
+
+    // ── Clean up ───────────────────────────────────────────────────────────────
+    Empty _ = check ep->DeleteEntity({ id: testId });
+    io:println("[testTabularDuplicatePrimaryKey] Cleaned up test entity");
+    return;
+}
