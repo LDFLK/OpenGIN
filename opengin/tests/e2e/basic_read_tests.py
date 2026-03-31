@@ -633,7 +633,7 @@ def create_entity_for_read():
                     "values": [
                         {
                             "startTime": "2024-11-01T00:00:00Z",
-                            "endTime": "",
+                            "endTime": "2024-11-30T00:00:00Z",
                             "value": {
                                 "columns": ["e_id", "name", "age", "department", "salary"],
                                 "rows": [
@@ -788,6 +788,23 @@ def create_entity_for_read():
     res = requests.post(INGESTION_API_URL, json=payload_source)
     assert res.status_code == 201 or res.status_code == 200, f"Failed to create entity: {res.text}"
     print("✅ Created base entity for read tests.")
+
+
+def check_relationship_timeStamps():
+    res = requests.get(INGESTION_API_URL + "/" + RELATED_ID_1)
+    assert res.status_code == 200, f"Failed to fetch entity: {res.text}"
+    print("✅ Fetched entity.")
+
+    # Verify the response data
+    response_data = res.json()
+    relationship = response_data["relationships"][0]
+    start_time = relationship["value"]["startTime"]
+    end_time = relationship["value"]["endTime"]
+    print("start_time: ", start_time)
+    print("end_time: ", end_time)
+    assert start_time == "2024-11-01T00:00:00Z", f"Expected start time '2024-11-01T00:00:00Z', got '{start_time}'"
+    assert end_time == "2024-11-30T00:00:00Z", f"Expected end time '2024-11-30T00:00:00Z', got '{end_time}'"
+    
 
 def test_attribute_fields_combinations():
     """Test different field combinations for attribute retrieval."""
@@ -2383,6 +2400,7 @@ if __name__ == "__main__":
         test_protobuf_decoding()
         print("Creating entity for read tests...")
         create_entity_for_read()
+        check_relationship_timeStamps()
         print("Testing generic validation examples...")
         test_generic_validation_examples()
         print("Testing attribute field combinations...")
