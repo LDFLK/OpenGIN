@@ -66,7 +66,7 @@ class CoreTestUtils:
 class TestCOREAPI(unittest.TestCase):
     def setUp(self):
         print("🟢 Setting up test environment...")
-        ingestion_service_url = os.getenv('INGESTION_SERVICE_URL', f"http://0.0.0.0:8080")
+        ingestion_service_url = os.getenv('INGESTION_SERVICE_URL', "http://0.0.0.0:8080")
         print("🟢 INGESTION_SERVICE_URL: ", ingestion_service_url)
         self.base_url = f"{ingestion_service_url}/entities"
         print("🟢 BASE_URL: ", self.base_url)
@@ -402,8 +402,10 @@ class AttributeValidationTests(BasicCORETests):
         ]
         self.START_DATE = "2025-11-01T00:00:00Z"
         self.DATA_START_DATE = "2025-12-01T00:00:00Z"
+        self.DATA_END_DATE = "2025-12-31T00:00:00Z"
         self.ATTRIBUTE_NAME = "employee_data"
-
+        self.ATTRIBUTE_NAME_2 = "employee_data_2"
+        self.ATTRIBUTE_NAME_3 = "employee_data_3"
 
     def create_minister_with_attributes(self):
         """Create a Minister entity."""
@@ -452,7 +454,6 @@ class AttributeValidationTests(BasicCORETests):
 
         print(f"Response: {res.status_code} - {res.text}")
         print("✅ Created Minister entity with attributes.")
-
 
     def read_minister(self):
         """Read the Minister entity."""
@@ -504,7 +505,6 @@ class AttributeValidationTests(BasicCORETests):
         assert res.status_code in [200], f"Failed to update attributes: {res.text}"
         print("✅ Attributes updated.")
 
-
     def update_attributes_stage_2(self):
         """Update the attributes of the Minister entity."""
         print("\n🟢 Updating attributes stage 2...")
@@ -536,10 +536,87 @@ class AttributeValidationTests(BasicCORETests):
         assert res.status_code in [200], f"Failed to update attributes: {res.text}"
         print("✅ Attributes updated.")
 
+    def create_minister_with_attributes_with_startDate_and_endDate(self):
+        """Create a Minister entity."""
+        print("\n🟢 Creating Minister with attribute with startDate and endDate...")
+        
+        payload = {
+            "id": self.MINISTER_ID,
+            "attributes": [
+                {
+                    "key": self.ATTRIBUTE_NAME_2,
+                    "value": {
+                        "values": [
+                            {
+                                "startTime": self.DATA_START_DATE,
+                                "endTime": self.DATA_END_DATE,
+                                "value": {
+                                    "columns": ["id", "name", "age", "department", "salary"],
+                                    "rows": [
+                                        [1, "John Doe", 30, "Engineering", 75000.50],
+                                        [2, "Jane Smith", 25, "Marketing", 65000],
+                                        [3, "Bob Wilson", 35, "Sales", 85000.75],
+                                        [4, "Alice Brown", 28, "Engineering", 70000.25],
+                                        [5, "Charlie Davis", 32, "Finance", 80000]
+                                    ]
+                                }
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+        
+        res = requests.put(f"{self.base_url}/{self.MINISTER_ID}", json=payload)
+        print(res.status_code, res.json())
+        assert res.status_code in [200], f"Failed to update attributes: {res.text}"
+
+        print(f"Response: {res.status_code} - {res.text}")
+        print("✅ Updated Minister entity with attributes with startDate + endDate.")
+
+    def create_minister_with_attributes_without_startDate(self):
+        """Create a Minister entity."""
+        print("\n🟢 Creating Minister entity + attribute without startDate...")
+        
+        payload = {
+            "id": self.MINISTER_ID,
+            "attributes": [
+                {
+                    "key": self.ATTRIBUTE_NAME_3,
+                    "value": {
+                        "values": [
+                            {
+                                "startTime": "",
+                                "endTime": "",
+                                "value": {
+                                    "columns": ["id", "name", "age", "department", "salary"],
+                                    "rows": [
+                                        [1, "John Doe", 30, "Engineering", 75000.50],
+                                        [2, "Jane Smith", 25, "Marketing", 65000],
+                                        [3, "Bob Wilson", 35, "Sales", 85000.75],
+                                        [4, "Alice Brown", 28, "Engineering", 70000.25],
+                                        [5, "Charlie Davis", 32, "Finance", 80000]
+                                    ]
+                                }
+                            }
+                        ]
+                    }
+                }
+            ],
+            "relationships": []
+        }
+        
+        res = requests.put(f"{self.base_url}/{self.MINISTER_ID}", json=payload)
+        print(res.status_code, res.json())
+        assert res.status_code == 500, f"Expected 500, got {res.status_code}: {res.text}"
+
+        print(f"Response: {res.status_code} - {res.text}")
+        print("✅ Received expected error for Minister creation.")
+
 
 def get_base_url():
     print("🟢 Setting up test environment...")
-    ingestion_service_url = os.getenv('INGESTION_SERVICE_URL', f"http://0.0.0.0:8080")
+    ingestion_service_url = os.getenv('INGESTION_SERVICE_URL', "http://0.0.0.0:8080")
     print("🟢 INGESTION_SERVICE_URL: ", ingestion_service_url)
     return f"{ingestion_service_url}/entities"
 
@@ -846,6 +923,8 @@ if __name__ == "__main__":
         attribute_validation_tests.read_minister()
         attribute_validation_tests.update_attributes_stage_1()
         attribute_validation_tests.update_attributes_stage_2()
+        attribute_validation_tests.create_minister_with_attributes_with_startDate_and_endDate()
+        attribute_validation_tests.create_minister_with_attributes_without_startDate()
         print("\n🟢 Running Attribute Validation Tests... Done")
 
         print("\n🟢 Running Tabular Integrity Tests...")
