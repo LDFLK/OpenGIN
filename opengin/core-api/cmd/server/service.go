@@ -70,26 +70,12 @@ func (s *Server) CreateEntity(ctx context.Context, req *pb.Entity) (*pb.Entity, 
 	attributeResults := processor.ProcessEntityAttributes(ctx, req, "create", nil)
 
 	// Check if any attributes failed
-	hasErrors := false
 	for attrName, result := range attributeResults {
 		if !result.Success || result.Error != nil {
 			log.Printf("[server.CreateEntity] Error handling attribute %s: %v", attrName, result.Error)
-			hasErrors = true
-		} else {
-			log.Printf("[server.CreateEntity] Successfully handled attribute %s for entity: %s", attrName, req.Id)
+			return nil, fmt.Errorf("some attributes failed to process: %v", result.Error)
 		}
-	}
-
-	if hasErrors {
-		var firstErr string
-		for _, result := range attributeResults {
-			if result.Error != nil {
-				firstErr = result.Error.Error()
-				break
-			}
-		}
-		log.Printf("Some attributes failed to process: %s", firstErr)
-		return nil, fmt.Errorf("some attributes failed to process: %s", firstErr)
+		log.Printf("[server.CreateEntity] Successfully handled attribute %s for entity: %s", attrName, req.Id)
 	}
 
 	return req, nil
@@ -285,26 +271,12 @@ func (s *Server) UpdateEntity(ctx context.Context, req *pb.UpdateEntityRequest) 
 	attributeResults := processor.ProcessEntityAttributes(ctx, req.Entity, "create", nil)
 
 	// Check if any attributes failed
-	hasErrors := false
 	for attrName, result := range attributeResults {
 		if !result.Success || result.Error != nil {
-			log.Printf("[server.CreateEntity] Error handling attribute %s: %v", attrName, result.Error)
-			hasErrors = true
-		} else {
-			log.Printf("[server.CreateEntity] Successfully handled attribute %s for entity: %s", attrName, req.Id)
+			log.Printf("[server.UpdateEntity] Error handling attribute %s: %v", attrName, result.Error)
+			return nil, fmt.Errorf("some attributes failed to process: %v", result.Error)
 		}
-	}
-
-	if hasErrors {
-		var firstErr string
-		for _, result := range attributeResults {
-			if result.Error != nil {
-				firstErr = result.Error.Error()
-				break
-			}
-		}
-		log.Printf("[server.UpdateEntity] Some attributes failed to process: %s", firstErr)
-		return nil, fmt.Errorf("some attributes failed to process: %s", firstErr)
+		log.Printf("[server.UpdateEntity] Successfully handled attribute %s for entity: %s", attrName, req.Id)
 	}
 
 	// Prepare the Update Response
