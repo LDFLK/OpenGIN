@@ -2377,9 +2377,7 @@ function testEntityWithTabularAttributesUpdate() returns error? {
     return;
 }
 
-// =============================================================================
 // Tabular Attribute Integrity Tests
-// =============================================================================
 
 // Test 1 — Idempotency: submitting the same (entityId, attrName) pair a second
 // time must append rows to the existing Postgres table, not create a new table.

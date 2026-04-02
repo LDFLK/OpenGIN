@@ -544,9 +544,7 @@ def get_base_url():
     return f"{ingestion_service_url}/entities"
 
 
-# ==============================================================================
 # Tabular Attribute Integrity Tests
-# ==============================================================================
 
 class TabularIntegrityTests(BasicCORETests):
     """Tests that verify safety constraints for tabular attribute ingestion.
@@ -672,9 +670,8 @@ class TabularIntegrityTests(BasicCORETests):
 
         print("  ✅ [Test 1] Idempotency PASSED")
 
-    # ------------------------------------------------------------------
     # Test 2 – Schema Mismatch
-    # ------------------------------------------------------------------
+
     def test_schema_mismatch(self):
         """Pushing type-incompatible data (string into an int column) must fail."""
         print("\n🚫 [Test 2] Schema Mismatch Rejection")
@@ -746,9 +743,8 @@ class TabularIntegrityTests(BasicCORETests):
         print(f"  ✅ Schema mismatch correctly rejected: HTTP {res.status_code} – {res.text}")
         print("  ✅ [Test 2] Schema Mismatch PASSED")
 
-    # ------------------------------------------------------------------
     # Test 3 – Duplicate Primary Key
-    # ------------------------------------------------------------------
+    
     def test_duplicate_primary_key(self):
         """Inserting a row whose primary key already exists must be rejected."""
         print("\n🔑 [Test 3] Duplicate Primary Key Rejection")
