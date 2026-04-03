@@ -562,9 +562,9 @@ class TabularIntegrityTests(BasicCORETests):
         super().__init__(None)
         self.ATTR_NAME = "test_data"
 
-    # ------------------------------------------------------------------
+
     # Test 1 – Idempotency
-    # ------------------------------------------------------------------
+
     def test_idempotency(self):
         """Re-submitting the same attribute must APPEND rows, not create a new table
         or a new graph IS_ATTRIBUTE relationship."""
@@ -744,7 +744,7 @@ class TabularIntegrityTests(BasicCORETests):
         print("  ✅ [Test 2] Schema Mismatch PASSED")
 
     # Test 3 – Duplicate Primary Key
-    
+
     def test_duplicate_primary_key(self):
         """Inserting a row whose primary key already exists must be rejected."""
         print("\n🔑 [Test 3] Duplicate Primary Key Rejection")

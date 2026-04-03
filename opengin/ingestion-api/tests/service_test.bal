@@ -2408,7 +2408,7 @@ function testTabularAttributeIdempotency() returns error? {
     pbAny:Any firstAny  = check jsonToAny(firstBatch);
     pbAny:Any secondAny = check jsonToAny(secondBatch);
 
-    // ── Create entity with the first batch of data ───────────────────────────
+    // Create entity with the first batch of data
     Entity createReq = {
         id: testId,
         kind: { major: "test", minor: "tabular-integrity" },
@@ -2436,7 +2436,7 @@ function testTabularAttributeIdempotency() returns error? {
     test:assertEquals(createResp.id, testId, "Entity should be created successfully");
     io:println("[testTabularAttributeIdempotency] First create OK, ID=" + createResp.id);
 
-    // ── Read back to record the relationship count after first ingest ─────────
+    // Read back to record the relationship count after first ingest
     ReadEntityRequest readReq1 = {
         entity: {
             id: testId,
@@ -2454,7 +2454,7 @@ function testTabularAttributeIdempotency() returns error? {
     int relCountAfterFirst = readResp1.relationships.length();
     io:println("[testTabularAttributeIdempotency] Relationship count after first ingest: " + relCountAfterFirst.toString());
 
-    // ── Update entity with a SECOND batch for the SAME attribute ─────────────
+    // Update entity with a SECOND batch for the SAME attribute
     UpdateEntityRequest updateReq = {
         id: testId,
         entity: {
@@ -2481,7 +2481,7 @@ function testTabularAttributeIdempotency() returns error? {
     test:assertEquals(updateResp.id, testId, "Entity should be updated successfully");
     io:println("[testTabularAttributeIdempotency] Second update OK");
 
-    // ── Read back to verify relationship count has NOT grown ──────────────────
+    // Read back to verify relationship count has NOT grown
     Entity readResp2 = check ep->ReadEntity(readReq1);
     int relCountAfterSecond = readResp2.relationships.length();
     io:println("[testTabularAttributeIdempotency] Relationship count after second ingest: " + relCountAfterSecond.toString());
@@ -2489,7 +2489,7 @@ function testTabularAttributeIdempotency() returns error? {
     test:assertEquals(relCountAfterSecond, relCountAfterFirst,
         "IS_ATTRIBUTE relationship count must NOT grow when appending to an existing attribute");
 
-    // ── Verify the table now contains ALL rows (first + second batch) ─────────
+    // Verify the table now contains ALL rows (first + second batch)
     json allRowsFilter = {
         "columns": ["id", "name", "department"],
         "rows": [[]]
@@ -2533,7 +2533,7 @@ function testTabularAttributeIdempotency() returns error? {
     test:assertEquals(rowArr.length(), 4,
         "After two appends the table must contain exactly 4 rows (2 + 2), not a fresh table");
 
-    // ── Clean up ───────────────────────────────────────────────────────────────
+    // Clean up
     Empty _ = check ep->DeleteEntity({ id: testId });
     io:println("[testTabularAttributeIdempotency] Cleaned up test entity");
     return;
@@ -2568,7 +2568,7 @@ function testTabularSchemaMismatch() returns error? {
     pbAny:Any validAny   = check jsonToAny(validBatch);
     pbAny:Any invalidAny = check jsonToAny(invalidBatch);
 
-    // ── Create entity with a valid numeric schema ─────────────────────────────
+    // Create entity with a valid numeric schema
     Entity createReq = {
         id: testId,
         kind: { major: "test", minor: "tabular-integrity" },
@@ -2596,7 +2596,7 @@ function testTabularSchemaMismatch() returns error? {
     test:assertEquals(createResp.id, testId, "Initial entity must be created successfully");
     io:println("[testTabularSchemaMismatch] Initial entity created OK with numeric schema");
 
-    // ── Attempt to append type-incompatible data — MUST fail ─────────────────
+    // Attempt to append type-incompatible data — MUST fail
     UpdateEntityRequest updateReq = {
         id: testId,
         entity: {
@@ -2629,7 +2629,7 @@ function testTabularSchemaMismatch() returns error? {
         test:assertFail("Expected an error when appending schema-incompatible data, but got success");
     }
 
-    // ── Clean up ───────────────────────────────────────────────────────────────
+    // Clean up
     Empty _ = check ep->DeleteEntity({ id: testId });
     io:println("[testTabularSchemaMismatch] Cleaned up test entity");
     return;
@@ -2663,7 +2663,7 @@ function testTabularDuplicatePrimaryKey() returns error? {
     pbAny:Any firstAny     = check jsonToAny(firstBatch);
     pbAny:Any duplicateAny = check jsonToAny(duplicateBatch);
 
-    // ── Create entity with initial rows ──────────────────────────────────────
+    // Create entity with initial rows
     Entity createReq = {
         id: testId,
         kind: { major: "test", minor: "tabular-integrity" },
@@ -2691,7 +2691,7 @@ function testTabularDuplicatePrimaryKey() returns error? {
     test:assertEquals(createResp.id, testId, "Initial entity must be created successfully");
     io:println("[testTabularDuplicatePrimaryKey] Initial rows created with ids 1 and 2");
 
-    // ── Attempt to insert a row with a duplicate PK — MUST fail ──────────────
+    // Attempt to insert a row with a duplicate PK — MUST fail
     UpdateEntityRequest updateReq = {
         id: testId,
         entity: {
@@ -2723,7 +2723,7 @@ function testTabularDuplicatePrimaryKey() returns error? {
         test:assertFail("Expected an error when inserting a duplicate primary key, but got success");
     }
 
-    // ── Clean up ───────────────────────────────────────────────────────────────
+    // Clean up 
     Empty _ = check ep->DeleteEntity({ id: testId });
     io:println("[testTabularDuplicatePrimaryKey] Cleaned up test entity");
     return;
