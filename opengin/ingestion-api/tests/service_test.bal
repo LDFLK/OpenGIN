@@ -350,10 +350,10 @@ function testMetadataUpdating() returns error? {
     };
     Entity updatedReadResponse = check ep->ReadEntity(updatedReadRequest);
     verifyMetadata(updatedReadResponse.metadata, {
-                                                     "key1": updatedValue1,
-                                                     "key2": updatedValue2,
-                                                     "key3": newValue3
-                                                 });
+                    "key1": updatedValue1,
+                    "key2": updatedValue2,
+                    "key3": newValue3
+                });
     io:println("Updated metadata verified");
 
     // Clean up
