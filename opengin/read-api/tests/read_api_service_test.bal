@@ -123,6 +123,220 @@ function verifyTabularData(json actual, json expected) {
     test:assertEquals(actual.toString(), expected.toString(), "Data JSON should match");
 }
 
+
+// Test entity creation with attribute missing startTime and endTime (should fail with error)
+@test:Config {
+    groups: ["entity", "attribute"],
+    enable: true
+}
+function testEntityAttributeCreationWithMissingStartTimeAndEndTime() returns error? {
+    io:println("[read_api_service_test.bal][testEntityAttributeCreationWithMissingStartTimeAndEndTime]");
+    string|error coreUrl = getCoreServiceUrl();
+    if coreUrl is error {
+        return coreUrl;
+    }
+    COREServiceClient ep = check new (coreUrl);
+
+    string testId = "ATTR_MISSING_TIME_001";
+    json attributeValue = {
+        "columns": ["emp_id", "name", "salary"],
+        "rows": [
+            [1001, "John Doe", 75000.50]
+        ]
+    };
+
+    pbAny:Any attributeValueAny = check convertJsonToAny(attributeValue);
+
+    Entity createEntityRequest = {
+        id: testId,
+        kind: {
+            major: "Organization",
+            minor: "Private Limited"
+        },
+        created: "2025-02-01T00:00:00Z",
+        terminated: "",
+        name: {
+            startTime: "2025-02-01T00:00:00Z",
+            endTime: "",
+            value: check pbAny:pack("Attr Missing Time Pvt Ltd")
+        },
+        metadata: [
+            {
+                key: "attr_missing_time_metadata",
+                value: check pbAny:pack("attr_missing_time_test_value")
+            }
+        ],
+        attributes: [
+            {
+                key: "employee_data",
+                value: {
+                    values: [
+                        {
+                            startTime: "",
+                            endTime: "",
+                            value: attributeValueAny
+                        }
+                    ]
+                }
+            }
+        ],
+        relationships: []
+    };
+
+    Entity|error createResponse = ep->CreateEntity(createEntityRequest);
+
+    test:assertTrue(createResponse is error,
+        "Creating an entity with attribute missing both startTime and endTime should return an error (HTTP 500)");
+
+    if createResponse is error {
+        io:println("Received expected error for missing startTime/endTime: " + createResponse.message());
+    }
+
+    return;
+}
+
+// Test entity creation with attribute having an invalid startTime and empty endTime (should fail with error)
+@test:Config {
+    groups: ["entity", "attribute"],
+    enable: true
+}
+function testEntityAttributeCreationWithInvalidStartTime() returns error? {
+    io:println("[read_api_service_test.bal][testEntityAttributeCreationWithInvalidStartTime]");
+    string|error coreUrl = getCoreServiceUrl();
+    if coreUrl is error {
+        return coreUrl;
+    }
+    COREServiceClient ep = check new (coreUrl);
+
+    string testId = "ATTR_INVALID_START_002";
+    json attributeValue = {
+        "columns": ["emp_id", "name", "salary"],
+        "rows": [
+            [1001, "John Doe", 75000.50]
+        ]
+    };
+
+    pbAny:Any attributeValueAny = check convertJsonToAny(attributeValue);
+
+    Entity createEntityRequest = {
+        id: testId,
+        kind: {
+            major: "Organization",
+            minor: "Private Limited"
+        },
+        created: "2025-02-01T00:00:00Z",
+        terminated: "",
+        name: {
+            startTime: "2025-02-01T00:00:00Z",
+            endTime: "",
+            value: check pbAny:pack("Attr Invalid Start Pvt Ltd")
+        },
+        metadata: [
+            {
+                key: "attr_invalid_start_metadata",
+                value: check pbAny:pack("attr_invalid_start_test_value")
+            }
+        ],
+        attributes: [
+            {
+                key: "employee_data",
+                value: {
+                    values: [
+                        {
+                            startTime: "not-a-valid-date",
+                            endTime: "",
+                            value: attributeValueAny
+                        }
+                    ]
+                }
+            }
+        ],
+        relationships: []
+    };
+
+    Entity|error createResponse = ep->CreateEntity(createEntityRequest);
+
+    test:assertTrue(createResponse is error,
+        "Creating an entity with an invalid startTime and empty endTime should return an error (HTTP 500)");
+
+    if createResponse is error {
+        io:println("Received expected error for invalid startTime: " + createResponse.message());
+    }
+
+    return;
+}
+
+// Test entity creation with attribute having a valid startTime and invalid endTime (should fail with error)
+@test:Config {
+    groups: ["entity", "attribute"],
+    enable: true
+}
+function testEntityAttributeCreationWithInvalidEndTime() returns error? {
+    io:println("[read_api_service_test.bal][testEntityAttributeCreationWithInvalidEndTime]");
+    string|error coreUrl = getCoreServiceUrl();
+    if coreUrl is error {
+        return coreUrl;
+    }
+    COREServiceClient ep = check new (coreUrl);
+
+    string testId = "ATTR_INVALID_END_003";
+    json attributeValue = {
+        "columns": ["emp_id", "name", "salary"],
+        "rows": [
+            [1001, "John Doe", 75000.50]
+        ]
+    };
+
+    pbAny:Any attributeValueAny = check convertJsonToAny(attributeValue);
+
+    Entity createEntityRequest = {
+        id: testId,
+        kind: {
+            major: "Organization",
+            minor: "Private Limited"
+        },
+        created: "2025-02-01T00:00:00Z",
+        terminated: "",
+        name: {
+            startTime: "2025-02-01T00:00:00Z",
+            endTime: "",
+            value: check pbAny:pack("Attr Invalid End Pvt Ltd")
+        },
+        metadata: [
+            {
+                key: "attr_invalid_end_metadata",
+                value: check pbAny:pack("attr_invalid_end_test_value")
+            }
+        ],
+        attributes: [
+            {
+                key: "employee_data",
+                value: {
+                    values: [
+                        {
+                            startTime: "2025-04-01T00:00:00Z",
+                            endTime: "not-a-valid-date",
+                            value: attributeValueAny
+                        }
+                    ]
+                }
+            }
+        ],
+        relationships: []
+    };
+
+    Entity|error createResponse = ep->CreateEntity(createEntityRequest);
+
+    test:assertTrue(createResponse is error,
+        "Creating an entity with a valid startTime and an invalid endTime should return an error (HTTP 500)");
+
+    if createResponse is error {
+        io:println("Received expected error for invalid endTime: " + createResponse.message());
+    }
+
+    return;
+}
+
 // Test entity attribute retrieval
 @test:Config {
     groups: ["entity", "attribute"],
