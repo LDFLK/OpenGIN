@@ -37,9 +37,8 @@ python3 basic_core_tests.py
 
 
 class CoreTestUtils:
-    # DEBUG: Attribute protobuf response cannot be decode by the decode_protobuf_any_value() function , so i am using this here.
     @staticmethod
-    def decode_protobuf_any_value_2(any_value):
+    def decode_protobuf_any_value(any_value):
         """Decode a protobuf Any value to get the actual value"""
         if isinstance(any_value, dict) and 'typeUrl' in any_value and 'value' in any_value:
             type_url = any_value['typeUrl']
@@ -200,7 +199,7 @@ class CoreTestUtils:
                 # Try to parse it as JSON
                 obj = json.loads(any_value)
                 # Recursively decode
-                return CoreTestUtils.decode_protobuf_any_value_2(obj)
+                return CoreTestUtils.decode_protobuf_any_value(obj)
             except json.JSONDecodeError:
                 pass
 
@@ -208,7 +207,7 @@ class CoreTestUtils:
         return any_value
 
     @staticmethod
-    def decode_protobuf_any_value(any_value):
+    def decode_protobuf_string_value(any_value):
         """Decode a protobuf Any value to get the actual string value"""
         if (
             isinstance(any_value, dict)
@@ -330,7 +329,7 @@ class MetadataValidationTests(BasicCORETests):
 
         if response.status_code == 200:
             updated_entity = response.json()
-            decoded_value = CoreTestUtils.decode_protobuf_any_value(
+            decoded_value = CoreTestUtils.decode_protobuf_string_value(
                 updated_entity["metadata"][0]["value"]
             )
             print("decoded value: ", decoded_value)
@@ -347,7 +346,7 @@ class MetadataValidationTests(BasicCORETests):
 
         if response.status_code == 200:
             updated_data = response.json()
-            decoded_value = CoreTestUtils.decode_protobuf_any_value(
+            decoded_value = CoreTestUtils.decode_protobuf_string_value(
                 updated_data["metadata"][0]["value"]
             )
             assert decoded_value == "5.0", "Updated entity does not reflect changes"
@@ -444,7 +443,7 @@ class GraphEntityTests(BasicCORETests):
         )
         # The name value is a protobuf Any that needs to be decoded
         name_value = response_data["name"]["value"]
-        decoded_name = CoreTestUtils.decode_protobuf_any_value(name_value)
+        decoded_name = CoreTestUtils.decode_protobuf_string_value(name_value)
         assert decoded_name == "Minister of Education", (
             f"Expected name 'Minister of Education', got {name_value}"
         )
@@ -500,7 +499,7 @@ class GraphEntityTests(BasicCORETests):
 
             # The name value is a protobuf Any that needs to be decoded
             name_value = response_data["name"]["value"]
-            decoded_name = CoreTestUtils.decode_protobuf_any_value(name_value)
+            decoded_name = CoreTestUtils.decode_protobuf_string_value(name_value)
             assert decoded_name == dept["name"], (
                 f"Expected name '{dept['name']}', got {decoded_name}"
             )
@@ -705,7 +704,7 @@ class AttributeValidationTests(BasicCORETests):
         )
         # The name value is a protobuf Any that needs to be decoded
         name_value = response_data["name"]["value"]
-        decoded_name = CoreTestUtils.decode_protobuf_any_value(name_value)
+        decoded_name = CoreTestUtils.decode_protobuf_string_value(name_value)
         assert decoded_name == "Minister of Finance and Economy", (
             f"Expected name 'Minister of Finance and Economy', got {decoded_name}"
         )
@@ -862,7 +861,7 @@ class AttributeValidationTests(BasicCORETests):
         print(response_data)
         value = response_data["value"]
         print(f"value {value}")
-        decoded_value = CoreTestUtils.decode_protobuf_any_value_2(value)
+        decoded_value = CoreTestUtils.decode_protobuf_any_value(value)
 
         expected_data = {
             "columns": [
@@ -955,7 +954,7 @@ class AttributeValidationTests(BasicCORETests):
         print(f"Response: {res.status_code} - {res.text}")
         print("✅ Received expected error for Minister creation.")
 
-    def add_attributes_to_minister_with_invalid_time_format(self):
+    def add_attributes_to_minister_with_invalid_starttime_format(self):
         print("\n🟢 Updating attributes stage 3...")
         update_payload = {
             "id": self.MINISTER_ID,
@@ -1005,7 +1004,7 @@ class AttributeValidationTests(BasicCORETests):
         print(f"Response: {res.status_code} - {res.text}")
         print("✅ Received expected error for Minister creation.")
 
-    def add_attributes_to_minister_with_invalid_time_format_2(self):
+    def add_attributes_to_minister_with_invalid_endtime_format(self):
             print("\n🟢 Updating attributes stage 3...")
             update_payload = {
                 "id": self.MINISTER_ID,
@@ -1377,8 +1376,8 @@ if __name__ == "__main__":
         attribute_validation_tests.update_attributes_stage_1()
         attribute_validation_tests.update_attributes_stage_2()
         attribute_validation_tests.create_minister_with_attributes_with_startDate_and_endDate()
-        attribute_validation_tests.add_attributes_to_minister_with_invalid_time_format()
-        attribute_validation_tests.add_attributes_to_minister_with_invalid_time_format_2()
+        attribute_validation_tests.add_attributes_to_minister_with_invalid_starttime_format()
+        attribute_validation_tests.add_attributes_to_minister_with_invalid_endtime_format()
         attribute_validation_tests.create_minister_with_attributes_without_startDate()
         print("\n🟢 Running Attribute Validation Tests... Done")
 

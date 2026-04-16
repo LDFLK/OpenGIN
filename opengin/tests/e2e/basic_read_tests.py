@@ -699,11 +699,11 @@ def create_entity_for_read():
     }
 
     # first entity with a new attribute
-    payload_chiild_4 = {
+    payload_child_4 = {
         "id": RELATED_ID_1,
         "attributes": [
             {
-                "key": "tet_data",
+                "key": "test_data",
                 "value": {
                     "values": [
                             {
@@ -817,7 +817,7 @@ def create_entity_for_read():
     assert res.status_code == 201 or res.status_code == 200, f"Failed to create entity: {res.text}"
     print("✅ Created third related entity.")
 
-    res = requests.put(INGESTION_API_URL + "/" + RELATED_ID_1, json=payload_chiild_4)
+    res = requests.put(INGESTION_API_URL + "/" + RELATED_ID_1, json=payload_child_4)
     assert res.status_code == 500, f"Failed to update entity: {res.text}"
     print("✅ Failed to update entity. Working as expected.")
 
