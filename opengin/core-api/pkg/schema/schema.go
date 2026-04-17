@@ -562,6 +562,10 @@ func inferColumnTypes(data *structpb.Struct) (map[string]typeinference.TypeInfo,
 	columnsList := data.Fields["columns"].GetListValue()
 	rowsList := data.Fields["rows"].GetListValue()
 
+	if columnsList == nil || rowsList == nil {
+		return nil, fmt.Errorf("invalid tabular data: 'columns' and 'rows' must be valid lists")
+	}
+
 	const unknown = "__unknown__"
 
 	// Initialise all columns to unknown sentinel
@@ -571,8 +575,11 @@ func inferColumnTypes(data *structpb.Struct) (map[string]typeinference.TypeInfo,
 	}
 
 	// Scan every row; for each column, use the first non-null value to set the type
-	for _, row := range rowsList.Values {
+	for rowIndex, row := range rowsList.Values {
 		rowData := row.GetListValue()
+		if len(rowData.Values) != len(columnsList.Values) {
+			return nil, fmt.Errorf("row %d length (%d) does not match number of columns (%d)", rowIndex, len(rowData.Values), len(columnsList.Values))
+		}
 		for i, value := range rowData.Values {
 			colName := columnsList.Values[i].GetStringValue()
 			if columnTypes[colName].Type != typeinference.DataType(unknown) {

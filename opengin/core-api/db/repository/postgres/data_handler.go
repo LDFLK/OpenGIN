@@ -198,6 +198,10 @@ func validateDataAgainstSchema(data *structpb.Struct, schemaInfo *schema.SchemaI
 	columnsList := data.Fields["columns"].GetListValue()
 	rowsList := data.Fields["rows"].GetListValue()
 
+	if columnsList == nil || rowsList == nil {
+		return fmt.Errorf("invalid tabular data: 'columns' and 'rows' must be valid lists")
+	}
+
 	// Validate column names match schema
 	schemaColumns := make(map[string]bool)
 	for fieldName := range schemaInfo.Fields {
@@ -214,6 +218,9 @@ func validateDataAgainstSchema(data *structpb.Struct, schemaInfo *schema.SchemaI
 	// Validate data types for each row
 	for i, row := range rowsList.Values {
 		rowData := row.GetListValue()
+		if len(rowData.Values) != len(columnsList.Values) {
+			return fmt.Errorf("row %d length (%d) does not match number of columns (%d)", i, len(rowData.Values), len(columnsList.Values))
+		}
 		for j, value := range rowData.Values {
 			colName := columnsList.Values[j].GetStringValue()
 			fieldSchema := schemaInfo.Fields[colName]
@@ -260,8 +267,15 @@ func validateAllRowsAgainstSchema(data *structpb.Struct, schemaInfo *schema.Sche
 	columnsList := data.Fields["columns"].GetListValue()
 	rowsList := data.Fields["rows"].GetListValue()
 
+	if columnsList == nil || rowsList == nil {
+		return fmt.Errorf("invalid tabular data: 'columns' and 'rows' must be valid lists")
+	}
+
 	for i, row := range rowsList.Values {
 		rowData := row.GetListValue()
+		if len(rowData.Values) != len(columnsList.Values) {
+			return fmt.Errorf("row %d length (%d) does not match number of columns (%d)", i, len(rowData.Values), len(columnsList.Values))
+		}
 		for j, value := range rowData.Values {
 			colName := columnsList.Values[j].GetStringValue()
 			fieldSchema, exists := schemaInfo.Fields[colName]
