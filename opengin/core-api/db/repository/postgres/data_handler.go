@@ -218,8 +218,17 @@ func validateDataAgainstSchema(data *structpb.Struct, schemaInfo *schema.SchemaI
 			colName := columnsList.Values[j].GetStringValue()
 			fieldSchema := schemaInfo.Fields[colName]
 
+			// Null is always allowed (all columns are nullable)
+			if _, isNull := value.Kind.(*structpb.Value_NullValue); isNull {
+				continue
+			}
+
 			// Validate type
 			switch fieldSchema.TypeInfo.Type {
+			case typeinference.NumericType:
+				if _, ok := value.Kind.(*structpb.Value_NumberValue); !ok {
+					return fmt.Errorf("row %d, column %s: expected numeric, got %v", i, colName, value)
+				}
 			case typeinference.IntType:
 				if v, ok := value.Kind.(*structpb.Value_NumberValue); !ok || v.NumberValue != float64(int64(v.NumberValue)) {
 					return fmt.Errorf("row %d, column %s: expected integer, got %v", i, colName, value)
@@ -507,6 +516,8 @@ func schemaToColumns(schemaInfo *schema.SchemaInfo) []Column {
 
 		var colType string
 		switch field.TypeInfo.Type {
+		case typeinference.NumericType:
+			colType = "NUMERIC"
 		case typeinference.IntType:
 			colType = "INTEGER"
 		case typeinference.FloatType:
