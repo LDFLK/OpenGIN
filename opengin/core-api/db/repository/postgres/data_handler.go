@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 	"time"
 
@@ -747,6 +748,12 @@ func (repo *PostgresRepository) GetData(ctx context.Context, tableName string, f
 		}
 	}
 
+	// Get schema for the table to cast values correctly
+	schemaInfo, err := GetSchemaOfTable(ctx, repo, tableName)
+	if err != nil {
+		log.Printf("Warning: failed to get schema for table %s: %v", tableName, err)
+	}
+
 	var tabularRows [][]interface{}
 	for rows.Next() {
 		rowValues := make([]interface{}, len(resultColumns))
@@ -764,11 +771,50 @@ func (repo *PostgresRepository) GetData(ctx context.Context, tableName string, f
 		row := make([]interface{}, len(filteredColumns))
 		for i, colIndex := range columnIndices {
 			val := rowValues[colIndex]
-			// Handle byte slices (common for text, json, etc.)
-			if b, ok := val.([]byte); ok {
-				row[i] = string(b)
-			} else {
-				row[i] = val
+			colName := filteredColumns[i]
+
+			var assigned bool
+			if schemaInfo != nil {
+				if fieldInfo, exists := schemaInfo.Fields[colName]; exists && val != nil {
+					var strVal string
+					var isStr bool
+					if b, ok := val.([]byte); ok {
+						strVal = string(b)
+						isStr = true
+					} else if s, ok := val.(string); ok {
+						strVal = s
+						isStr = true
+					}
+
+					if isStr {
+						switch fieldInfo.TypeInfo.Type {
+						case typeinference.IntType:
+							if intVal, err := strconv.ParseInt(strVal, 10, 64); err == nil {
+								row[i] = intVal
+								assigned = true
+							}
+						case typeinference.NumericType, typeinference.FloatType:
+							if floatVal, err := strconv.ParseFloat(strVal, 64); err == nil {
+								row[i] = floatVal
+								assigned = true
+							}
+						case typeinference.BoolType:
+							if boolVal, err := strconv.ParseBool(strVal); err == nil {
+								row[i] = boolVal
+								assigned = true
+							}
+						}
+					}
+				}
+			}
+
+			if !assigned {
+				// Handle byte slices (common for text, json, etc.)
+				if b, ok := val.([]byte); ok {
+					row[i] = string(b)
+				} else {
+					row[i] = val
+				}
 			}
 		}
 		tabularRows = append(tabularRows, row)
