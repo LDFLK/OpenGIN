@@ -243,6 +243,58 @@ func validateDataAgainstSchema(data *structpb.Struct, schemaInfo *schema.SchemaI
 	return nil
 }
 
+// validateAllRowsAgainstSchema validates every row in data against the inferred schemaInfo
+// before any table is created or data is inserted. This is used on the first-insert path to
+// catch type mismatches early, before any DDL is executed.
+// Null values are always accepted (all columns are nullable).
+func validateAllRowsAgainstSchema(data *structpb.Struct, schemaInfo *schema.SchemaInfo) error {
+	columnsList := data.Fields["columns"].GetListValue()
+	rowsList := data.Fields["rows"].GetListValue()
+
+	for i, row := range rowsList.Values {
+		rowData := row.GetListValue()
+		for j, value := range rowData.Values {
+			colName := columnsList.Values[j].GetStringValue()
+			fieldSchema, exists := schemaInfo.Fields[colName]
+			if !exists {
+				return fmt.Errorf("row %d, column %q: not found in schema", i, colName)
+			}
+
+			// Null is always allowed
+			if _, isNull := value.Kind.(*structpb.Value_NullValue); isNull {
+				continue
+			}
+
+			switch fieldSchema.TypeInfo.Type {
+			case typeinference.NumericType:
+				if _, ok := value.Kind.(*structpb.Value_NumberValue); !ok {
+					return fmt.Errorf("row %d, column %q: expected numeric, got %T", i, colName, value.Kind)
+				}
+			case typeinference.BoolType:
+				if _, ok := value.Kind.(*structpb.Value_BoolValue); !ok {
+					return fmt.Errorf("row %d, column %q: expected bool, got %T", i, colName, value.Kind)
+				}
+			case typeinference.StringType:
+				if _, ok := value.Kind.(*structpb.Value_StringValue); !ok {
+					return fmt.Errorf("row %d, column %q: expected string, got %T", i, colName, value.Kind)
+				}
+			case typeinference.DateTimeType:
+				v, ok := value.Kind.(*structpb.Value_StringValue)
+				if !ok || !isDateTime(v.StringValue) {
+					return fmt.Errorf("row %d, column %q: expected datetime string, got %T", i, colName, value.Kind)
+				}
+			case typeinference.DateType:
+				v, ok := value.Kind.(*structpb.Value_StringValue)
+				if !ok || !isDateTime(v.StringValue) {
+					return fmt.Errorf("row %d, column %q: expected date string, got %T", i, colName, value.Kind)
+				}
+			}
+		}
+	}
+	return nil
+}
+
+
 // compareSchemas compares two schemas and returns true if they are compatible
 func compareSchemas(existing, newSchema *schema.SchemaInfo) (bool, error) {
 	if existing.StorageType != newSchema.StorageType {
@@ -349,6 +401,15 @@ func (repo *PostgresRepository) StoreTabularData(ctx context.Context, entityID, 
 			return fmt.Errorf("data validation failed: %v", err)
 		}
 	} else {
+		// Validate all rows against the inferred schema before creating the table
+		var firstInsertStruct structpb.Struct
+		if err := value.Value.UnmarshalTo(&firstInsertStruct); err != nil {
+			return fmt.Errorf("error unmarshaling tabular data for validation: %v", err)
+		}
+		if err := validateAllRowsAgainstSchema(&firstInsertStruct, schemaInfo); err != nil {
+			return fmt.Errorf("pre-insert schema validation failed: %v", err)
+		}
+
 		// Create new table
 		if err := repo.CreateDynamicTable(ctx, tableName, columns); err != nil {
 			return fmt.Errorf("error creating table: %v", err)
