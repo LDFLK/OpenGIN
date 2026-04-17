@@ -29,6 +29,7 @@ const (
 	DateType     DataType = "date"     // Date values (e.g., "2024-03-20")
 	TimeType     DataType = "time"     // Time values (e.g., "14:30:00")
 	DateTimeType DataType = "datetime" // Date and time values (e.g., "2024-03-20T14:30:00Z")
+	NumericType  DataType = "numeric"  // Any numeric value, int or float (maps to Postgres NUMERIC)
 )
 
 // TypeInfo contains both the data type and additional metadata about the type.
