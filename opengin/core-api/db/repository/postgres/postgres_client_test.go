@@ -434,9 +434,9 @@ func TestInsertSampleData(t *testing.T) {
 			schemaInfo, err := schema.GenerateSchema(dataStruct)
 			assert.NoError(t, err, "Failed to generate schema")
 
-			// Handle attributes (this will create table and insert data)
-			err = repo.HandleTabularData(ctx, tt.entityID, tt.attrName, timeBasedValue, schemaInfo)
-			assert.NoError(t, err, "Failed to handle attributes")
+			// Store tabular attribute data (creates table on first call, inserts rows)
+			err = repo.StoreTabularData(ctx, tt.entityID, tt.attrName, timeBasedValue, schemaInfo)
+			assert.NoError(t, err, "Failed to store tabular data")
 
 			// Verify table exists by retrieving the actual table name from entity_attributes
 			var tableName string

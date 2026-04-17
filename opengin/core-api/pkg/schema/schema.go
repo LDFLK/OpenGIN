@@ -398,7 +398,7 @@ func (sg *SchemaGenerator) GenerateSchema(anyValue *anypb.Any) (*SchemaInfo, err
 	// Handle different storage types with their specific processing functions
 	switch storageType {
 	case storageinference.TabularData:
-		return sg.handleTabularData(structValue, schema)
+		return sg.inferTabularSchema(structValue, schema)
 	case storageinference.GraphData:
 		return sg.handleGraphData(structValue, schema)
 	case storageinference.ListData:
@@ -480,7 +480,7 @@ func isDateOrDateTime(str string) (bool, bool) {
 	return false, false
 }
 
-// handleTabularData processes tabular data and generates field schemas.
+// inferTabularSchema infers the field schemas for tabular data.
 // The function expects a struct with "columns" and "rows" fields, where:
 //   - columns: A list of strings representing column names
 //   - rows: A list of lists, where each inner list represents a row of data
@@ -554,7 +554,7 @@ func isDateOrDateTime(str string) (bool, bool) {
 //	        }
 //	    }
 //	}
-func (sg *SchemaGenerator) handleTabularData(structValue *structpb.Struct, schema *SchemaInfo) (*SchemaInfo, error) {
+func (sg *SchemaGenerator) inferTabularSchema(structValue *structpb.Struct, schema *SchemaInfo) (*SchemaInfo, error) {
 	// Initialize the Fields map
 	schema.Fields = make(map[string]*SchemaInfo)
 

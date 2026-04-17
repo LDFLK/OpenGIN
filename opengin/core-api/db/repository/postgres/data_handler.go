@@ -395,8 +395,8 @@ func isTypeCompatible(existingType, newType typeinference.DataType) bool {
 	return false
 }
 
-// handleTabularData processes tabular data attributes
-func (repo *PostgresRepository) HandleTabularData(ctx context.Context, entityID, attrName string, value *pb.TimeBasedValue, schemaInfo *schema.SchemaInfo) error {
+// StoreTabularData persists tabular attribute data to Postgres, creating the backing table if needed and validating schema compatibility on subsequent writes.
+func (repo *PostgresRepository) StoreTabularData(ctx context.Context, entityID, attrName string, value *pb.TimeBasedValue, schemaInfo *schema.SchemaInfo) error {
 	// Generate table name - UUID without hyphens (32 chars) + prefix (5 chars) = 37 chars total
 	name := fmt.Sprintf("%s:%s", entityID, attrName)
 	namespace := commons.GetNamespace("attributes")

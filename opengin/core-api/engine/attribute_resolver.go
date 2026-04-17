@@ -551,7 +551,7 @@ func (r *TabularAttributeResolver) CreateResolve(ctx context.Context, entityID, 
 		}
 	}
 
-	err = r.repo.HandleTabularData(ctx, entityID, attrName, value, schemaInfo)
+	err = r.repo.StoreTabularData(ctx, entityID, attrName, value, schemaInfo)
 	if err != nil {
 		return &Result{
 			Data:    nil,
