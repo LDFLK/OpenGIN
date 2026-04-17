@@ -540,19 +540,22 @@ func TestSchemaGeneration(t *testing.T) {
 					"id": {
 						"storage_type": "scalar",
 						"type_info": {
-							"type": "int"
+							"type": "numeric",
+							"is_nullable": true
 						}
 					},
 					"name": {
 						"storage_type": "scalar",
 						"type_info": {
-							"type": "string"
+							"type": "string",
+							"is_nullable": true
 						}
 					},
 					"age": {
 						"storage_type": "scalar",
 						"type_info": {
-							"type": "int"
+							"type": "numeric",
+							"is_nullable": true
 						}
 					}
 				}
