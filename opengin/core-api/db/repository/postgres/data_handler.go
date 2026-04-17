@@ -383,6 +383,12 @@ func (repo *PostgresRepository) StoreTabularData(ctx context.Context, entityID, 
 	// Convert schema to columns
 	columns := schemaToColumns(schemaInfo)
 
+	// Unmarshal tabular data once at the beginning to avoid redundant work
+	var tabularStruct structpb.Struct
+	if err := value.Value.UnmarshalTo(&tabularStruct); err != nil {
+		return fmt.Errorf("error unmarshaling tabular data: %v", err)
+	}
+
 	// Check if table exists
 	exists, err := repo.TableExists(ctx, tableName)
 	if err != nil {
@@ -415,21 +421,12 @@ func (repo *PostgresRepository) StoreTabularData(ctx context.Context, entityID, 
 		}
 
 		// Validate data against existing schema
-		var tabularStruct structpb.Struct
-		if err := value.Value.UnmarshalTo(&tabularStruct); err != nil {
-			return fmt.Errorf("error unmarshaling tabular data: %v", err)
-		}
-
 		if err := validateDataAgainstSchema(&tabularStruct, &existingSchema); err != nil {
 			return fmt.Errorf("data validation failed: %v", err)
 		}
 	} else {
 		// Validate all rows against the inferred schema before creating the table
-		var firstInsertStruct structpb.Struct
-		if err := value.Value.UnmarshalTo(&firstInsertStruct); err != nil {
-			return fmt.Errorf("error unmarshaling tabular data for validation: %v", err)
-		}
-		if err := validateAllRowsAgainstSchema(&firstInsertStruct, schemaInfo); err != nil {
+		if err := validateAllRowsAgainstSchema(&tabularStruct, schemaInfo); err != nil {
 			return fmt.Errorf("pre-insert schema validation failed: %v", err)
 		}
 
@@ -465,12 +462,6 @@ func (repo *PostgresRepository) StoreTabularData(ctx context.Context, entityID, 
 		entityID, attrName, tableName).Scan(&attributeID)
 	if err != nil {
 		return fmt.Errorf("error creating entity attribute record: %v", err)
-	}
-
-	// Extract data from the TimeBasedValue
-	var tabularStruct structpb.Struct
-	if err := value.Value.UnmarshalTo(&tabularStruct); err != nil {
-		return fmt.Errorf("error unmarshaling tabular data: %v", err)
 	}
 
 	// Extract columns and rows
