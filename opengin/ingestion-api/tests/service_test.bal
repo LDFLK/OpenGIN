@@ -2725,3 +2725,292 @@ function testTabularDuplicatePrimaryKey() returns error? {
     io:println("[testTabularDuplicatePrimaryKey] Cleaned up test entity");
     return;
 }
+@test:Config {
+    groups: ["entity", "attributes", "tabular", "inference"]
+}
+function testTabularAttributeCreateInference() returns error? {
+    COREServiceClient ep = check new (testCoreServiceUrl);
+    string testId = "test-tabular-create-inference";
+
+    // Create a base entity first so we can add attributes to it
+    Entity createReq = {
+        id: testId,
+        kind: { major: "test", minor: "tabular-inference" },
+        created: "2025-01-01T00:00:00Z",
+        terminated: "",
+        name: {
+            startTime: "2025-01-01T00:00:00Z",
+            endTime: "",
+            value: check pbAny:pack("Tabular Inference Test Entity")
+        },
+        metadata: [],
+        attributes: [],
+        relationships: []
+    };
+    Entity createResp = check ep->CreateEntity(createReq);
+    test:assertEquals(createResp.id, testId, "Entity should be created successfully");
+
+    // Helper function to try adding a tabular attribute
+    var tryUpdateAttribute = function(string attrName, json batch) returns Entity|error {
+        pbAny:Any batchAny = check jsonToAny(batch);
+        UpdateEntityRequest updateReq = {
+            id: testId,
+            entity: {
+                id: testId,
+                attributes: [
+                    {
+                        key: attrName,
+                        value: {
+                            values: [
+                                { startTime: "2025-01-01T00:00:00Z", endTime: "", value: batchAny }
+                            ]
+                        }
+                    }
+                ],
+                relationships: []
+            }
+        };
+        return ep->UpdateEntity(updateReq);
+    };
+
+    // Case 1: the values are correctly inferred from the first row
+    json validFirstRowInference = {
+        "columns": ["id", "name"],
+        "rows": [
+            [1, "Alice"],
+            [2, "Bob"]
+        ]
+    };
+    Entity|error r1 = tryUpdateAttribute("attr_valid_first_row", validFirstRowInference);
+    test:assertTrue(r1 is Entity, "Inference from first row should succeed");
+
+    // Case 2: values are inferred from non-first row as the first row is null
+    json nullFirstRowInference = {
+        "columns": ["id", "description"],
+        "rows": [
+            [1, ()],
+            [2, "second row valid"]
+        ]
+    };
+    Entity|error r2 = tryUpdateAttribute("attr_null_first_row", nullFirstRowInference);
+    test:assertTrue(r2 is Entity, "Inference from non-first row should succeed");
+
+    // Case 3: should fail if the rows below are of the wrong type as the rows above
+    json rowTypeMismatch = {
+        "columns": ["id", "value"],
+        "rows": [
+            [1, "string value"],
+            [2, 123]
+        ]
+    };
+    Entity|error r3 = tryUpdateAttribute("attr_type_mismatch", rowTypeMismatch);
+    test:assertTrue(r3 is error, "Rows with mixed types should fail");
+
+    // Case 4: should be able to insert, big numbers, decimal numbers and normal numbers
+    json mixedNumbers = {
+        "columns": ["id", "big_num", "decimal_num", "normal_num"],
+        "rows": [
+            [1, 9007199254740991, 1.5, 42],
+            [2, 8007199254740990, 2.5, 43]
+        ]
+    };
+    Entity|error r4 = tryUpdateAttribute("attr_mixed_numbers", mixedNumbers);
+    test:assertTrue(r4 is Entity, "Mixed numbers should succeed");
+
+    // Case 5: should be able to make rows in the middle null
+    json midRowNull = {
+        "columns": ["id", "val"],
+        "rows": [
+            [1, "a"],
+            [2, ()],
+            [3, "c"]
+        ]
+    };
+    Entity|error r5 = tryUpdateAttribute("attr_mid_null", midRowNull);
+    test:assertTrue(r5 is Entity, "Mid row null should succeed");
+
+    // Case 6: if all the rows in a column are null it should fail
+    json allNullColumn = {
+        "columns": ["id", "all_null_col"],
+        "rows": [
+            [1, ()],
+            [2, ()]
+        ]
+    };
+    Entity|error r6 = tryUpdateAttribute("attr_all_null", allNullColumn);
+    test:assertTrue(r6 is error, "All null columns should fail during schema inference");
+
+    // --- VERIFICATION PHASE ---
+    // Make sure we can read back the created attributes and their rows
+
+    var verifyAttributeData = function(string attrName, json expectedData) returns error? {
+        json allRowsFilter = {"columns": check expectedData.columns, "rows": [[]]};
+        pbAny:Any filterAny = check jsonToAny(allRowsFilter);
+
+        ReadEntityRequest readReq = {
+            entity: {
+                id: testId,
+                attributes: [{key: attrName, value: {values: [{startTime: "", endTime: "", value: filterAny}]}}]
+            },
+            output: ["attributes"]
+        };
+
+        Entity readEntityResponse = check ep->ReadEntity(readReq);
+        test:assertTrue(readEntityResponse.attributes.length() > 0, "Attribute " + attrName + " should exist");
+
+        var attributeValue = readEntityResponse.attributes[0].value.values[0].value;
+        JsonObject attributeValueJson = check pbAny:unpack(attributeValue);
+        string dataJsonString = <string>attributeValueJson["data"];
+        json dataJson = check dataJsonString.fromJsonString();
+
+        verifyTabularData(dataJson, expectedData);
+    };
+
+    check verifyAttributeData("attr_valid_first_row", validFirstRowInference);
+    check verifyAttributeData("attr_null_first_row", nullFirstRowInference);
+    check verifyAttributeData("attr_mixed_numbers", mixedNumbers);
+    check verifyAttributeData("attr_mid_null", midRowNull);
+
+    // Clean up
+    Empty _ = check ep->DeleteEntity({ id: testId });
+    return;
+}
+
+@test:Config {
+    groups: ["entity", "attributes", "tabular", "inference"]
+}
+function testTabularAttributeUpdateInference() returns error? {
+    COREServiceClient ep = check new (testCoreServiceUrl);
+    string testId = "test-tabular-update-inference";
+    string attrName = "update_attr";
+
+    // Create a base entity first
+    Entity createReq = {
+        id: testId,
+        kind: { major: "test", minor: "tabular-update-inference" },
+        created: "2025-01-01T00:00:00Z",
+        terminated: "",
+        name: {
+            startTime: "2025-01-01T00:00:00Z",
+            endTime: "",
+            value: check pbAny:pack("Tabular Update Inference Test Entity")
+        },
+        metadata: [],
+        attributes: [],
+        relationships: []
+    };
+    Entity createResp = check ep->CreateEntity(createReq);
+    test:assertEquals(createResp.id, testId, "Entity should be created successfully");
+
+    // Helper function to append to the tabular attribute
+    var appendToAttribute = function(json batch) returns Entity|error {
+        pbAny:Any batchAny = check jsonToAny(batch);
+        UpdateEntityRequest updateReq = {
+            id: testId,
+            entity: {
+                id: testId,
+                attributes: [
+                    {
+                        key: attrName,
+                        value: {
+                            values: [
+                                { startTime: "2025-01-01T00:00:00Z", endTime: "", value: batchAny }
+                            ]
+                        }
+                    }
+                ],
+                relationships: []
+            }
+        };
+        return ep->UpdateEntity(updateReq);
+    };
+
+    // Initial batch
+    json initialBatch = {
+        "columns": ["id", "val", "num"],
+        "rows": [
+            [1, "a", 10]
+        ]
+    };
+    Entity|error r1 = appendToAttribute(initialBatch);
+    test:assertTrue(r1 is Entity, "Initial insert should succeed");
+
+    // Case 1: should fail if the rows are for the wrong type as in the existing table
+    json wrongTypeBatch = {
+        "columns": ["id", "val", "num"],
+        "rows": [
+            [2, 123, 20]
+        ]
+    };
+    Entity|error r2 = appendToAttribute(wrongTypeBatch);
+    test:assertTrue(r2 is error, "Wrong type append should fail");
+
+    // Case 2: if the row previously contained integers it should still work if you want to append decimals or big numbers
+    json decimalBigNumBatch = {
+        "columns": ["id", "val", "num"],
+        "rows": [
+            [3, "b", 10.5],
+            [4, "c", 9007199254740991]
+        ]
+    };
+    Entity|error r3 = appendToAttribute(decimalBigNumBatch);
+    test:assertTrue(r3 is Entity, "Appending decimals/big numbers to integers should succeed");
+
+    // Case 3: you should be able to insert a null value for any row
+    json nullRowBatch = {
+        "columns": ["id", "val", "num"],
+        "rows": [
+            [5, (), ()]
+        ]
+    };
+    Entity|error r4 = appendToAttribute(nullRowBatch);
+    test:assertTrue(r4 is Entity, "Appending a row with null values should succeed");
+
+    // Case 4: it should allow you to append values that are all null for a column
+    json allNullBatch = {
+        "columns": ["id", "val", "num"],
+        "rows": [
+            [6, (), ()],
+            [7, (), ()]
+        ]
+    };
+    Entity|error r5 = appendToAttribute(allNullBatch);
+    test:assertTrue(r5 is Entity, "Appending all null values for a column should succeed");
+
+    // --- VERIFICATION PHASE ---
+    // Verify that the table accumulated the correct rows over all updates
+    json expectedAccumulated = {
+        "columns": ["id", "val", "num"],
+        "rows": [
+            [1, "a", 10], 
+            [3, "b", 10.5],
+            [4, "c", 9007199254740991],
+            [5, (), ()],
+            [6, (), ()],
+            [7, (), ()]
+        ]
+    };
+
+    json allRowsFilter = {"columns": ["id", "val", "num"], "rows": [[]]};
+    pbAny:Any filterAny = check jsonToAny(allRowsFilter);
+    ReadEntityRequest readReq = {
+        entity: {
+            id: testId,
+            attributes: [{key: attrName, value: {values: [{startTime: "", endTime: "", value: filterAny}]}}]
+        },
+        output: ["attributes"]
+    };
+    Entity readEntityResponse = check ep->ReadEntity(readReq);
+    test:assertTrue(readEntityResponse.attributes.length() > 0, "Accumulated attributes should exist");
+
+    var attributeValue = readEntityResponse.attributes[0].value.values[0].value;
+    JsonObject attributeValueJson = check pbAny:unpack(attributeValue);
+    string dataJsonString = <string>attributeValueJson["data"];
+    json dataJson = check dataJsonString.fromJsonString();
+
+    verifyTabularData(dataJson, expectedAccumulated);
+
+    // Clean up
+    Empty _ = check ep->DeleteEntity({ id: testId });
+    return;
+}
