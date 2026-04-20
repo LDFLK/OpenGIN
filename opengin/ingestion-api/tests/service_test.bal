@@ -2751,12 +2751,19 @@ function testTabularAttributeCreateInference() returns error? {
     test:assertEquals(createResp.id, testId, "Entity should be created successfully");
 
     // Helper function to try adding a tabular attribute
+    // Entity must include kind/created/terminated/name/metadata with a valid empty Any for name.value;
+    // omitting defaults can leave protobuf Any unset and cause client framing to fail (INTERNAL: BMap.getStringValue null).
     var tryUpdateAttribute = function(string attrName, json batch) returns Entity|error {
         pbAny:Any batchAny = check jsonToAny(batch);
         UpdateEntityRequest updateReq = {
             id: testId,
             entity: {
                 id: testId,
+                kind: { major: "", minor: "" },
+                created: "",
+                terminated: "",
+                name: { startTime: "", endTime: "", value: check pbAny:pack("") },
+                metadata: [],
                 attributes: [
                     {
                         key: attrName,
@@ -2782,6 +2789,9 @@ function testTabularAttributeCreateInference() returns error? {
         ]
     };
     Entity|error r1 = tryUpdateAttribute("attr_valid_first_row", validFirstRowInference);
+    if r1 is error {
+        io:println("[testTabularAttributeCreateInference] Inference from first row should succeed: " + r1.message());
+    }
     test:assertTrue(r1 is Entity, "Inference from first row should succeed");
 
     // Case 2: values are inferred from non-first row as the first row is null
@@ -2850,7 +2860,13 @@ function testTabularAttributeCreateInference() returns error? {
         ReadEntityRequest readReq = {
             entity: {
                 id: testId,
-                attributes: [{key: attrName, value: {values: [{startTime: "", endTime: "", value: filterAny}]}}]
+                kind: { major: "", minor: "" },
+                created: "",
+                terminated: "",
+                name: { startTime: "", endTime: "", value: check pbAny:pack("") },
+                metadata: [],
+                attributes: [{key: attrName, value: {values: [{startTime: "", endTime: "", value: filterAny}]}}],
+                relationships: []
             },
             output: ["attributes"]
         };
@@ -2909,6 +2925,11 @@ function testTabularAttributeUpdateInference() returns error? {
             id: testId,
             entity: {
                 id: testId,
+                kind: { major: "", minor: "" },
+                created: "",
+                terminated: "",
+                name: { startTime: "", endTime: "", value: check pbAny:pack("") },
+                metadata: [],
                 attributes: [
                     {
                         key: attrName,
@@ -2933,6 +2954,9 @@ function testTabularAttributeUpdateInference() returns error? {
         ]
     };
     Entity|error r1 = appendToAttribute(initialBatch);
+    if r1 is error {
+        io:println("[testTabularAttributeUpdateInference] Initial insert should succeed: " + r1.message());
+    }
     test:assertTrue(r1 is Entity, "Initial insert should succeed");
 
     // Case 1: should fail if the rows are for the wrong type as in the existing table

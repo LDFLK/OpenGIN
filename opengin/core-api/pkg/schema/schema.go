@@ -554,6 +554,19 @@ func isDateOrDateTime(str string) (bool, bool) {
 //	        }
 //	    }
 //	}
+// structpbScalarIsNull reports whether v represents JSON null or a structpb.Value with no kind set.
+// Some JSON/codecs deserialize null as Value_NullValue; others leave Kind unset (nil).
+func structpbScalarIsNull(v *structpb.Value) bool {
+	if v == nil {
+		return true
+	}
+	if v.GetKind() == nil {
+		return true
+	}
+	_, ok := v.GetKind().(*structpb.Value_NullValue)
+	return ok
+}
+
 // inferColumnTypes scans all rows in a tabular struct to determine the type of each column.
 // It uses the first non-null value in each column to determine the type.
 // All inferred types are marked as nullable.
@@ -586,9 +599,11 @@ func inferColumnTypes(data *structpb.Struct) (map[string]typeinference.TypeInfo,
 				continue // already determined
 			}
 
-			switch value.GetKind().(type) {
-			case *structpb.Value_NullValue:
+			if structpbScalarIsNull(value) {
 				continue // keep looking
+			}
+
+			switch value.GetKind().(type) {
 			case *structpb.Value_NumberValue:
 				columnTypes[colName] = typeinference.TypeInfo{
 					Type:       typeinference.NumericType,
