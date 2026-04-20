@@ -206,85 +206,7 @@ func isDateTime(val string) bool {
 	return false
 }
 
-// validateDataAgainstSchema validates that the data matches the schema
-func validateDataAgainstSchema(data *structpb.Struct, schemaInfo *schema.SchemaInfo) error {
-	columnsList := data.Fields["columns"].GetListValue()
-	rowsList := data.Fields["rows"].GetListValue()
-
-	if columnsList == nil || rowsList == nil {
-		return fmt.Errorf("invalid tabular data: 'columns' and 'rows' must be valid lists")
-	}
-
-	// Validate column names match schema
-	schemaColumns := make(map[string]bool)
-	for fieldName := range schemaInfo.Fields {
-		schemaColumns[fieldName] = true
-	}
-
-	for _, col := range columnsList.Values {
-		colName := col.GetStringValue()
-		if !schemaColumns[colName] {
-			return fmt.Errorf("column %s not found in schema", colName)
-		}
-	}
-
-	// Validate data types for each row
-	for i, row := range rowsList.Values {
-		rowData := row.GetListValue()
-		if len(rowData.Values) != len(columnsList.Values) {
-			return fmt.Errorf("row %d length (%d) does not match number of columns (%d)", i, len(rowData.Values), len(columnsList.Values))
-		}
-		for j, value := range rowData.Values {
-			colName := columnsList.Values[j].GetStringValue()
-			fieldSchema := schemaInfo.Fields[colName]
-
-			// Null is always allowed (all columns are nullable)
-			if isStructpbNull(value) {
-				continue
-			}
-
-			// Validate type
-			switch fieldSchema.TypeInfo.Type {
-			case typeinference.NumericType:
-				if _, ok := value.Kind.(*structpb.Value_NumberValue); !ok {
-					return fmt.Errorf("row %d, column %s: expected numeric, got %v", i, colName, value)
-				}
-			case typeinference.IntType:
-				if v, ok := value.Kind.(*structpb.Value_NumberValue); !ok || v.NumberValue != float64(int64(v.NumberValue)) {
-					return fmt.Errorf("row %d, column %s: expected integer, got %v", i, colName, value)
-				}
-			case typeinference.FloatType:
-				if _, ok := value.Kind.(*structpb.Value_NumberValue); !ok {
-					return fmt.Errorf("row %d, column %s: expected float, got %v", i, colName, value)
-				}
-			case typeinference.BoolType:
-				if _, ok := value.Kind.(*structpb.Value_BoolValue); !ok {
-					return fmt.Errorf("row %d, column %s: expected boolean, got %v", i, colName, value)
-				}
-			case typeinference.StringType:
-				if _, ok := value.Kind.(*structpb.Value_StringValue); !ok {
-					return fmt.Errorf("row %d, column %s: expected string, got %v", i, colName, value)
-				}
-			case typeinference.DateType:
-				if v, ok := value.Kind.(*structpb.Value_StringValue); !ok || !isDateTime(v.StringValue) {
-					return fmt.Errorf("row %d, column %s: expected date, got %v", i, colName, value)
-				}
-			case typeinference.DateTimeType:
-				if v, ok := value.Kind.(*structpb.Value_StringValue); !ok || !isDateTime(v.StringValue) {
-					return fmt.Errorf("row %d, column %s: expected datetime, got %v", i, colName, value)
-				}
-			}
-		}
-	}
-
-	return nil
-}
-
-// validateAllRowsAgainstSchema validates every row in data against the inferred schemaInfo
-// before any table is created or data is inserted. This is used on the first-insert path to
-// catch type mismatches early, before any DDL is executed.
-// Null values are always accepted (all columns are nullable).
-func validateAllRowsAgainstSchema(data *structpb.Struct, schemaInfo *schema.SchemaInfo) error {
+func validateRowsAgainstSchema(data *structpb.Struct, schemaInfo *schema.SchemaInfo) error {
 	columnsList := data.Fields["columns"].GetListValue()
 	rowsList := data.Fields["rows"].GetListValue()
 
@@ -304,15 +226,24 @@ func validateAllRowsAgainstSchema(data *structpb.Struct, schemaInfo *schema.Sche
 				return fmt.Errorf("row %d, column %q: not found in schema", i, colName)
 			}
 
-			// Null is always allowed
+			// Null is always allowed (all columns are nullable)
 			if isStructpbNull(value) {
 				continue
 			}
 
+			// Validate type
 			switch fieldSchema.TypeInfo.Type {
 			case typeinference.NumericType:
 				if _, ok := value.Kind.(*structpb.Value_NumberValue); !ok {
 					return fmt.Errorf("row %d, column %q: expected numeric, got %T", i, colName, value.Kind)
+				}
+			case typeinference.IntType:
+				if v, ok := value.Kind.(*structpb.Value_NumberValue); !ok || v.NumberValue != float64(int64(v.NumberValue)) {
+					return fmt.Errorf("row %d, column %q: expected integer, got %T", i, colName, value.Kind)
+				}
+			case typeinference.FloatType:
+				if _, ok := value.Kind.(*structpb.Value_NumberValue); !ok {
+					return fmt.Errorf("row %d, column %q: expected float, got %T", i, colName, value.Kind)
 				}
 			case typeinference.BoolType:
 				if _, ok := value.Kind.(*structpb.Value_BoolValue); !ok {
@@ -322,19 +253,18 @@ func validateAllRowsAgainstSchema(data *structpb.Struct, schemaInfo *schema.Sche
 				if _, ok := value.Kind.(*structpb.Value_StringValue); !ok {
 					return fmt.Errorf("row %d, column %q: expected string, got %T", i, colName, value.Kind)
 				}
-			case typeinference.DateTimeType:
-				v, ok := value.Kind.(*structpb.Value_StringValue)
-				if !ok || !isDateTime(v.StringValue) {
-					return fmt.Errorf("row %d, column %q: expected datetime string, got %T", i, colName, value.Kind)
-				}
 			case typeinference.DateType:
-				v, ok := value.Kind.(*structpb.Value_StringValue)
-				if !ok || !isDateTime(v.StringValue) {
+				if v, ok := value.Kind.(*structpb.Value_StringValue); !ok || !isDateTime(v.StringValue) {
 					return fmt.Errorf("row %d, column %q: expected date string, got %T", i, colName, value.Kind)
+				}
+			case typeinference.DateTimeType:
+				if v, ok := value.Kind.(*structpb.Value_StringValue); !ok || !isDateTime(v.StringValue) {
+					return fmt.Errorf("row %d, column %q: expected datetime string, got %T", i, colName, value.Kind)
 				}
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -458,7 +388,7 @@ func (repo *PostgresRepository) StoreTabularData(ctx context.Context, entityID, 
 		}
 
 		// Validate data against existing schema
-		if err := validateDataAgainstSchema(&tabularStruct, &existingSchema); err != nil {
+		if err := validateRowsAgainstSchema(&tabularStruct, &existingSchema); err != nil {
 			return fmt.Errorf("data validation failed: %v", err)
 		}
 	} else {
@@ -470,7 +400,7 @@ func (repo *PostgresRepository) StoreTabularData(ctx context.Context, entityID, 
 		}
 
 		// Validate all rows against the inferred schema before creating the table
-		if err := validateAllRowsAgainstSchema(&tabularStruct, schemaInfo); err != nil {
+		if err := validateRowsAgainstSchema(&tabularStruct, schemaInfo); err != nil {
 			return fmt.Errorf("pre-insert schema validation failed: %v", err)
 		}
 

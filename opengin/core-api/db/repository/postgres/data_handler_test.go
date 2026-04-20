@@ -1074,8 +1074,8 @@ func TestGetDataWithRowFiltering(t *testing.T) {
 	})
 }
 
-// TestValidateAllRowsAgainstSchema tests the pre-insert row validation function.
-func TestValidateAllRowsAgainstSchema(t *testing.T) {
+// TestValidateRowsAgainstSchema tests shared row validation.
+func TestValidateRowsAgainstSchema(t *testing.T) {
 	numericSchema := &schema.SchemaInfo{
 		StorageType: storageinference.TabularData,
 		Fields: map[string]*schema.SchemaInfo{
@@ -1192,7 +1192,7 @@ func TestValidateAllRowsAgainstSchema(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			data := makeStruct(tt.columns, tt.rows)
-			err := validateAllRowsAgainstSchema(data, numericSchema)
+			err := validateRowsAgainstSchema(data, numericSchema)
 			if tt.expectError {
 				assert.Error(t, err)
 				if tt.errorMsg != "" {
@@ -1207,7 +1207,7 @@ func TestValidateAllRowsAgainstSchema(t *testing.T) {
 
 // JSON null in tabular rows can deserialize to structpb.Value with Kind unset (nil) instead of
 // Value_NullValue; that must still pass validation for nullable columns.
-func TestValidateAllRowsAgainstSchemaUnsetKindActsAsNull(t *testing.T) {
+func TestValidateRowsAgainstSchemaUnsetKindActsAsNull(t *testing.T) {
 	dateSchema := &schema.SchemaInfo{
 		StorageType: storageinference.TabularData,
 		Fields: map[string]*schema.SchemaInfo{
@@ -1227,11 +1227,11 @@ func TestValidateAllRowsAgainstSchemaUnsetKindActsAsNull(t *testing.T) {
 			}}),
 		},
 	}
-	err := validateAllRowsAgainstSchema(data, dateSchema)
+	err := validateRowsAgainstSchema(data, dateSchema)
 	assert.NoError(t, err)
 }
 
-func TestValidateDataAgainstSchemaRejectsWrongTypeOnAppend(t *testing.T) {
+func TestValidateRowsAgainstSchemaRejectsWrongTypeOnAppend(t *testing.T) {
 	stringSchema := &schema.SchemaInfo{
 		StorageType: storageinference.TabularData,
 		Fields: map[string]*schema.SchemaInfo{
@@ -1255,7 +1255,7 @@ func TestValidateDataAgainstSchemaRejectsWrongTypeOnAppend(t *testing.T) {
 		},
 	}
 
-	err := validateDataAgainstSchema(data, stringSchema)
+	err := validateRowsAgainstSchema(data, stringSchema)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "expected string")
 }
