@@ -168,7 +168,6 @@ func isTabularData(value *anypb.Any) (bool, *structpb.Struct, error) {
 	return true, &dataStruct, nil
 }
 
-
 // isStructpbNull reports whether a structpb scalar should be treated as SQL NULL.
 // JSON null may deserialize as either Value_NullValue or a Value with an unset Kind.
 func isStructpbNull(v *structpb.Value) bool {
@@ -339,7 +338,6 @@ func validateAllRowsAgainstSchema(data *structpb.Struct, schemaInfo *schema.Sche
 	return nil
 }
 
-
 // compareSchemas compares two schemas and returns true if they are compatible
 func compareSchemas(existing, newSchema *schema.SchemaInfo) (bool, error) {
 	if existing.StorageType != newSchema.StorageType {
@@ -376,6 +374,11 @@ func isTypeCompatible(existingType, newType typeinference.DataType) bool {
 	if existingType == newType {
 		return true
 	}
+	// NullType means the incoming batch only had nulls for this column.
+	// For existing tables, that's compatible with any existing column type.
+	if newType == typeinference.NullType {
+		return true
+	}
 
 	// Type promotion rules
 	switch existingType {
@@ -393,6 +396,19 @@ func isTypeCompatible(existingType, newType typeinference.DataType) bool {
 	return false
 }
 
+func hasNullOnlyColumns(schemaInfo *schema.SchemaInfo) []string {
+	if schemaInfo == nil {
+		return nil
+	}
+	var cols []string
+	for fieldName, field := range schemaInfo.Fields {
+		if field != nil && field.TypeInfo != nil && field.TypeInfo.Type == typeinference.NullType {
+			cols = append(cols, fieldName)
+		}
+	}
+	return cols
+}
+
 // StoreTabularData persists tabular attribute data to Postgres, creating the backing table if needed and validating schema compatibility on subsequent writes.
 func (repo *PostgresRepository) StoreTabularData(ctx context.Context, entityID, attrName string, value *pb.TimeBasedValue, schemaInfo *schema.SchemaInfo) error {
 	// Generate table name - UUID without hyphens (32 chars) + prefix (5 chars) = 37 chars total
@@ -401,9 +417,6 @@ func (repo *PostgresRepository) StoreTabularData(ctx context.Context, entityID, 
 	unique_id := uuid.NewSHA1(namespace, []byte(name)).String()
 	unique_id = strings.ReplaceAll(unique_id, "-", "") // Remove hyphens for database compatibility
 	tableName := fmt.Sprintf("attr_%s", unique_id)
-
-	// Convert schema to columns
-	columns := schemaToColumns(schemaInfo)
 
 	// Unmarshal tabular data once at the beginning to avoid redundant work
 	var tabularStruct structpb.Struct
@@ -432,14 +445,16 @@ func (repo *PostgresRepository) StoreTabularData(ctx context.Context, entityID, 
 			return fmt.Errorf("error unmarshaling existing schema: %v", err)
 		}
 
-		// Compare schemas
-		compatible, err := compareSchemas(&existingSchema, schemaInfo)
-		if err != nil {
-			return fmt.Errorf("schema compatibility check failed: %v", err)
-		}
+		// Compare schemas only if caller provided one.
+		if schemaInfo != nil {
+			compatible, err := compareSchemas(&existingSchema, schemaInfo)
+			if err != nil {
+				return fmt.Errorf("schema compatibility check failed: %v", err)
+			}
 
-		if !compatible {
-			return fmt.Errorf("incompatible schema changes detected")
+			if !compatible {
+				return fmt.Errorf("incompatible schema changes detected")
+			}
 		}
 
 		// Validate data against existing schema
@@ -447,10 +462,20 @@ func (repo *PostgresRepository) StoreTabularData(ctx context.Context, entityID, 
 			return fmt.Errorf("data validation failed: %v", err)
 		}
 	} else {
+		if schemaInfo == nil {
+			return fmt.Errorf("schema is required to create a new tabular attribute")
+		}
+		if nullOnlyCols := hasNullOnlyColumns(schemaInfo); len(nullOnlyCols) > 0 {
+			return fmt.Errorf("pre-insert schema validation failed: columns %v have only null values; cannot create new table with null-only inferred types", nullOnlyCols)
+		}
+
 		// Validate all rows against the inferred schema before creating the table
 		if err := validateAllRowsAgainstSchema(&tabularStruct, schemaInfo); err != nil {
 			return fmt.Errorf("pre-insert schema validation failed: %v", err)
 		}
+
+		// Convert schema to columns
+		columns := schemaToColumns(schemaInfo)
 
 		// Create new table
 		if err := repo.CreateDynamicTable(ctx, tableName, columns); err != nil {

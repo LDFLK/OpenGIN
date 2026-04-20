@@ -691,10 +691,12 @@ func TestInferColumnTypes(t *testing.T) {
 			},
 		},
 		{
-			name:    "all nulls returns error",
+			name:    "all nulls infer as NullType",
 			columns: []string{"val"},
 			rows:    [][]interface{}{{nil}, {nil}},
-			expectError: true,
+			expectedTypes: map[string]typeinference.DataType{
+				"val": typeinference.NullType,
+			},
 		},
 		{
 			name:    "type set from first non-null ignores later values",

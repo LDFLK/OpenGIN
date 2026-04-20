@@ -570,7 +570,7 @@ func structpbScalarIsNull(v *structpb.Value) bool {
 // inferColumnTypes scans all rows in a tabular struct to determine the type of each column.
 // It uses the first non-null value in each column to determine the type.
 // All inferred types are marked as nullable.
-// Returns an error if any column contains only null values, as the type cannot be determined.
+// If a column contains only null values, it is assigned NullType.
 func inferColumnTypes(data *structpb.Struct) (map[string]typeinference.TypeInfo, error) {
 	columnsList := data.Fields["columns"].GetListValue()
 	rowsList := data.Fields["rows"].GetListValue()
@@ -634,10 +634,13 @@ func inferColumnTypes(data *structpb.Struct) (map[string]typeinference.TypeInfo,
 		}
 	}
 
-	// Any column still unknown = all nulls → reject
+	// Any column still unknown = all nulls
 	for colName, info := range columnTypes {
 		if info.Type == typeinference.DataType(unknown) {
-			return nil, fmt.Errorf("column %q has only null values; cannot determine type", colName)
+			columnTypes[colName] = typeinference.TypeInfo{
+				Type:       typeinference.NullType,
+				IsNullable: true,
+			}
 		}
 	}
 

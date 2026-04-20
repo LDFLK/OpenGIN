@@ -1260,3 +1260,28 @@ func TestValidateDataAgainstSchemaRejectsWrongTypeOnAppend(t *testing.T) {
 	assert.Contains(t, err.Error(), "expected string")
 }
 
+func TestIsTypeCompatibleAllowsNullTypeOnIncomingSchema(t *testing.T) {
+	assert.True(t, isTypeCompatible(typeinference.StringType, typeinference.NullType))
+	assert.True(t, isTypeCompatible(typeinference.NumericType, typeinference.NullType))
+	assert.True(t, isTypeCompatible(typeinference.DateType, typeinference.NullType))
+}
+
+func TestHasNullOnlyColumns(t *testing.T) {
+	schemaInfo := &schema.SchemaInfo{
+		StorageType: storageinference.TabularData,
+		Fields: map[string]*schema.SchemaInfo{
+			"id": {
+				StorageType: storageinference.ScalarData,
+				TypeInfo:    &typeinference.TypeInfo{Type: typeinference.NumericType, IsNullable: true},
+			},
+			"val": {
+				StorageType: storageinference.ScalarData,
+				TypeInfo:    &typeinference.TypeInfo{Type: typeinference.NullType, IsNullable: true},
+			},
+		},
+	}
+
+	nullOnlyCols := hasNullOnlyColumns(schemaInfo)
+	assert.Equal(t, []string{"val"}, nullOnlyCols)
+}
+
