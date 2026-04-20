@@ -169,6 +169,19 @@ func isTabularData(value *anypb.Any) (bool, *structpb.Struct, error) {
 }
 
 
+// isStructpbNull reports whether a structpb scalar should be treated as SQL NULL.
+// JSON null may deserialize as either Value_NullValue or a Value with an unset Kind.
+func isStructpbNull(v *structpb.Value) bool {
+	if v == nil {
+		return true
+	}
+	if v.Kind == nil {
+		return true
+	}
+	_, ok := v.Kind.(*structpb.Value_NullValue)
+	return ok
+}
+
 // isDateTime checks if a string is a valid datetime
 func isDateTime(val string) bool {
 	_, err := time.Parse(time.RFC3339, val)
@@ -227,7 +240,7 @@ func validateDataAgainstSchema(data *structpb.Struct, schemaInfo *schema.SchemaI
 			fieldSchema := schemaInfo.Fields[colName]
 
 			// Null is always allowed (all columns are nullable)
-			if _, isNull := value.Kind.(*structpb.Value_NullValue); isNull {
+			if isStructpbNull(value) {
 				continue
 			}
 
@@ -285,7 +298,7 @@ func validateAllRowsAgainstSchema(data *structpb.Struct, schemaInfo *schema.Sche
 			}
 
 			// Null is always allowed
-			if _, isNull := value.Kind.(*structpb.Value_NullValue); isNull {
+			if isStructpbNull(value) {
 				continue
 			}
 
@@ -489,6 +502,10 @@ func (repo *PostgresRepository) StoreTabularData(ctx context.Context, entityID, 
 
 		rows[i] = make([]interface{}, len(rowList.Values))
 		for j, cell := range rowList.Values {
+			if isStructpbNull(cell) {
+				rows[i][j] = nil
+				continue
+			}
 			switch cell.Kind.(type) {
 			case *structpb.Value_StringValue:
 				rows[i][j] = cell.GetStringValue()

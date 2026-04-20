@@ -1205,3 +1205,29 @@ func TestValidateAllRowsAgainstSchema(t *testing.T) {
 	}
 }
 
+// JSON null in tabular rows can deserialize to structpb.Value with Kind unset (nil) instead of
+// Value_NullValue; that must still pass validation for nullable columns.
+func TestValidateAllRowsAgainstSchemaUnsetKindActsAsNull(t *testing.T) {
+	dateSchema := &schema.SchemaInfo{
+		StorageType: storageinference.TabularData,
+		Fields: map[string]*schema.SchemaInfo{
+			"testNull": {
+				StorageType: storageinference.ScalarData,
+				TypeInfo:    &typeinference.TypeInfo{Type: typeinference.DateType, IsNullable: true},
+			},
+		},
+	}
+	data := &structpb.Struct{
+		Fields: map[string]*structpb.Value{
+			"columns": structpb.NewListValue(&structpb.ListValue{Values: []*structpb.Value{structpb.NewStringValue("testNull")}}),
+			"rows": structpb.NewListValue(&structpb.ListValue{Values: []*structpb.Value{
+				structpb.NewListValue(&structpb.ListValue{Values: []*structpb.Value{
+					{Kind: nil},
+				}}),
+			}}),
+		},
+	}
+	err := validateAllRowsAgainstSchema(data, dateSchema)
+	assert.NoError(t, err)
+}
+
