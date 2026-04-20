@@ -663,6 +663,83 @@ func GetSchemaOfTable(ctx context.Context, repo *PostgresRepository, tableName s
 	return &schemaInfo, nil
 }
 
+type columnCaster func(interface{}) (interface{}, bool)
+
+func makeColumnCaster(schemaInfo *schema.SchemaInfo, colName string) columnCaster {
+	if schemaInfo == nil {
+		return nil
+	}
+	fieldInfo, exists := schemaInfo.Fields[colName]
+	if !exists || fieldInfo == nil || fieldInfo.TypeInfo == nil {
+		return nil
+	}
+
+	switch fieldInfo.TypeInfo.Type {
+	case typeinference.IntType:
+		return func(val interface{}) (interface{}, bool) {
+			if val == nil {
+				return nil, false
+			}
+			var strVal string
+			switch v := val.(type) {
+			case []byte:
+				strVal = string(v)
+			case string:
+				strVal = v
+			default:
+				return nil, false
+			}
+			intVal, err := strconv.ParseInt(strVal, 10, 64)
+			if err != nil {
+				return nil, false
+			}
+			return intVal, true
+		}
+	case typeinference.NumericType, typeinference.FloatType:
+		return func(val interface{}) (interface{}, bool) {
+			if val == nil {
+				return nil, false
+			}
+			var strVal string
+			switch v := val.(type) {
+			case []byte:
+				strVal = string(v)
+			case string:
+				strVal = v
+			default:
+				return nil, false
+			}
+			floatVal, err := strconv.ParseFloat(strVal, 64)
+			if err != nil {
+				return nil, false
+			}
+			return floatVal, true
+		}
+	case typeinference.BoolType:
+		return func(val interface{}) (interface{}, bool) {
+			if val == nil {
+				return nil, false
+			}
+			var strVal string
+			switch v := val.(type) {
+			case []byte:
+				strVal = string(v)
+			case string:
+				strVal = v
+			default:
+				return nil, false
+			}
+			boolVal, err := strconv.ParseBool(strVal)
+			if err != nil {
+				return nil, false
+			}
+			return boolVal, true
+		}
+	default:
+		return nil
+	}
+}
+
 // TabularData represents the structure of tabular data with columns and rows
 type TabularData struct {
 	Columns []string        `json:"columns"`
@@ -804,6 +881,12 @@ func (repo *PostgresRepository) GetData(ctx context.Context, tableName string, f
 		log.Printf("Warning: failed to get schema for table %s: %v", tableName, err)
 	}
 
+	// Precompute per-column casters once to avoid repeated map lookups and type switches per cell.
+	columnCasters := make([]columnCaster, len(filteredColumns))
+	for i, colName := range filteredColumns {
+		columnCasters[i] = makeColumnCaster(schemaInfo, colName)
+	}
+
 	var tabularRows [][]interface{}
 	for rows.Next() {
 		rowValues := make([]interface{}, len(resultColumns))
@@ -821,40 +904,12 @@ func (repo *PostgresRepository) GetData(ctx context.Context, tableName string, f
 		row := make([]interface{}, len(filteredColumns))
 		for i, colIndex := range columnIndices {
 			val := rowValues[colIndex]
-			colName := filteredColumns[i]
 
 			var assigned bool
-			if schemaInfo != nil {
-				if fieldInfo, exists := schemaInfo.Fields[colName]; exists && val != nil {
-					var strVal string
-					var isStr bool
-					if b, ok := val.([]byte); ok {
-						strVal = string(b)
-						isStr = true
-					} else if s, ok := val.(string); ok {
-						strVal = s
-						isStr = true
-					}
-
-					if isStr {
-						switch fieldInfo.TypeInfo.Type {
-						case typeinference.IntType:
-							if intVal, err := strconv.ParseInt(strVal, 10, 64); err == nil {
-								row[i] = intVal
-								assigned = true
-							}
-						case typeinference.NumericType, typeinference.FloatType:
-							if floatVal, err := strconv.ParseFloat(strVal, 64); err == nil {
-								row[i] = floatVal
-								assigned = true
-							}
-						case typeinference.BoolType:
-							if boolVal, err := strconv.ParseBool(strVal); err == nil {
-								row[i] = boolVal
-								assigned = true
-							}
-						}
-					}
+			if caster := columnCasters[i]; caster != nil {
+				if castedVal, ok := caster(val); ok {
+					row[i] = castedVal
+					assigned = true
 				}
 			}
 
