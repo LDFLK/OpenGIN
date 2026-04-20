@@ -3026,7 +3026,13 @@ function testTabularAttributeUpdateInference() returns error? {
     ReadEntityRequest readReq = {
         entity: {
             id: testId,
-            attributes: [{key: attrName, value: {values: [{startTime: "", endTime: "", value: filterAny}]}}]
+            kind: { major: "", minor: "" },
+            created: "",
+            terminated: "",
+            name: { startTime: "", endTime: "", value: check pbAny:pack("") },
+            metadata: [],
+            attributes: [{key: attrName, value: {values: [{startTime: "", endTime: "", value: filterAny}]}}],
+            relationships: []
         },
         output: ["attributes"]
     };
