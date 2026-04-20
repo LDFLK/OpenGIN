@@ -262,6 +262,14 @@ func validateDataAgainstSchema(data *structpb.Struct, schemaInfo *schema.SchemaI
 				if _, ok := value.Kind.(*structpb.Value_BoolValue); !ok {
 					return fmt.Errorf("row %d, column %s: expected boolean, got %v", i, colName, value)
 				}
+			case typeinference.StringType:
+				if _, ok := value.Kind.(*structpb.Value_StringValue); !ok {
+					return fmt.Errorf("row %d, column %s: expected string, got %v", i, colName, value)
+				}
+			case typeinference.DateType:
+				if v, ok := value.Kind.(*structpb.Value_StringValue); !ok || !isDateTime(v.StringValue) {
+					return fmt.Errorf("row %d, column %s: expected date, got %v", i, colName, value)
+				}
 			case typeinference.DateTimeType:
 				if v, ok := value.Kind.(*structpb.Value_StringValue); !ok || !isDateTime(v.StringValue) {
 					return fmt.Errorf("row %d, column %s: expected datetime, got %v", i, colName, value)

@@ -2967,6 +2967,9 @@ function testTabularAttributeUpdateInference() returns error? {
         ]
     };
     Entity|error r2 = appendToAttribute(wrongTypeBatch);
+    if r2 is error {
+        io:println("[testTabularAttributeUpdateInference] Wrong type append should fail: " + r2.message());
+    }
     test:assertTrue(r2 is error, "Wrong type append should fail");
 
     // Case 2: if the row previously contained integers it should still work if you want to append decimals or big numbers
@@ -2988,6 +2991,9 @@ function testTabularAttributeUpdateInference() returns error? {
         ]
     };
     Entity|error r4 = appendToAttribute(nullRowBatch);
+    if r4 is error {
+        io:println("[testTabularAttributeUpdateInference] Appending a row with null values should succeed: " + r4.message());
+    }
     test:assertTrue(r4 is Entity, "Appending a row with null values should succeed");
 
     // Case 4: it should allow you to append values that are all null for a column

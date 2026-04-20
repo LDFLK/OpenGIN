@@ -1231,3 +1231,32 @@ func TestValidateAllRowsAgainstSchemaUnsetKindActsAsNull(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestValidateDataAgainstSchemaRejectsWrongTypeOnAppend(t *testing.T) {
+	stringSchema := &schema.SchemaInfo{
+		StorageType: storageinference.TabularData,
+		Fields: map[string]*schema.SchemaInfo{
+			"val": {
+				StorageType: storageinference.ScalarData,
+				TypeInfo:    &typeinference.TypeInfo{Type: typeinference.StringType, IsNullable: true},
+			},
+		},
+	}
+
+	data := &structpb.Struct{
+		Fields: map[string]*structpb.Value{
+			"columns": structpb.NewListValue(&structpb.ListValue{Values: []*structpb.Value{
+				structpb.NewStringValue("val"),
+			}}),
+			"rows": structpb.NewListValue(&structpb.ListValue{Values: []*structpb.Value{
+				structpb.NewListValue(&structpb.ListValue{Values: []*structpb.Value{
+					structpb.NewNumberValue(123),
+				}}),
+			}}),
+		},
+	}
+
+	err := validateDataAgainstSchema(data, stringSchema)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "expected string")
+}
+
