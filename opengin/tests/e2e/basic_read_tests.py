@@ -834,14 +834,21 @@ def create_entity_for_read():
     relationships = response_data["relationships"]
     print(relationships)
 
-    # check for the start date and the end date
+    found = False
+
     for relationship in relationships:
-        if relationship["value"]["startTime"] != "" and relationship["value"]["endTime"] != "":
-            assert relationship["value"]["startTime"] in ["2024-11-01T00:00:00Z", "2024-01-01T00:00:00Z"]
-            assert relationship["value"]["endTime"] in ["2024-11-30T00:00:00Z","2024-12-31T23:59:59Z"]
-        else:
-            pass
-    print("✅ Verified start and end times.")
+        start = relationship["value"].get("startTime")
+        end = relationship["value"].get("endTime")
+
+        if start and end:
+            found = True
+
+            assert start in ["2024-11-01T00:00:00Z", "2024-01-01T00:00:00Z"]
+            assert end in ["2024-11-30T00:00:00Z", "2024-12-31T23:59:59Z"]
+
+    assert found, "No relationship found with both startTime and endTime"
+    
+    print("✅ Verified start and end times of entity's attributes.")
 
 def test_attribute_fields_combinations():
     """Test different field combinations for attribute retrieval."""

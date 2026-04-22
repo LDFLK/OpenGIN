@@ -683,12 +683,17 @@ class AttributeValidationTests(BasicCORETests):
     def read_minister(self):
         """Read the Minister entity."""
         print("\n🟢 Reading Minister entity...")
-        res = requests.get(f"{self.base_url}/{self.MINISTER_ID}")
+        payload = {
+            "id": self.MINISTER_ID
+        }
+        res = requests.post(f"{self.base_read_url}/search", json=payload)
         print(res.status_code, res.json())
         assert res.status_code in [200], f"Failed to read Minister: {res.text}"
 
         # Verify the response data
         response_data = res.json()
+        response_data = response_data["body"][0]
+
         print(response_data)
         assert response_data["id"] == self.MINISTER_ID, (
             f"Expected ID {self.MINISTER_ID}, got {response_data['id']}"
@@ -702,9 +707,16 @@ class AttributeValidationTests(BasicCORETests):
         assert response_data["created"] == self.START_DATE, (
             f"Expected created date {self.START_DATE}, got {response_data['created']}"
         )
+
+        print("im here befire you bitchhhhh....")
+
         # The name value is a protobuf Any that needs to be decoded
-        name_value = response_data["name"]["value"]
-        decoded_name = CoreTestUtils.decode_protobuf_string_value(name_value)
+        print("i am here..............")
+        name_obj = json.loads(response_data["name"])
+        print(name_obj)
+        hex_value = name_obj["value"]
+        print(hex_value)
+        decoded_name = bytes.fromhex(hex_value).decode('utf-8')
         assert decoded_name == "Minister of Finance and Economy", (
             f"Expected name 'Minister of Finance and Economy', got {decoded_name}"
         )
@@ -850,7 +862,7 @@ class AttributeValidationTests(BasicCORETests):
 
         print("\n🟢 checking Minister with attribute with startDate and endDate...")
 
-        url = f"{self.base_read_url}/v1/entities/{self.MINISTER_ID}/attributes/{self.ATTRIBUTE_NAME_2}"
+        url = f"{self.base_read_url}/{self.MINISTER_ID}/attributes/{self.ATTRIBUTE_NAME_2}"
         payload = {}
 
         res = requests.post(url, json=payload)
@@ -884,24 +896,23 @@ class AttributeValidationTests(BasicCORETests):
 
         print("Decoded value: ", decoded_value)
 
-        url = f"{self.base_url}/{self.MINISTER_ID}"
+        url = f"{self.base_read_url}/{self.MINISTER_ID}/relations"
+        payload = {}
 
-        res = requests.get(url)
+        res = requests.post(url, json=payload)
         print(res.status_code, res.json())
-        assert res.status_code in [200], f"Failed to read Minister: {res.text}"
+        assert res.status_code in [200], f"Failed to read Minister relationships: {res.text}"
 
-        response_data = res.json()
-        print(response_data)
-
-        relationships = response_data["relationships"]
+        relationships = res.json()
+        print(relationships)
 
         print("relationships", relationships)
 
         # check for the start data and the end date
         for relationship in relationships:
-            if relationship["value"]["startTime"] != "" and relationship["value"]["endTime"] != "":
-                assert relationship["value"]["startTime"] == self.DATA_START_DATE
-                assert relationship["value"]["endTime"] == self.DATA_END_DATE
+            if relationship["startTime"] != "" and relationship["endTime"] != "":
+                assert relationship["startTime"] == self.DATA_START_DATE
+                assert relationship["endTime"] == self.DATA_END_DATE
             else:
                 pass
 
@@ -1065,7 +1076,7 @@ def get_base_read_url():
     print("🟢 Setting up test environment...")
     read_service_url = os.getenv("READ_SERVICE_URL", "http://read:8081")
     print("🟢 READ_SERVICE_URL: ", read_service_url)
-    return read_service_url
+    return f"{read_service_url}/v1/entities"
 
 
 # Tabular Attribute Integrity Tests
