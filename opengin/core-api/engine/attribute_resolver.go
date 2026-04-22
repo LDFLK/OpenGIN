@@ -63,7 +63,7 @@ func NewEntityAttributeProcessor(postgresRepo ...*postgresrepository.PostgresRep
 
 	processor := &EntityAttributeProcessor{
 		resolvers:    make(map[storageinference.StorageType]AttributeResolver),
-		graphManager: NewGraphMetadataManager(),
+		graphManager: NewGraphMetadataManager(nil, nil),
 	}
 
 	// Initialize all resolvers

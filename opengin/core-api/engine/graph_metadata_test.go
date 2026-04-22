@@ -15,7 +15,7 @@ import (
 
 // TestGraphMetadataManager tests the graph metadata manager functionality
 func TestGraphMetadataManager(t *testing.T) {
-	manager := NewGraphMetadataManager()
+	manager := NewGraphMetadataManager(nil, nil)
 	assert.NotNil(t, manager)
 
 	ctx := context.Background()
