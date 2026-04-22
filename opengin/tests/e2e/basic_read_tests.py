@@ -834,7 +834,7 @@ def create_entity_for_read():
     relationships = response_data["relationships"]
     print(relationships)
 
-    # check for the start data and the end date
+    # check for the start date and the end date
     for relationship in relationships:
         if relationship["value"]["startTime"] != "" and relationship["value"]["endTime"] != "":
             assert relationship["value"]["startTime"] in ["2024-11-01T00:00:00Z", "2024-01-01T00:00:00Z"]
