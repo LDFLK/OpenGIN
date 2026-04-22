@@ -6,6 +6,8 @@ package engine
 import (
 	"context"
 	"fmt"
+	mongorepository "lk/datafoundation/core-api/db/repository/mongo"
+	neo4jrepository "lk/datafoundation/core-api/db/repository/neo4j"
 	postgresrepository "lk/datafoundation/core-api/db/repository/postgres"
 	pb "lk/datafoundation/core-api/lk/datafoundation/core-api"
 	schema "lk/datafoundation/core-api/pkg/schema"
@@ -54,22 +56,24 @@ type EntityAttributeProcessor struct {
 	graphManager *GraphMetadataManager
 }
 
-// NewEntityAttributeProcessor creates a new processor with all resolvers initialized
-func NewEntityAttributeProcessor(postgresRepo ...*postgresrepository.PostgresRepository) *EntityAttributeProcessor {
-	var repo *postgresrepository.PostgresRepository
-	if len(postgresRepo) > 0 {
-		repo = postgresRepo[0]
-	}
+// ProcessorDependencies contains database repositories used by the attribute processor.
+type ProcessorDependencies struct {
+	PostgresRepo *postgresrepository.PostgresRepository
+	Neo4jRepo    *neo4jrepository.Neo4jRepository
+	MongoRepo    *mongorepository.MongoRepository
+}
 
+// NewEntityAttributeProcessor creates a processor with explicit repository dependencies.
+func NewEntityAttributeProcessor(deps ProcessorDependencies) *EntityAttributeProcessor {
 	processor := &EntityAttributeProcessor{
 		resolvers:    make(map[storageinference.StorageType]AttributeResolver),
-		graphManager: NewGraphMetadataManager(nil, nil),
+		graphManager: NewGraphMetadataManager(deps.Neo4jRepo, deps.MongoRepo),
 	}
 
 	// Initialize all resolvers
 	processor.resolvers[storageinference.GraphData] = &GraphAttributeResolver{}
 	processor.resolvers[storageinference.TabularData] = &TabularAttributeResolver{
-		repo: repo,
+		repo: deps.PostgresRepo,
 	}
 	processor.resolvers[storageinference.MapData] = &DocumentAttributeResolver{}
 

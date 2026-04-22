@@ -134,7 +134,7 @@ func TestGraphMetadataIntegration(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	processor := NewEntityAttributeProcessor(postgresRepoOrSkip(t))
+	processor := NewEntityAttributeProcessor(ProcessorDependencies{PostgresRepo: postgresRepoOrSkip(t)})
 	ctx := context.Background()
 
 	// save the parent entity in the database
