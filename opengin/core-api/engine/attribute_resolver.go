@@ -6,7 +6,7 @@ package engine
 import (
 	"context"
 	"fmt"
-	dbcommons "lk/datafoundation/core-api/commons/db"
+	postgresrepository "lk/datafoundation/core-api/db/repository/postgres"
 	pb "lk/datafoundation/core-api/lk/datafoundation/core-api"
 	schema "lk/datafoundation/core-api/pkg/schema"
 	storageinference "lk/datafoundation/core-api/pkg/storageinference"
@@ -55,7 +55,12 @@ type EntityAttributeProcessor struct {
 }
 
 // NewEntityAttributeProcessor creates a new processor with all resolvers initialized
-func NewEntityAttributeProcessor() *EntityAttributeProcessor {
+func NewEntityAttributeProcessor(postgresRepo ...*postgresrepository.PostgresRepository) *EntityAttributeProcessor {
+	var repo *postgresrepository.PostgresRepository
+	if len(postgresRepo) > 0 {
+		repo = postgresRepo[0]
+	}
+
 	processor := &EntityAttributeProcessor{
 		resolvers:    make(map[storageinference.StorageType]AttributeResolver),
 		graphManager: NewGraphMetadataManager(),
@@ -63,7 +68,9 @@ func NewEntityAttributeProcessor() *EntityAttributeProcessor {
 
 	// Initialize all resolvers
 	processor.resolvers[storageinference.GraphData] = &GraphAttributeResolver{}
-	processor.resolvers[storageinference.TabularData] = &TabularAttributeResolver{}
+	processor.resolvers[storageinference.TabularData] = &TabularAttributeResolver{
+		repo: repo,
+	}
 	processor.resolvers[storageinference.MapData] = &DocumentAttributeResolver{}
 
 	// Initialize each resolver
@@ -445,6 +452,7 @@ func (r *GraphAttributeResolver) DeleteResolve(ctx context.Context, entityID, at
 // TabularAttributeResolver handles tabular data structures with columns and rows
 type TabularAttributeResolver struct {
 	BaseAttributeResolver
+	repo *postgresrepository.PostgresRepository
 }
 
 func (r *TabularAttributeResolver) CreateResolve(ctx context.Context, entityID, attrName string, value *pb.TimeBasedValue) *Result {
@@ -465,17 +473,16 @@ func (r *TabularAttributeResolver) CreateResolve(ctx context.Context, entityID, 
 
 	fmt.Printf("Creating tabular attribute %s for entity %s (validated as tabular) from %v to %v\n", attrName, entityID, startDate, endDate)
 
-	repo, err := dbcommons.GetPostgresRepository(ctx)
-	if err != nil {
+	if r.repo == nil {
 		return &Result{
 			Data:    nil,
 			Success: false,
-			Error:   fmt.Errorf("failed to get Postgres repository: %v", err),
+			Error:   fmt.Errorf("postgres repository is not configured"),
 		}
 	}
 
 	// Initialize database tables if they don't exist
-	if err := repo.InitializeTables(ctx); err != nil {
+	if err := r.repo.InitializeTables(ctx); err != nil {
 		return &Result{
 			Data:    nil,
 			Success: false,
@@ -492,7 +499,7 @@ func (r *TabularAttributeResolver) CreateResolve(ctx context.Context, entityID, 
 		}
 	}
 
-	err = repo.HandleTabularData(ctx, entityID, attrName, value, schemaInfo)
+	err = r.repo.HandleTabularData(ctx, entityID, attrName, value, schemaInfo)
 	if err != nil {
 		return &Result{
 			Data:    nil,
@@ -515,19 +522,18 @@ func (r *TabularAttributeResolver) ReadResolve(ctx context.Context, entityID, at
 	// - Return tabular structure
 	fmt.Printf("[TabularAttributeResolver.ReadResolve] Reading tabular attribute %s for entity %s with filters: %+v and fields: %+v\n", attrName, entityID, filters, fields)
 
-	repo, err := dbcommons.GetPostgresRepository(ctx)
-	if err != nil {
+	if r.repo == nil {
 		return &Result{
 			Data:    nil,
 			Success: false,
-			Error:   fmt.Errorf("failed to get Postgres repository: %v", err),
+			Error:   fmt.Errorf("postgres repository is not configured"),
 		}
 	}
 
 	// Look up the actual table name from entity_attributes table
 	// The table name is UUID-based and stored during create operation
 	var tableName string
-	err = repo.DB().QueryRowContext(ctx,
+	err := r.repo.DB().QueryRowContext(ctx,
 		`SELECT table_name FROM entity_attributes WHERE entity_id = $1 AND attribute_name = $2`,
 		entityID, attrName).Scan(&tableName)
 	if err != nil {
@@ -540,7 +546,7 @@ func (r *TabularAttributeResolver) ReadResolve(ctx context.Context, entityID, at
 	log.Printf("[TabularAttributeResolver.ReadResolve] Found tableName: %s", tableName)
 
 	// Use the GetData method from the repository to retrieve data with filters and fields
-	anyData, err := repo.GetData(ctx, tableName, filters, fields...)
+	anyData, err := r.repo.GetData(ctx, tableName, filters, fields...)
 	if err != nil {
 		return &Result{
 			Data:    nil,
