@@ -11,6 +11,7 @@ import (
 
 	"lk/datafoundation/core-api/commons"
 	dbcommons "lk/datafoundation/core-api/commons/db"
+	postgresrepository "lk/datafoundation/core-api/db/repository/postgres"
 	pb "lk/datafoundation/core-api/lk/datafoundation/core-api"
 	"lk/datafoundation/core-api/pkg/schema"
 	"lk/datafoundation/core-api/pkg/storageinference"
@@ -73,6 +74,21 @@ func saveEntityToDatabase(ctx context.Context, entity *pb.Entity) error {
 	return nil
 }
 
+func postgresRepoOrSkip(t *testing.T) *postgresrepository.PostgresRepository {
+	t.Helper()
+
+	repo, err := dbcommons.GetPostgresRepository(context.Background())
+	if err != nil {
+		t.Skipf("skipping test: postgres repository unavailable: %v", err)
+	}
+
+	t.Cleanup(func() {
+		_ = repo.Close()
+	})
+
+	return repo
+}
+
 // getOptionsForOperation returns appropriate options for each operation type
 func getOptionsForOperation(operation string) *Options {
 	switch operation {
@@ -112,7 +128,7 @@ func TestEntityWithGraphDataOnly(t *testing.T) {
 	err = saveEntityToDatabase(ctx, entity)
 	assert.NoError(t, err)
 
-	processor := NewEntityAttributeProcessor()
+	processor := NewEntityAttributeProcessor(nil)
 
 	// Test all CORE operations
 	// create test merely checks if the ProcessEntityAttributes function is working
@@ -154,7 +170,7 @@ func TestEntityWithTabularDataOnly(t *testing.T) {
 	err = saveEntityToDatabase(ctx, entity)
 	assert.NoError(t, err)
 
-	processor := NewEntityAttributeProcessor()
+	processor := NewEntityAttributeProcessor(postgresRepoOrSkip(t))
 
 	// Test all CORE operations
 	// TODO: "read", "update", "delete"
@@ -205,7 +221,7 @@ func TestEntityWithDocumentDataOnly(t *testing.T) {
 	err = saveEntityToDatabase(ctx, entity)
 	assert.NoError(t, err)
 
-	processor := NewEntityAttributeProcessor()
+	processor := NewEntityAttributeProcessor(nil)
 
 	// Test all CORE operations
 	operations := []string{"create", "read", "update", "delete"}
@@ -264,7 +280,7 @@ func TestEntityWithMixedDataTypes(t *testing.T) {
 	err = saveEntityToDatabase(ctx, entity)
 	assert.NoError(t, err)
 
-	processor := NewEntityAttributeProcessor()
+	processor := NewEntityAttributeProcessor(postgresRepoOrSkip(t))
 
 	// Test all CORE operations
 	// TODO: "read", "update", "delete"
@@ -310,7 +326,7 @@ func TestComplexGraphEntity(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	processor := NewEntityAttributeProcessor()
+	processor := NewEntityAttributeProcessor(nil)
 	ctx := context.Background()
 
 	// save parent entity to the database
@@ -353,7 +369,7 @@ func TestComplexTabularEntity(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	processor := NewEntityAttributeProcessor()
+	processor := NewEntityAttributeProcessor(postgresRepoOrSkip(t))
 	ctx := context.Background()
 
 	// save parent entity to the database
@@ -423,7 +439,7 @@ func TestComplexDocumentEntity(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	processor := NewEntityAttributeProcessor()
+	processor := NewEntityAttributeProcessor(nil)
 	ctx := context.Background()
 
 	// save parent entity to the database
@@ -487,7 +503,7 @@ func TestEntityWithMultipleAttributesOfSameType(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	processor := NewEntityAttributeProcessor()
+	processor := NewEntityAttributeProcessor(postgresRepoOrSkip(t))
 	ctx := context.Background()
 
 	// save parent entity to the database
@@ -549,7 +565,7 @@ func TestStorageTypeDetection(t *testing.T) {
 		},
 	}
 
-	processor := NewEntityAttributeProcessor()
+	processor := NewEntityAttributeProcessor(nil)
 
 	for testName, testCase := range testCases {
 		t.Run(testName, func(t *testing.T) {
@@ -575,7 +591,7 @@ func TestEmptyEntity(t *testing.T) {
 		Attributes: make(map[string]*pb.TimeBasedValueList),
 	}
 
-	processor := NewEntityAttributeProcessor()
+	processor := NewEntityAttributeProcessor(nil)
 	ctx := context.Background()
 
 	// Test all CORE operations
@@ -596,7 +612,7 @@ func TestEmptyEntity(t *testing.T) {
 
 // TestNilEntity tests handling of nil entity
 func TestNilEntity(t *testing.T) {
-	processor := NewEntityAttributeProcessor()
+	processor := NewEntityAttributeProcessor(nil)
 	ctx := context.Background()
 
 	// Test all CORE operations
@@ -628,7 +644,7 @@ func TestInvalidOperation(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	processor := NewEntityAttributeProcessor()
+	processor := NewEntityAttributeProcessor(nil)
 	ctx := context.Background()
 
 	options := getOptionsForOperation("invalid_operation")
@@ -654,7 +670,7 @@ func TestUnsupportedStorageType(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	processor := NewEntityAttributeProcessor()
+	processor := NewEntityAttributeProcessor(nil)
 	ctx := context.Background()
 
 	// save parent entity to the database
@@ -683,7 +699,7 @@ func TestUnsupportedStorageType(t *testing.T) {
 // TestBasicFunctionality tests basic functionality of the attribute resolver
 func TestBasicFunctionality(t *testing.T) {
 	// Test that we can create a processor
-	processor := NewEntityAttributeProcessor()
+	processor := NewEntityAttributeProcessor(nil)
 	assert.NotNil(t, processor)
 	assert.NotNil(t, processor.resolvers)
 
