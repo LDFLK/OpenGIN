@@ -19,7 +19,6 @@ public type EntitiesEntityIdMetadataResponse record {
 public type entitiessearch_kind record {
     # Required if `id` is not provided
     string major?;
-    # The minor classification
     string minor?;
 };
 
