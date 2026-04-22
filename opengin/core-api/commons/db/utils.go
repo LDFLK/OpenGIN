@@ -32,7 +32,8 @@ func GetMongoConfig() *config.MongoConfig {
 	}
 }
 
-// GetNeo4jRepository retrieves a Neo4j repository
+// GetNeo4jRepository retrieves a Neo4j repository.
+// Prefer using the long-lived server-injected repository in request paths to avoid creating new clients per operation.
 func GetNeo4jRepository(ctx context.Context) (*neo4jrepository.Neo4jRepository, error) {
 	cfg := GetNeo4jConfig()
 	repo, err := neo4jrepository.NewNeo4jRepository(ctx, cfg)
@@ -42,7 +43,8 @@ func GetNeo4jRepository(ctx context.Context) (*neo4jrepository.Neo4jRepository, 
 	return repo, nil
 }
 
-// GetMongoRepository retrieves a Mongo repository
+// GetMongoRepository retrieves a Mongo repository.
+// Prefer using the long-lived server-injected repository in request paths to avoid creating new clients per operation.
 // TODO: Handle errors better
 func GetMongoRepository(ctx context.Context) *mongorepository.MongoRepository {
 	cfg := GetMongoConfig()
