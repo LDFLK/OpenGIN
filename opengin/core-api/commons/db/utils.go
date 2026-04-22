@@ -61,7 +61,8 @@ func GetPostgresConfig() postgresrepository.Config {
 	}
 }
 
-// GetPostgresRepository retrieves a Postgres repository
+// GetPostgresRepository retrieves a Postgres repository.
+// Prefer using the long-lived server-injected repository in request paths to avoid creating new pools per operation.
 func GetPostgresRepository(ctx context.Context) (*postgresrepository.PostgresRepository, error) {
 	cfg := GetPostgresConfig()
 	repo, err := postgresrepository.NewPostgresRepository(cfg)
