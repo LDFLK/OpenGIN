@@ -64,7 +64,17 @@ type ProcessorDependencies struct {
 }
 
 // NewEntityAttributeProcessor creates a processor with explicit repository dependencies.
-func NewEntityAttributeProcessor(deps ProcessorDependencies) *EntityAttributeProcessor {
+func NewEntityAttributeProcessor(deps ProcessorDependencies) (*EntityAttributeProcessor, error) {
+	if deps.PostgresRepo == nil {
+		return nil, fmt.Errorf("postgres repository is required")
+	}
+	if deps.Neo4jRepo == nil {
+		return nil, fmt.Errorf("neo4j repository is required")
+	}
+	if deps.MongoRepo == nil {
+		return nil, fmt.Errorf("mongo repository is required")
+	}
+
 	processor := &EntityAttributeProcessor{
 		resolvers:    make(map[storageinference.StorageType]AttributeResolver),
 		graphManager: NewGraphMetadataManager(deps.Neo4jRepo, deps.MongoRepo),
@@ -84,7 +94,7 @@ func NewEntityAttributeProcessor(deps ProcessorDependencies) *EntityAttributePro
 		}
 	}
 
-	return processor
+	return processor, nil
 }
 
 // GetResolver returns the resolver for a specific storage type

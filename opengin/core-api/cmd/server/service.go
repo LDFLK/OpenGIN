@@ -66,11 +66,14 @@ func (s *Server) CreateEntity(ctx context.Context, req *pb.Entity) (*pb.Entity, 
 	}
 
 	// Handle attributes
-	processor := engine.NewEntityAttributeProcessor(engine.ProcessorDependencies{
+	processor, err := engine.NewEntityAttributeProcessor(engine.ProcessorDependencies{
 		PostgresRepo: s.postgresRepo,
 		Neo4jRepo:    s.neo4jRepo,
 		MongoRepo:    s.mongoRepo,
 	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize attribute processor: %v", err)
+	}
 	attributeResults := processor.ProcessEntityAttributes(ctx, req, "create", nil)
 
 	// Check if any attributes failed
@@ -177,11 +180,14 @@ func (s *Server) ReadEntity(ctx context.Context, req *pb.ReadEntityRequest) (*pb
 			log.Printf("[server.ReadEntity] Processing attributes for entity: %s, attributes: %+v", req.Entity.Id, req.Entity.Attributes)
 
 			// Use the EntityAttributeProcessor to read and process attributes
-			processor := engine.NewEntityAttributeProcessor(engine.ProcessorDependencies{
+			processor, err := engine.NewEntityAttributeProcessor(engine.ProcessorDependencies{
 				PostgresRepo: s.postgresRepo,
 				Neo4jRepo:    s.neo4jRepo,
 				MongoRepo:    s.mongoRepo,
 			})
+			if err != nil {
+				return nil, fmt.Errorf("failed to initialize attribute processor: %v", err)
+			}
 
 			// Extract fields and record filters from the request attributes based on storage type
 			fields, recordFilters := extractFieldsFromAttributes(req.Entity.Attributes)
@@ -271,11 +277,14 @@ func (s *Server) UpdateEntity(ctx context.Context, req *pb.UpdateEntityRequest) 
 	}
 
 	// Handle attributes
-	processor := engine.NewEntityAttributeProcessor(engine.ProcessorDependencies{
+	processor, err := engine.NewEntityAttributeProcessor(engine.ProcessorDependencies{
 		PostgresRepo: s.postgresRepo,
 		Neo4jRepo:    s.neo4jRepo,
 		MongoRepo:    s.mongoRepo,
 	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize attribute processor: %v", err)
+	}
 	// Note that in the perspective of the attribute this is a creation operation
 	// The entity is already there but here the attribute is set later.
 	// There is no alignment of update operation with the attribute.
