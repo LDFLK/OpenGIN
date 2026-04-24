@@ -528,10 +528,10 @@ func TestSchemaGeneration(t *testing.T) {
 		},
 		"simple_tabular_data": {
 			input: `{
-				"columns": ["id", "name", "age"],
+				"columns": ["id", "name", "age", "salary"],
 				"rows": [
-					[1, "Alice", 30],
-					[2, "Bob", 25]
+					[1, "Alice", 30, 900.60],
+					[2, "Bob", 25, 100]
 				]
 			}`,
 			expected: `{
@@ -555,6 +555,13 @@ func TestSchemaGeneration(t *testing.T) {
 						}
 					},
 					"age": {
+						"storage_type": "scalar",
+						"type_info": {
+							"type": "numeric",
+							"is_nullable": true
+						}
+					},
+					"salary": {
 						"storage_type": "scalar",
 						"type_info": {
 							"type": "numeric",
@@ -717,6 +724,18 @@ func TestInferColumnTypes(t *testing.T) {
 				"num":  typeinference.NumericType,
 				"str":  typeinference.StringType,
 				"flag": typeinference.BoolType,
+			},
+		},
+		{
+			name:    "multiple columns inferred independently with nulls",
+			columns: []string{"num", "str"},
+			rows: [][]interface{}{
+				{nil, ""},
+				{7.00, nil},
+			},
+			expectedTypes: map[string]typeinference.DataType{
+				"num": typeinference.NumericType,
+				"str": typeinference.StringType,
 			},
 		},
 	}
