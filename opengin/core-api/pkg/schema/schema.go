@@ -506,7 +506,7 @@ func inferColumnTypes(columnsList, rowsList *structpb.ListValue) (map[string]typ
 	const unknown = "__unknown__"
 
 	// Initialise all columns to unknown sentinel
-	columnTypes := make(map[string]typeinference.TypeInfo)
+	columnTypes := make(map[string]typeinference.TypeInfo, len(columnsList.Values))
 	for _, col := range columnsList.Values {
 		columnTypes[col.GetStringValue()] = typeinference.TypeInfo{Type: typeinference.DataType(unknown)}
 	}
@@ -689,7 +689,6 @@ func (sg *SchemaGenerator) inferTabularSchema(structValue *structpb.Struct, sche
 
 	return schema, nil
 }
-
 
 // handleGraphData processes graph data and generates schemas for nodes and edges.
 // The function expects a struct with optional "nodes" and "edges" fields, where:
