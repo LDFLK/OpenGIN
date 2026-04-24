@@ -511,52 +511,64 @@ func inferColumnTypes(columnsList, rowsList *structpb.ListValue) (map[string]typ
 		columnTypes[col.GetStringValue()] = typeinference.TypeInfo{Type: typeinference.DataType(unknown)}
 	}
 
-	// Scan every row; for each column, use the first non-null value to set the type
-	for rowIndex, row := range rowsList.Values {
-		rowData := row.GetListValue()
-		if len(rowData.Values) != len(columnsList.Values) {
-			return nil, fmt.Errorf("row %d length (%d) does not match number of columns (%d)", rowIndex, len(rowData.Values), len(columnsList.Values))
-		}
-		for i, value := range rowData.Values {
-			colName := columnsList.Values[i].GetStringValue()
-			if columnTypes[colName].Type != typeinference.DataType(unknown) {
-				continue // already determined
+	// Scan rows until each column has a type from its first non-null value (or all-null → NullType below).
+	nPending := len(columnTypes)
+	rowsLoop:
+		for rowIndex, row := range rowsList.Values {
+			rowData := row.GetListValue()
+			if len(rowData.Values) != len(columnsList.Values) {
+				return nil, fmt.Errorf("row %d length (%d) does not match number of columns (%d)", rowIndex, len(rowData.Values), len(columnsList.Values))
 			}
-
-			if structpbScalarIsNull(value) {
-				continue // keep looking
-			}
-
-			switch value.GetKind().(type) {
-			case *structpb.Value_NumberValue:
-				columnTypes[colName] = typeinference.TypeInfo{
-					Type:       typeinference.NumericType,
-					IsNullable: true,
+			for i, value := range rowData.Values {
+				colName := columnsList.Values[i].GetStringValue()
+				if columnTypes[colName].Type != typeinference.DataType(unknown) {
+					continue
 				}
-			case *structpb.Value_BoolValue:
-				columnTypes[colName] = typeinference.TypeInfo{
-					Type:       typeinference.BoolType,
-					IsNullable: true,
+
+				if structpbScalarIsNull(value) {
+					continue
 				}
-			case *structpb.Value_StringValue:
-				str := value.GetStringValue()
-				var inferredType typeinference.DataType
-				if isDate, isDateTime := isDateOrDateTime(str); isDate {
-					if isDateTime {
-						inferredType = typeinference.DateTimeType
-					} else {
-						inferredType = typeinference.DateType
+
+				matched := false
+				switch value.GetKind().(type) {
+				case *structpb.Value_NumberValue:
+					columnTypes[colName] = typeinference.TypeInfo{
+						Type:       typeinference.NumericType,
+						IsNullable: true,
 					}
-				} else {
-					inferredType = typeinference.StringType
+					matched = true
+				case *structpb.Value_BoolValue:
+					columnTypes[colName] = typeinference.TypeInfo{
+						Type:       typeinference.BoolType,
+						IsNullable: true,
+					}
+					matched = true
+				case *structpb.Value_StringValue:
+					str := value.GetStringValue()
+					var inferredType typeinference.DataType
+					if isDate, isDateTime := isDateOrDateTime(str); isDate {
+						if isDateTime {
+							inferredType = typeinference.DateTimeType
+						} else {
+							inferredType = typeinference.DateType
+						}
+					} else {
+						inferredType = typeinference.StringType
+					}
+					columnTypes[colName] = typeinference.TypeInfo{
+						Type:       inferredType,
+						IsNullable: true,
+					}
+					matched = true
 				}
-				columnTypes[colName] = typeinference.TypeInfo{
-					Type:       inferredType,
-					IsNullable: true,
+				if matched {
+					nPending--
+					if nPending == 0 {
+						break rowsLoop
+					}
 				}
 			}
 		}
-	}
 
 	// Any column still unknown = all nulls
 	for colName, info := range columnTypes {
