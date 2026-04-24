@@ -724,7 +724,7 @@ func TestInferColumnTypes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			data := makeTabularStruct(t, tt.columns, tt.rows)
-			colTypes, err := inferColumnTypes(data)
+			colTypes, err := inferColumnTypes(data.Fields["columns"].GetListValue(), data.Fields["rows"].GetListValue())
 
 			if tt.expectError {
 				assert.Error(t, err)
@@ -742,18 +742,14 @@ func TestInferColumnTypes(t *testing.T) {
 }
 
 func TestInferColumnTypesUnsetKindActsAsNull(t *testing.T) {
-	data := &structpb.Struct{
-		Fields: map[string]*structpb.Value{
-			"columns": structpb.NewListValue(&structpb.ListValue{Values: []*structpb.Value{
-				structpb.NewStringValue("x"),
-			}}),
-			"rows": structpb.NewListValue(&structpb.ListValue{Values: []*structpb.Value{
-				structpb.NewListValue(&structpb.ListValue{Values: []*structpb.Value{{Kind: nil}}}),
-				structpb.NewListValue(&structpb.ListValue{Values: []*structpb.Value{structpb.NewNumberValue(1)}}),
-			}}),
-		},
-	}
-	colTypes, err := inferColumnTypes(data)
+	columnsList := &structpb.ListValue{Values: []*structpb.Value{
+		structpb.NewStringValue("x"),
+	}}
+	rowsList := &structpb.ListValue{Values: []*structpb.Value{
+		structpb.NewListValue(&structpb.ListValue{Values: []*structpb.Value{{Kind: nil}}}),
+		structpb.NewListValue(&structpb.ListValue{Values: []*structpb.Value{structpb.NewNumberValue(1)}}),
+	}}
+	colTypes, err := inferColumnTypes(columnsList, rowsList)
 	assert.NoError(t, err)
 	assert.Equal(t, typeinference.NumericType, colTypes["x"].Type)
 	assert.True(t, colTypes["x"].IsNullable)

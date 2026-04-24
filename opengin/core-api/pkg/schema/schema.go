@@ -493,14 +493,12 @@ func structpbScalarIsNull(v *structpb.Value) bool {
 	return ok
 }
 
-// inferColumnTypes scans all rows in a tabular struct to determine the type of each column.
+// inferColumnTypes scans all rows in tabular data to determine the type of each column.
+// columnsList and rowsList are the list values for column names and row data respectively.
 // It uses the first non-null value in each column to determine the type.
 // All inferred types are marked as nullable.
 // If a column contains only null values, it is assigned NullType.
-func inferColumnTypes(data *structpb.Struct) (map[string]typeinference.TypeInfo, error) {
-	columnsList := data.Fields["columns"].GetListValue()
-	rowsList := data.Fields["rows"].GetListValue()
-
+func inferColumnTypes(columnsList, rowsList *structpb.ListValue) (map[string]typeinference.TypeInfo, error) {
 	if columnsList == nil || rowsList == nil {
 		return nil, fmt.Errorf("invalid tabular data: 'columns' and 'rows' must be valid lists")
 	}
@@ -675,7 +673,7 @@ func (sg *SchemaGenerator) inferTabularSchema(structValue *structpb.Struct, sche
 	}
 
 	// Infer column types by scanning all rows (first non-null value per column)
-	columnTypes, err := inferColumnTypes(structValue)
+	columnTypes, err := inferColumnTypes(columnsField.GetListValue(), rowsList.ListValue)
 	if err != nil {
 		return nil, err
 	}
