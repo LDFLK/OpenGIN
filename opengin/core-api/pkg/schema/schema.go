@@ -480,80 +480,6 @@ func isDateOrDateTime(str string) (bool, bool) {
 	return false, false
 }
 
-// inferTabularSchema infers the field schemas for tabular data.
-// The function expects a struct with "columns" and "rows" fields, where:
-//   - columns: A list of strings representing column names
-//   - rows: A list of lists, where each inner list represents a row of data
-//
-// The function performs the following steps:
-//  1. Validates the presence of both columns and rows fields
-//  2. Verifies that columns is a list of strings
-//  3. Verifies that rows is a list of lists
-//  4. Processes the first row to determine column types
-//  5. Creates field schemas for each column based on its data type
-//
-// The function handles the following data types:
-//   - String: Regular text or date/datetime values
-//   - Number: Integer or floating-point values
-//   - Boolean: True/false values
-//   - Null: Nullable fields
-//
-// For date/datetime detection:
-//   - Date format: YYYY-MM-DD
-//   - DateTime format: RFC3339 (YYYY-MM-DDTHH:MM:SSZ)
-//
-// Parameters:
-//   - structValue: The protobuf struct value containing tabular data
-//   - schema: The base schema to populate with field information
-//
-// Returns:
-//   - *SchemaInfo: The complete schema with field information
-//   - error: Any error that occurred during processing
-//
-// Example input structure:
-//
-//	{
-//	    "columns": ["id", "name", "age", "created_at"],
-//	    "rows": [
-//	        [1, "John", 30, "2024-03-21T10:00:00Z"],
-//	        [2, "Jane", 25, "2024-03-21T11:00:00Z"]
-//	    ]
-//	}
-//
-// Example output schema:
-//
-//	{
-//	    "storage_type": "tabular",
-//	    "type_info": {
-//	        "type": "string"
-//	    },
-//	    "fields": {
-//	        "id": {
-//	            "storage_type": "scalar",
-//	            "type_info": {
-//	                "type": "int"
-//	            }
-//	        },
-//	        "name": {
-//	            "storage_type": "scalar",
-//	            "type_info": {
-//	                "type": "string"
-//	            }
-//	        },
-//	        "age": {
-//	            "storage_type": "scalar",
-//	            "type_info": {
-//	                "type": "int"
-//	            }
-//	        },
-//	        "created_at": {
-//	            "storage_type": "scalar",
-//	            "type_info": {
-//	                "type": "datetime"
-//	            }
-//	        }
-//	    }
-//	}
 // structpbScalarIsNull reports whether v represents JSON null or a structpb.Value with no kind set.
 // Some JSON/codecs deserialize null as Value_NullValue; others leave Kind unset (nil).
 func structpbScalarIsNull(v *structpb.Value) bool {
@@ -647,7 +573,80 @@ func inferColumnTypes(data *structpb.Struct) (map[string]typeinference.TypeInfo,
 	return columnTypes, nil
 }
 
-
+// inferTabularSchema infers the field schemas for tabular data.
+// The function expects a struct with "columns" and "rows" fields, where:
+//   - columns: A list of strings representing column names
+//   - rows: A list of lists, where each inner list represents a row of data
+//
+// The function performs the following steps:
+//  1. Validates the presence of both columns and rows fields
+//  2. Verifies that columns is a list of strings
+//  3. Verifies that rows is a list of lists
+//  4. Processes the first row to determine column types
+//  5. Creates field schemas for each column based on its data type
+//
+// The function handles the following data types:
+//   - String: Regular text or date/datetime values
+//   - Number: Integer or floating-point values
+//   - Boolean: True/false values
+//   - Null: Nullable fields
+//
+// For date/datetime detection:
+//   - Date format: YYYY-MM-DD
+//   - DateTime format: RFC3339 (YYYY-MM-DDTHH:MM:SSZ)
+//
+// Parameters:
+//   - structValue: The protobuf struct value containing tabular data
+//   - schema: The base schema to populate with field information
+//
+// Returns:
+//   - *SchemaInfo: The complete schema with field information
+//   - error: Any error that occurred during processing
+//
+// Example input structure:
+//
+//	{
+//	    "columns": ["id", "name", "age", "created_at"],
+//	    "rows": [
+//	        [1, "John", 30, "2024-03-21T10:00:00Z"],
+//	        [2, "Jane", 25, "2024-03-21T11:00:00Z"]
+//	    ]
+//	}
+//
+// Example output schema:
+//
+//	{
+//	    "storage_type": "tabular",
+//	    "type_info": {
+//	        "type": "string"
+//	    },
+//	    "fields": {
+//	        "id": {
+//	            "storage_type": "scalar",
+//	            "type_info": {
+//	                "type": "int"
+//	            }
+//	        },
+//	        "name": {
+//	            "storage_type": "scalar",
+//	            "type_info": {
+//	                "type": "string"
+//	            }
+//	        },
+//	        "age": {
+//	            "storage_type": "scalar",
+//	            "type_info": {
+//	                "type": "int"
+//	            }
+//	        },
+//	        "created_at": {
+//	            "storage_type": "scalar",
+//	            "type_info": {
+//	                "type": "datetime"
+//	            }
+//	        }
+//	    }
+//	}
 func (sg *SchemaGenerator) inferTabularSchema(structValue *structpb.Struct, schema *SchemaInfo) (*SchemaInfo, error) {
 	// Initialize the Fields map
 	schema.Fields = make(map[string]*SchemaInfo)
