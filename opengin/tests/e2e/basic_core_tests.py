@@ -1439,6 +1439,34 @@ class TabularIntegrityTests(BasicCORETests):
                 "rows": [[1, None], [2, None]],
                 "should_succeed": False
             },
+            {
+                "name": "single-row table",
+                "attr": "attr_single_row",
+                "columns": ["id", "value"],
+                "rows": [[1, "only-row"]],
+                "should_succeed": True
+            },
+            {
+                "name": "column count mismatch",
+                "attr": "attr_col_count_mismatch",
+                "columns": ["id", "value"],
+                "rows": [[1], [2, "ok"]],  # first row has fewer columns than declared
+                "should_succeed": False
+            },
+            {
+                "name": "zero rows",
+                "attr": "attr_zero_rows",
+                "columns": ["id", "value"],
+                "rows": [],
+                "should_succeed": False
+            },
+            {
+                "name": "bool/string mismatch",
+                "attr": "attr_bool_string_mismatch",
+                "columns": ["id", "flag"],
+                "rows": [[1, True], [2, "true"]],
+                "should_succeed": False
+            },
         ]
 
         for case in cases:
