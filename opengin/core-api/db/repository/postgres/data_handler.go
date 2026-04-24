@@ -339,8 +339,8 @@ func hasNullOnlyColumns(schemaInfo *schema.SchemaInfo) []string {
 	return cols
 }
 
-// StoreTabularData persists tabular attribute data to Postgres, creating the backing table if needed and validating schema compatibility on subsequent writes.
-func (repo *PostgresRepository) StoreTabularData(ctx context.Context, entityID, attrName string, value *pb.TimeBasedValue, schemaInfo *schema.SchemaInfo) error {
+// StoreTabularData persists tabular attribute data to Postgres, creating the backing table if needed and validating incoming rows against the applicable schema.
+func (repo *PostgresRepository) StoreTabularData(ctx context.Context, entityID, attrName string, value *pb.TimeBasedValue) error {
 	// Generate table name - UUID without hyphens (32 chars) + prefix (5 chars) = 37 chars total
 	name := fmt.Sprintf("%s:%s", entityID, attrName)
 	namespace := commons.GetNamespace("attributes")
@@ -375,25 +375,14 @@ func (repo *PostgresRepository) StoreTabularData(ctx context.Context, entityID, 
 			return fmt.Errorf("error unmarshaling existing schema: %v", err)
 		}
 
-		// Compare schemas only if caller provided one.
-		if schemaInfo != nil {
-			compatible, err := compareSchemas(&existingSchema, schemaInfo)
-			if err != nil {
-				return fmt.Errorf("schema compatibility check failed: %v", err)
-			}
-
-			if !compatible {
-				return fmt.Errorf("incompatible schema changes detected")
-			}
-		}
-
 		// Validate data against existing schema
 		if err := validateRowsAgainstSchema(&tabularStruct, &existingSchema); err != nil {
 			return fmt.Errorf("data validation failed: %v", err)
 		}
 	} else {
-		if schemaInfo == nil {
-			return fmt.Errorf("schema is required to create a new tabular attribute")
+		schemaInfo, err := schema.GenerateSchema(value.Value)
+		if err != nil {
+			return fmt.Errorf("failed to generate schema: %v", err)
 		}
 		if nullOnlyCols := hasNullOnlyColumns(schemaInfo); len(nullOnlyCols) > 0 {
 			return fmt.Errorf("pre-insert schema validation failed: columns %v have only null values; cannot create new table with null-only inferred types", nullOnlyCols)

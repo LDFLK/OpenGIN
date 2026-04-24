@@ -11,7 +11,6 @@ import (
 	"time"
 
 	pb "lk/datafoundation/core-api/lk/datafoundation/core-api"
-	schema "lk/datafoundation/core-api/pkg/schema"
 
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/anypb"
@@ -437,11 +436,8 @@ func TestInsertSampleData(t *testing.T) {
 				Value:     dataStruct,
 			}
 
-			schemaInfo, err := schema.GenerateSchema(dataStruct)
-			assert.NoError(t, err, "Failed to generate schema")
-
 			// Store tabular attribute data (creates table on first call, inserts rows)
-			err = repo.StoreTabularData(ctx, tt.entityID, tt.attrName, timeBasedValue, schemaInfo)
+			err = repo.StoreTabularData(ctx, tt.entityID, tt.attrName, timeBasedValue)
 			assert.NoError(t, err, "Failed to store tabular data")
 
 			// Verify table exists by retrieving the actual table name from entity_attributes
