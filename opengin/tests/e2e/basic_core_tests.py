@@ -897,24 +897,21 @@ class AttributeValidationTests(BasicCORETests):
         print("Decoded value: ", decoded_value)
 
         url = f"{self.base_read_url}/{self.MINISTER_ID}/relations"
-        payload = {}
+
+        payload = {
+            "name": "IS_ATTRIBUTE",
+            "startTime": self.DATA_START_DATE,
+            "endTime": self.DATA_END_DATE
+        }
 
         res = requests.post(url, json=payload)
         print(res.status_code, res.json())
         assert res.status_code in [200], f"Failed to read Minister relationships: {res.text}"
 
         relationships = res.json()
-        print(relationships)
 
-        print("relationships", relationships)
-
-        # check for the start data and the end date
-        for relationship in relationships:
-            if relationship["startTime"] != "" and relationship["endTime"] != "":
-                assert relationship["startTime"] == self.DATA_START_DATE
-                assert relationship["endTime"] == self.DATA_END_DATE
-            else:
-                pass
+        assert relationships[0]["startTime"] == self.DATA_START_DATE
+        assert relationships[0]["endTime"] == self.DATA_END_DATE
 
         print("✅ Updated Minister entity with attributes with startDate + endDate.")
 

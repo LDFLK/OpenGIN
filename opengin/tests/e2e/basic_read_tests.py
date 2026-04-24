@@ -827,26 +827,24 @@ def create_entity_for_read():
 
     res = requests.get(INGESTION_API_URL + "/" + RELATED_ID_1)
     assert res.status_code == 200, f"Failed to fetch entity: {res.text}"
-    print("✅ Fetched entity.")
 
-    # Verify the response data
-    response_data = res.json()
-    relationships = response_data["relationships"]
-    print(relationships)
+    url =  READ_API_URL + "/" + RELATED_ID_1 + "/relations"
 
-    found = False
+    payload = {
+        "name": "IS_ATTRIBUTE",
+        "startTime": "2024-11-01T00:00:00Z",
+        "endTime": "2024-11-30T00:00:00Z"
+    }
 
-    for relationship in relationships:
-        start = relationship["value"].get("startTime")
-        end = relationship["value"].get("endTime")
+    res = requests.post(url, json=payload)
+    print(res.status_code, res.json())
+    assert res.status_code in [200], f"Failed to read relationships: {res.text}"
+    print("✅ Fetched relationship_1...")
 
-        if start and end:
-            found = True
+    relationship = res.json()
 
-            assert start in ["2024-11-01T00:00:00Z", "2024-01-01T00:00:00Z"]
-            assert end in ["2024-11-30T00:00:00Z", "2024-12-31T23:59:59Z"]
-
-    assert found, "No relationship found with both startTime and endTime"
+    assert relationship[0]["startTime"] == "2024-11-01T00:00:00Z"
+    assert relationship[0]["endTime"] == "2024-11-30T00:00:00Z"
     
     print("✅ Verified start and end times of entity's attributes.")
 
