@@ -819,7 +819,7 @@ class AttributeValidationTests(BasicCORETests):
             for row in rows
         ]
     
-    def create_minister_with_attributes_with_startDate_and_endDate(self):
+    def update_minister_with_attributes_with_startDate_and_endDate(self):
         """Create a Minister entity."""
         print("\n🟢 Creating Minister with attribute with startDate and endDate...")
 
@@ -918,9 +918,9 @@ class AttributeValidationTests(BasicCORETests):
 
         print("✅ Updated Minister entity with attributes with startDate + endDate.")
 
-    def create_minister_with_attributes_without_startDate(self):
+    def update_minister_with_attributes_without_startDate(self):
         """Create a Minister entity."""
-        print("\n🟢 Creating Minister entity + attribute without startDate...")
+        print("\n🟢 Updating Minister entity with an attribute without startDate...")
 
         payload = {
             "id": self.MINISTER_ID,
@@ -1386,10 +1386,10 @@ if __name__ == "__main__":
         attribute_validation_tests.read_minister()
         attribute_validation_tests.update_attributes_stage_1()
         attribute_validation_tests.update_attributes_stage_2()
-        attribute_validation_tests.create_minister_with_attributes_with_startDate_and_endDate()
+        attribute_validation_tests.update_minister_with_attributes_with_startDate_and_endDate()
         attribute_validation_tests.add_attributes_to_minister_with_invalid_starttime_format()
         attribute_validation_tests.add_attributes_to_minister_with_invalid_endtime_format()
-        attribute_validation_tests.create_minister_with_attributes_without_startDate()
+        attribute_validation_tests.update_minister_with_attributes_without_startDate()
         print("\n🟢 Running Attribute Validation Tests... Done")
 
         print("\n🟢 Running Tabular Integrity Tests...")
