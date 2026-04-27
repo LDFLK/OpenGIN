@@ -27,9 +27,10 @@ import (
 // Server implements the COREService
 type Server struct {
 	pb.UnimplementedCOREServiceServer
-	mongoRepo    *mongorepository.MongoRepository
-	neo4jRepo    *neo4jrepository.Neo4jRepository
-	postgresRepo *postgres.PostgresRepository
+	mongoRepo            *mongorepository.MongoRepository
+	neo4jRepo            *neo4jrepository.Neo4jRepository
+	postgresRepo         *postgres.PostgresRepository
+	attributeProcessor   *engine.EntityAttributeProcessor
 }
 
 // CreateEntity handles entity creation with relationships, metadata and attributes
@@ -66,15 +67,7 @@ func (s *Server) CreateEntity(ctx context.Context, req *pb.Entity) (*pb.Entity, 
 	}
 
 	// Handle attributes
-	processor, err := engine.NewEntityAttributeProcessor(engine.ProcessorDependencies{
-		PostgresRepo: s.postgresRepo,
-		Neo4jRepo:    s.neo4jRepo,
-		MongoRepo:    s.mongoRepo,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize attribute processor: %v", err)
-	}
-	attributeResults := processor.ProcessEntityAttributes(ctx, req, "create", nil)
+	attributeResults := s.attributeProcessor.ProcessEntityAttributes(ctx, req, "create", nil)
 
 	// Check if any attributes failed
 	for attrName, result := range attributeResults {
@@ -179,16 +172,6 @@ func (s *Server) ReadEntity(ctx context.Context, req *pb.ReadEntityRequest) (*pb
 
 			log.Printf("[server.ReadEntity] Processing attributes for entity: %s, attributes: %+v", req.Entity.Id, req.Entity.Attributes)
 
-			// Use the EntityAttributeProcessor to read and process attributes
-			processor, err := engine.NewEntityAttributeProcessor(engine.ProcessorDependencies{
-				PostgresRepo: s.postgresRepo,
-				Neo4jRepo:    s.neo4jRepo,
-				MongoRepo:    s.mongoRepo,
-			})
-			if err != nil {
-				return nil, fmt.Errorf("failed to initialize attribute processor: %v", err)
-			}
-
 			// Extract fields and record filters from the request attributes based on storage type
 			fields, recordFilters := extractFieldsFromAttributes(req.Entity.Attributes)
 			log.Printf("Extracted fields from attributes: %v", fields)
@@ -202,7 +185,7 @@ func (s *Server) ReadEntity(ctx context.Context, req *pb.ReadEntityRequest) (*pb
 			readOptions := engine.NewReadOptions(filtersMap, fields...)
 
 			// Process the entity with attributes to get the results map
-			attributeResults := processor.ProcessEntityAttributes(ctx, req.Entity, "read", readOptions)
+			attributeResults := s.attributeProcessor.ProcessEntityAttributes(ctx, req.Entity, "read", readOptions)
 
 			log.Printf("[server.ReadEntity] Successfully processed attributes for entity: %s, results: %+v", req.Entity.Id, attributeResults)
 
@@ -277,19 +260,11 @@ func (s *Server) UpdateEntity(ctx context.Context, req *pb.UpdateEntityRequest) 
 	}
 
 	// Handle attributes
-	processor, err := engine.NewEntityAttributeProcessor(engine.ProcessorDependencies{
-		PostgresRepo: s.postgresRepo,
-		Neo4jRepo:    s.neo4jRepo,
-		MongoRepo:    s.mongoRepo,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize attribute processor: %v", err)
-	}
 	// Note that in the perspective of the attribute this is a creation operation
 	// The entity is already there but here the attribute is set later.
 	// There is no alignment of update operation with the attribute.
 	// TODO: https://github.com/LDFLK/nexoan/issues/286
-	attributeResults := processor.ProcessEntityAttributes(ctx, req.Entity, "create", nil)
+	attributeResults := s.attributeProcessor.ProcessEntityAttributes(ctx, req.Entity, "create", nil)
 
 	// Check if any attributes failed
 	for attrName, result := range attributeResults {
@@ -641,6 +616,15 @@ func main() {
 	}
 	defer postgresRepo.Close()
 
+	attributeProcessor, err := engine.NewEntityAttributeProcessor(engine.ProcessorDependencies{
+		PostgresRepo: postgresRepo,
+		Neo4jRepo:    neo4jRepo,
+		MongoRepo:    mongoRepo,
+	})
+	if err != nil {
+		log.Fatalf("[service.main] Failed to create attribute processor: %v", err)
+	}
+
 	listener, err := net.Listen("tcp", host+":"+port)
 	if err != nil {
 		log.Fatalf("[service.main] Failed to listen: %v", err)
@@ -648,9 +632,10 @@ func main() {
 
 	grpcServer := grpc.NewServer()
 	server := &Server{
-		mongoRepo:    mongoRepo,
-		neo4jRepo:    neo4jRepo,
-		postgresRepo: postgresRepo,
+		mongoRepo:          mongoRepo,
+		neo4jRepo:          neo4jRepo,
+		postgresRepo:       postgresRepo,
+		attributeProcessor: attributeProcessor,
 	}
 
 	pb.RegisterCOREServiceServer(grpcServer, server)
