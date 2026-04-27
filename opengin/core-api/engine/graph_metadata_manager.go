@@ -11,7 +11,8 @@ import (
 	"time"
 
 	"lk/datafoundation/core-api/commons"
-	dbcommons "lk/datafoundation/core-api/commons/db"
+	mongorepository "lk/datafoundation/core-api/db/repository/mongo"
+	neo4jrepository "lk/datafoundation/core-api/db/repository/neo4j"
 	pb "lk/datafoundation/core-api/lk/datafoundation/core-api"
 	"lk/datafoundation/core-api/pkg/storageinference"
 
@@ -38,13 +39,30 @@ const IS_ATTRIBUTE_RELATIONSHIP_DIRECTION = "OUTGOING"
 
 // GraphMetadataManager handles the reference graph for tracking attributes
 type GraphMetadataManager struct {
-	// This would typically connect to Neo4j or another graph database
-	// For now, we'll define the interface and structure
+	neo4jRepository *neo4jrepository.Neo4jRepository
+	mongoRepository *mongorepository.MongoRepository
 }
 
-// NewGraphMetadataManager creates a new graph metadata manager
-func NewGraphMetadataManager() *GraphMetadataManager {
-	return &GraphMetadataManager{}
+// NewGraphMetadataManager creates a new graph metadata manager.
+func NewGraphMetadataManager(neo4jRepo *neo4jrepository.Neo4jRepository, mongoRepo *mongorepository.MongoRepository) *GraphMetadataManager {
+	return &GraphMetadataManager{
+		neo4jRepository: neo4jRepo,
+		mongoRepository: mongoRepo,
+	}
+}
+
+func (g *GraphMetadataManager) requireNeo4jRepository() (*neo4jrepository.Neo4jRepository, error) {
+	if g.neo4jRepository == nil {
+		return nil, fmt.Errorf("neo4j repository is not configured")
+	}
+	return g.neo4jRepository, nil
+}
+
+func (g *GraphMetadataManager) requireMongoRepository() (*mongorepository.MongoRepository, error) {
+	if g.mongoRepository == nil {
+		return nil, fmt.Errorf("mongo repository is not configured")
+	}
+	return g.mongoRepository, nil
 }
 
 // AttributeMetadata represents metadata for an attribute in the graph
@@ -161,7 +179,7 @@ func (g *GraphMetadataManager) createAttributeLookUpGraph(ctx context.Context, m
 		},
 	}
 
-	neo4jRepository, err := dbcommons.GetNeo4jRepository(ctx)
+	neo4jRepository, err := g.requireNeo4jRepository()
 	if err != nil {
 		log.Printf("[GraphMetadataManager.CreateAttribute] Error getting Neo4j repository: %v", err)
 		return err
@@ -195,7 +213,11 @@ func (g *GraphMetadataManager) createAttributeLookUpGraph(ctx context.Context, m
 
 	// create the attribute metadata in the mongo database
 	// stored parameters: attribute_id, attribute_name, storage_type, storage_path, updated, schema
-	mongoRepository := dbcommons.GetMongoRepository(ctx)
+	mongoRepository, err := g.requireMongoRepository()
+	if err != nil {
+		log.Printf("[GraphMetadataManager.CreateAttribute] Error getting Mongo repository: %v", err)
+		return err
+	}
 
 	// Check if the attribute metadata already exists
 	existingMetadata, err := mongoRepository.ReadEntity(ctx, metadata.AttributeID)
@@ -260,7 +282,7 @@ func MakeRelationshipFromAttributeMetadata(metadata *AttributeMetadata) *pb.Rela
 func (g *GraphMetadataManager) GetAttribute(ctx context.Context, entityID string, attributeName string, startTime time.Time) (*AttributeMetadata, error) {
 	fmt.Printf("Getting attribute metadata: EntityID=%s, AttributeName=%s\n", entityID, attributeName)
 
-	neo4jRepository, err := dbcommons.GetNeo4jRepository(ctx)
+	neo4jRepository, err := g.requireNeo4jRepository()
 	if err != nil {
 		log.Printf("[GraphMetadataManager.GetAttribute] Error getting Neo4j repository: %v", err)
 		return nil, err
@@ -314,7 +336,11 @@ func (g *GraphMetadataManager) GetAttribute(ctx context.Context, entityID string
 	}
 
 	// Get the attribute metadata from MongoDB
-	mongoRepository := dbcommons.GetMongoRepository(ctx)
+	mongoRepository, err := g.requireMongoRepository()
+	if err != nil {
+		log.Printf("[GraphMetadataManager.GetAttribute] Error getting Mongo repository: %v", err)
+		return nil, err
+	}
 	attributeMetadataEntity, err := mongoRepository.ReadEntity(ctx, targetAttributeID)
 	if err != nil {
 		log.Printf("[GraphMetadataManager.GetAttribute] Error getting attribute metadata from MongoDB for attribute %s (entity %s): %v", targetAttributeID, entityID, err)
@@ -354,7 +380,7 @@ func (g *GraphMetadataManager) GetAttribute(ctx context.Context, entityID string
 func (g *GraphMetadataManager) ListAttributes(ctx context.Context, entityID string) ([]*AttributeMetadata, error) {
 	fmt.Printf("Listing attributes for entity: %s\n", entityID)
 
-	neo4jRepository, err := dbcommons.GetNeo4jRepository(ctx)
+	neo4jRepository, err := g.requireNeo4jRepository()
 	if err != nil {
 		log.Printf("[GraphMetadataManager.ListAttributes] Error getting Neo4j repository: %v", err)
 		return nil, err
@@ -386,7 +412,11 @@ func (g *GraphMetadataManager) ListAttributes(ctx context.Context, entityID stri
 		attributeNameStr := commons.ExtractStringFromAny(attributeName.Value)
 
 		// Get the attribute metadata from the mongo database
-		mongoRepository := dbcommons.GetMongoRepository(ctx)
+		mongoRepository, err := g.requireMongoRepository()
+		if err != nil {
+			log.Printf("[GraphMetadataManager.ListAttributes] Error getting Mongo repository: %v", err)
+			return nil, err
+		}
 		attributeMetadataEntity, err := mongoRepository.ReadEntity(ctx, attributeID)
 		if err != nil {
 			log.Printf("[GraphMetadataManager.ListAttributes] Error getting attribute metadata from MongoDB for attribute %s (entity %s): %v", attributeID, entityID, err)

@@ -15,7 +15,10 @@ import (
 
 // TestGraphMetadataManager tests the graph metadata manager functionality
 func TestGraphMetadataManager(t *testing.T) {
-	manager := NewGraphMetadataManager()
+	if testNeo4jRepo == nil || testMongoRepo == nil {
+		t.Fatal("test repositories are not initialized")
+	}
+	manager := NewGraphMetadataManager(testNeo4jRepo, testMongoRepo)
 	assert.NotNil(t, manager)
 
 	ctx := context.Background()
@@ -134,7 +137,7 @@ func TestGraphMetadataIntegration(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	processor := NewEntityAttributeProcessor()
+	processor := testProcessor
 	ctx := context.Background()
 
 	// save the parent entity in the database

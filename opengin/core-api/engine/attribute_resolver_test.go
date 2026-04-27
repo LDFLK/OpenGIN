@@ -6,17 +6,71 @@ package engine
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
 	"lk/datafoundation/core-api/commons"
 	dbcommons "lk/datafoundation/core-api/commons/db"
+	mongorepository "lk/datafoundation/core-api/db/repository/mongo"
+	neo4jrepository "lk/datafoundation/core-api/db/repository/neo4j"
+	postgresrepository "lk/datafoundation/core-api/db/repository/postgres"
 	pb "lk/datafoundation/core-api/lk/datafoundation/core-api"
 	"lk/datafoundation/core-api/pkg/schema"
 	"lk/datafoundation/core-api/pkg/storageinference"
 
 	"github.com/stretchr/testify/assert"
 )
+
+var (
+	testNeo4jRepo    *neo4jrepository.Neo4jRepository
+	testMongoRepo    *mongorepository.MongoRepository
+	testPostgresRepo *postgresrepository.PostgresRepository
+	testProcessor    *EntityAttributeProcessor
+)
+
+func TestMain(m *testing.M) {
+	ctx := context.Background()
+
+	if os.Getenv("MONGO_URI") == "" {
+		fmt.Fprintln(os.Stderr, "MONGO_URI is required for engine tests")
+		os.Exit(1)
+	}
+
+	var err error
+	testNeo4jRepo, err = dbcommons.GetNeo4jRepository(ctx)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to initialize Neo4j repository: %v\n", err)
+		os.Exit(1)
+	}
+
+	testPostgresRepo, err = dbcommons.GetPostgresRepository(ctx)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to initialize Postgres repository: %v\n", err)
+		testNeo4jRepo.Close(ctx)
+		os.Exit(1)
+	}
+
+	testMongoRepo = dbcommons.GetMongoRepository(ctx)
+
+	testProcessor, err = NewEntityAttributeProcessor(ProcessorDependencies{
+		PostgresRepo: testPostgresRepo,
+		Neo4jRepo:    testNeo4jRepo,
+		MongoRepo:    testMongoRepo,
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to initialize attribute processor: %v\n", err)
+		_ = testPostgresRepo.Close()
+		testNeo4jRepo.Close(ctx)
+		os.Exit(1)
+	}
+
+	exitCode := m.Run()
+
+	_ = testPostgresRepo.Close()
+	testNeo4jRepo.Close(ctx)
+	os.Exit(exitCode)
+}
 
 // createTimeBasedValue creates a TimeBasedValue with the given JSON data
 func createTimeBasedValue(jsonStr string) (*pb.TimeBasedValue, error) {
@@ -60,12 +114,11 @@ func createEntityWithAttributes(entityID string, entityName string, attributes m
 }
 
 func saveEntityToDatabase(ctx context.Context, entity *pb.Entity) error {
-	neo4jRepository, err := dbcommons.GetNeo4jRepository(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get Neo4j repository: %w", err)
+	if testNeo4jRepo == nil {
+		return fmt.Errorf("neo4j repository is not initialized")
 	}
 
-	success, err := neo4jRepository.HandleGraphEntityCreation(ctx, entity)
+	success, err := testNeo4jRepo.HandleGraphEntityCreation(ctx, entity)
 	if !success {
 		return fmt.Errorf("failed to save entity: %w", err)
 	}
@@ -112,7 +165,7 @@ func TestEntityWithGraphDataOnly(t *testing.T) {
 	err = saveEntityToDatabase(ctx, entity)
 	assert.NoError(t, err)
 
-	processor := NewEntityAttributeProcessor()
+	processor := testProcessor
 
 	// Test all CORE operations
 	// create test merely checks if the ProcessEntityAttributes function is working
@@ -154,7 +207,7 @@ func TestEntityWithTabularDataOnly(t *testing.T) {
 	err = saveEntityToDatabase(ctx, entity)
 	assert.NoError(t, err)
 
-	processor := NewEntityAttributeProcessor()
+	processor := testProcessor
 
 	// Test all CORE operations
 	// TODO: "read", "update", "delete"
@@ -205,7 +258,7 @@ func TestEntityWithDocumentDataOnly(t *testing.T) {
 	err = saveEntityToDatabase(ctx, entity)
 	assert.NoError(t, err)
 
-	processor := NewEntityAttributeProcessor()
+	processor := testProcessor
 
 	// Test all CORE operations
 	operations := []string{"create", "read", "update", "delete"}
@@ -264,7 +317,7 @@ func TestEntityWithMixedDataTypes(t *testing.T) {
 	err = saveEntityToDatabase(ctx, entity)
 	assert.NoError(t, err)
 
-	processor := NewEntityAttributeProcessor()
+	processor := testProcessor
 
 	// Test all CORE operations
 	// TODO: "read", "update", "delete"
@@ -310,7 +363,7 @@ func TestComplexGraphEntity(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	processor := NewEntityAttributeProcessor()
+	processor := testProcessor
 	ctx := context.Background()
 
 	// save parent entity to the database
@@ -353,7 +406,7 @@ func TestComplexTabularEntity(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	processor := NewEntityAttributeProcessor()
+	processor := testProcessor
 	ctx := context.Background()
 
 	// save parent entity to the database
@@ -423,7 +476,7 @@ func TestComplexDocumentEntity(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	processor := NewEntityAttributeProcessor()
+	processor := testProcessor
 	ctx := context.Background()
 
 	// save parent entity to the database
@@ -487,7 +540,7 @@ func TestEntityWithMultipleAttributesOfSameType(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	processor := NewEntityAttributeProcessor()
+	processor := testProcessor
 	ctx := context.Background()
 
 	// save parent entity to the database
@@ -549,7 +602,7 @@ func TestStorageTypeDetection(t *testing.T) {
 		},
 	}
 
-	processor := NewEntityAttributeProcessor()
+	processor := testProcessor
 
 	for testName, testCase := range testCases {
 		t.Run(testName, func(t *testing.T) {
@@ -575,7 +628,7 @@ func TestEmptyEntity(t *testing.T) {
 		Attributes: make(map[string]*pb.TimeBasedValueList),
 	}
 
-	processor := NewEntityAttributeProcessor()
+	processor := testProcessor
 	ctx := context.Background()
 
 	// Test all CORE operations
@@ -596,7 +649,7 @@ func TestEmptyEntity(t *testing.T) {
 
 // TestNilEntity tests handling of nil entity
 func TestNilEntity(t *testing.T) {
-	processor := NewEntityAttributeProcessor()
+	processor := testProcessor
 	ctx := context.Background()
 
 	// Test all CORE operations
@@ -628,7 +681,7 @@ func TestInvalidOperation(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	processor := NewEntityAttributeProcessor()
+	processor := testProcessor
 	ctx := context.Background()
 
 	options := getOptionsForOperation("invalid_operation")
@@ -654,7 +707,7 @@ func TestUnsupportedStorageType(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	processor := NewEntityAttributeProcessor()
+	processor := testProcessor
 	ctx := context.Background()
 
 	// save parent entity to the database
@@ -683,7 +736,7 @@ func TestUnsupportedStorageType(t *testing.T) {
 // TestBasicFunctionality tests basic functionality of the attribute resolver
 func TestBasicFunctionality(t *testing.T) {
 	// Test that we can create a processor
-	processor := NewEntityAttributeProcessor()
+	processor := testProcessor
 	assert.NotNil(t, processor)
 	assert.NotNil(t, processor.resolvers)
 
