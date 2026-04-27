@@ -131,8 +131,44 @@ func (p *EntityAttributeProcessor) ProcessEntityAttributes(ctx context.Context, 
 			// Create or update graph metadata BEFORE processing the attribute
 			// NOTE: for the attribute the timestamp is always the value carried at the attribute level
 			// not the entity level. The entity level timestamp is used for the entity itself.
-			attributeStartTime, _ := time.Parse(time.RFC3339, value.StartTime)
-			if err := p.handleAttributeLookUp(ctx, entity.Id, attrName, storageType, operation, attributeStartTime); err != nil {
+
+			// start time is required to create the attribute
+			if operation != "read" && value.StartTime == "" {
+				attributeResults[attrName] = &Result{
+					Success: false,
+					Error:   fmt.Errorf("StartTime is required for attribute: %s", attrName),
+				}
+				continue
+			}
+			var attributeStartTime time.Time
+
+			if value.StartTime != "" {
+				attributeStartTime, err = time.Parse(time.RFC3339, value.StartTime)
+				if err != nil {
+					attributeResults[attrName] = &Result{
+						Success: false,
+						Error:   fmt.Errorf("invalid StartTime format for attribute %s: %v", attrName, err),
+					}
+					continue
+				}
+			}
+
+			var attributeEndTime *time.Time
+
+			if value.EndTime != "" {
+				t, err := time.Parse(time.RFC3339, value.EndTime)
+				if err != nil {
+					attributeResults[attrName] = &Result{
+						Success: false,
+						Error:   fmt.Errorf("invalid EndTime format for attribute %s: %v", attrName, err),
+					}
+					continue
+				}
+				attributeEndTime = &t
+			}
+
+
+			if err := p.handleAttributeLookUp(ctx, entity.Id, attrName, storageType, operation, attributeStartTime, attributeEndTime); err != nil {
 				attributeResults[attrName] = &Result{
 					Success: false,
 					Data:    nil,
@@ -196,7 +232,7 @@ func (p *EntityAttributeProcessor) ProcessEntityAttributes(ctx context.Context, 
 // It creates the attribute look up metadata and the attribute node in the graph.
 // It also creates the IS_ATTRIBUTE relationship between the entity and the attribute.
 // It also creates the attribute metadata in the document database.
-func (p *EntityAttributeProcessor) handleAttributeLookUp(ctx context.Context, entityID, attrName string, storageType storageinference.StorageType, operation string, startTime time.Time) error {
+func (p *EntityAttributeProcessor) handleAttributeLookUp(ctx context.Context, entityID, attrName string, storageType storageinference.StorageType, operation string, startTime time.Time, endTime *time.Time) error {
 	// Generate attribute metadata
 	fmt.Printf("DEBUG: Handling graph metadata for attribute %s\n", attrName)
 	attributeID := GenerateAttributeID(entityID, attrName)
@@ -209,11 +245,13 @@ func (p *EntityAttributeProcessor) handleAttributeLookUp(ctx context.Context, en
 		StorageType:   storageType,
 		StoragePath:   storagePath,
 		Created:       startTime,
+		Terminated:    endTime,
 		Updated:       time.Now(),
 		Schema:        make(map[string]interface{}), // TODO: Extract schema from value
 	}
 
 	// Note: endTime parameter is optional and available for future use if needed
+	log.Printf("DEBUG: Handling graph metadata for attribute %s: [endTime: %v] [startTime: %v]", attrName, endTime, startTime)
 
 	switch operation {
 	case "create":

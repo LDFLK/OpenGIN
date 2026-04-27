@@ -1,11 +1,11 @@
 // Copyright 2025 Lanka Data Foundation
 // SPDX-License-Identifier: Apache-2.0
 
-import ballerina/io;
-import ballerina/test;
-import ballerina/protobuf.types.'any as pbAny;
 import ballerina/http;
+import ballerina/io;
 import ballerina/os;
+import ballerina/protobuf.types.'any as pbAny;
+import ballerina/test;
 
 // Get environment variables without fallback values
 string testIngestionHostname = os:getEnv("INGESTION_SERVICE_HOST");
@@ -45,7 +45,7 @@ function unwrapAnyToJson(pbAny:Any anyValue) returns json|error {
     if stringValue is string {
         return stringValue;
     }
-    
+
     // If string unpacking fails, return the string representation as a fallback
     return anyValue.toString();
 }
@@ -106,14 +106,14 @@ function jsonToAny(json data) returns pbAny:Any|error {
 function testMetadataHandling() returns error? {
     // Initialize the client
     COREServiceClient ep = check new (testCoreServiceUrl);
-    
+
     // Test data setup
     string testId = "test-entity-1";
     string expectedValue1 = "value1";
     string expectedValue2 = "value2";
-    
+
     // Create the metadata array
-    record {| string key; pbAny:Any value; |}[] metadataArray = [];
+    record {|string key; pbAny:Any value;|}[] metadataArray = [];
 
     // Pack string values into protobuf.Any directly
     pbAny:Any packedValue1 = check pbAny:pack(expectedValue1);
@@ -144,7 +144,7 @@ function testMetadataHandling() returns error? {
     Entity createEntityResponse = check ep->CreateEntity(createEntityRequest);
     io:println("Entity created with ID: " + createEntityResponse.id);
     io:println("Created entity metadata: ", createEntityResponse.metadata);
-    
+
     // Read entity
     ReadEntityRequest readEntityRequest = {
         entity: {
@@ -168,7 +168,7 @@ function testMetadataHandling() returns error? {
     io:println("Entity retrieved, verifying data...");
     io:println("Retrieved entity: ", readEntityResponse);
     io:println("Retrieved entity metadata: ", readEntityResponse.metadata);
-    
+
     // Verify metadata values
     map<string> actualValues = {};
     foreach var item in readEntityResponse.metadata {
@@ -179,15 +179,15 @@ function testMetadataHandling() returns error? {
             test:assertFail("Failed to unpack metadata value for key: " + item.key);
         }
     }
-    
+
     // Assert the values match
     test:assertEquals(actualValues["key1"], expectedValue1, "Metadata value for key1 doesn't match");
     test:assertEquals(actualValues["key2"], expectedValue2, "Metadata value for key2 doesn't match");
-    
+
     // Clean up
     Empty _ = check ep->DeleteEntity({id: testId});
     io:println("Test entity deleted");
-    
+
     return;
 }
 
@@ -199,7 +199,7 @@ function testMetadataHandling() returns error? {
 function testMetadataUnpackError() returns error? {
     // Test case to verify handling of non-existent entities
     COREServiceClient ep = check new (testCoreServiceUrl);
-    
+
     // Try to read a non-existent entity
     ReadEntityRequest readEntityRequest = {
         entity: {
@@ -219,10 +219,10 @@ function testMetadataUnpackError() returns error? {
         output: ["metadata"]
     };
     Entity|error response = ep->ReadEntity(readEntityRequest);
-    
+
     // Assert that we get an error for non-existent entity
     test:assertTrue(response is error, "Expected error for non-existent entity");
-    
+
     return;
 }
 
@@ -230,21 +230,21 @@ function testMetadataUnpackError() returns error? {
 function testMetadataUpdating() returns error? {
     // Initialize the client
     COREServiceClient ep = check new (testCoreServiceUrl);
-    
+
     // Test data setup
     string testId = "test-entity-update";
-    
+
     // Initial metadata values
     string initialValue1 = "initial-value1";
     string initialValue2 = "initial-value2";
-    
+
     // Updated metadata values
     string updatedValue1 = "updated-value1";
     string updatedValue2 = "updated-value2";
     string newValue3 = "new-value3";
-    
+
     // Create the initial metadata array
-    record {| string key; pbAny:Any value; |}[] initialMetadataArray = [];
+    record {|string key; pbAny:Any value;|}[] initialMetadataArray = [];
     pbAny:Any packedInitialValue1 = check pbAny:pack(initialValue1);
     pbAny:Any packedInitialValue2 = check pbAny:pack(initialValue2);
     initialMetadataArray.push({key: "key1", value: packedInitialValue1});
@@ -270,7 +270,7 @@ function testMetadataUpdating() returns error? {
     // Create entity
     Entity createEntityResponse = check ep->CreateEntity(createEntityRequest);
     io:println("Entity created with ID: " + createEntityResponse.id);
-    
+
     // Verify initial metadata
     ReadEntityRequest readEntityRequest = {
         entity: {
@@ -292,9 +292,9 @@ function testMetadataUpdating() returns error? {
     Entity initialReadResponse = check ep->ReadEntity(readEntityRequest);
     verifyMetadata(initialReadResponse.metadata, {"key1": initialValue1, "key2": initialValue2});
     io:println("Initial metadata verified");
-    
+
     // Create updated metadata array
-    record {| string key; pbAny:Any value; |}[] updatedMetadataArray = [];
+    record {|string key; pbAny:Any value;|}[] updatedMetadataArray = [];
     pbAny:Any packedUpdatedValue1 = check pbAny:pack(updatedValue1);
     pbAny:Any packedUpdatedValue2 = check pbAny:pack(updatedValue2);
     pbAny:Any packedNewValue3 = check pbAny:pack(newValue3);
@@ -321,7 +321,7 @@ function testMetadataUpdating() returns error? {
         attributes: [],
         relationships: []
     };
-    
+
     // Update entity
     UpdateEntityRequest updateRequest = {
         id: testId,
@@ -329,7 +329,7 @@ function testMetadataUpdating() returns error? {
     };
     Entity updateEntityResponse = check ep->UpdateEntity(updateRequest);
     io:println("Entity updated with ID: " + updateEntityResponse.id);
-    
+
     // Verify updated metadata
     ReadEntityRequest updatedReadRequest = {
         entity: {
@@ -350,21 +350,21 @@ function testMetadataUpdating() returns error? {
     };
     Entity updatedReadResponse = check ep->ReadEntity(updatedReadRequest);
     verifyMetadata(updatedReadResponse.metadata, {
-        "key1": updatedValue1, 
-        "key2": updatedValue2,
-        "key3": newValue3
-    });
+                    "key1": updatedValue1,
+                    "key2": updatedValue2,
+                    "key3": newValue3
+                });
     io:println("Updated metadata verified");
-    
+
     // Clean up
     Empty _ = check ep->DeleteEntity({id: testId});
     io:println("Test entity deleted");
-    
+
     return;
 }
 
 // Helper function to verify metadata
-function verifyMetadata(record {| string key; pbAny:Any value; |}[] metadata, map<string> expected) {
+function verifyMetadata(record {|string key; pbAny:Any value;|}[] metadata, map<string> expected) {
     map<string> actual = {};
     foreach var item in metadata {
         string|error unwrapped = unwrapAny(item.value);
@@ -372,12 +372,12 @@ function verifyMetadata(record {| string key; pbAny:Any value; |}[] metadata, ma
             actual[item.key] = unwrapped.trim();
         }
     }
-    
+
     // Verify all expected key-value pairs exist in the actual metadata
     foreach var [key, expectedValue] in expected.entries() {
         test:assertTrue(actual.hasKey(key), "Metadata key not found: " + key);
-        test:assertEquals(actual[key] ?: "", expectedValue, 
-            string `Metadata value for ${key} doesn't match: expected ${expectedValue}, got ${actual[key] ?: ""}`);
+        test:assertEquals(actual[key] ?: "", expectedValue,
+                string `Metadata value for ${key} doesn't match: expected ${expectedValue}, got ${actual[key] ?: ""}`);
     }
 }
 
@@ -385,17 +385,17 @@ function verifyMetadata(record {| string key; pbAny:Any value; |}[] metadata, ma
 function testEntityReading() returns error? {
     // Initialize the client
     COREServiceClient ep = check new (testCoreServiceUrl);
-    
+
     // Test data setup
     string testId = "test-entity-read";
     string metadataKey = "readTest";
     string metadataValue = "read-test-value";
-    
+
     // Create a test entity first
-    record {| string key; pbAny:Any value; |}[] metadataArray = [];
+    record {|string key; pbAny:Any value;|}[] metadataArray = [];
     pbAny:Any packedValue = check pbAny:pack(metadataValue);
     metadataArray.push({key: metadataKey, value: packedValue});
-    
+
     Entity createEntityRequest = {
         id: testId,
         kind: {
@@ -413,12 +413,12 @@ function testEntityReading() returns error? {
         attributes: [],
         relationships: []
     };
-    
+
     // Create entity
     Entity createEntityResponse = check ep->CreateEntity(createEntityRequest);
     io:println("Test entity created with ID: " + createEntityResponse.id);
     io:println("Created entity metadata: ", createEntityResponse.metadata);
-    
+
     // Read the entity
     ReadEntityRequest readEntityRequest = {
         entity: {
@@ -442,25 +442,25 @@ function testEntityReading() returns error? {
     io:println("Entity retrieved, verifying data...");
     io:println("Retrieved entity: ", readEntityResponse);
     io:println("Retrieved entity metadata: ", readEntityResponse.metadata);
-    
+
     // Verify entity fields
     test:assertEquals(readEntityResponse.id, testId, "Entity ID mismatch");
-    
+
     // Verify metadata
     boolean foundMetadata = false;
     foreach var item in readEntityResponse.metadata {
         if item.key == metadataKey {
             string|error unwrapped = unwrapAny(item.value);
             if unwrapped is string {
-                test:assertEquals(unwrapped.trim(), metadataValue, 
-                    string `Metadata value mismatch: expected ${metadataValue}, got ${unwrapped}`);
+                test:assertEquals(unwrapped.trim(), metadataValue,
+                        string `Metadata value mismatch: expected ${metadataValue}, got ${unwrapped}`);
                 foundMetadata = true;
             }
         }
     }
-    
+
     test:assertTrue(foundMetadata, "Expected metadata key not found");
-    
+
     // Test reading non-existent entity
     string nonExistentId = "non-existent-entity-" + testId;
     ReadEntityRequest nonExistentRequest = {
@@ -481,23 +481,23 @@ function testEntityReading() returns error? {
         output: ["metadata"]
     };
     Entity|error nonExistentResult = ep->ReadEntity(nonExistentRequest);
-    
+
     // For now, expect an error for non-existent entities
     test:assertTrue(nonExistentResult is error, "Expected error for non-existent entity");
     if nonExistentResult is error {
         io:println("Non-existent entity correctly returned error: " + nonExistentResult.message());
     }
-    
+
     // Assert that we get an error for non-existent entity
     // For non-existence entities, we send a response with an empty data
     // But once the Result API is integrated this can be tested. 
     // FIXME: https://github.com/LDFLK/nexoan/issues/23
     // test:assertTrue(nonExistentResponse is error, "Expected error for non-existent entity ID");
-    
+
     // Clean up
     Empty _ = check ep->DeleteEntity({id: testId});
     io:println("Test entity deleted");
-    
+
     return;
 }
 
@@ -505,10 +505,10 @@ function testEntityReading() returns error? {
 function testCreateMinimalGraphEntity() returns error? {
     // Initialize the client
     COREServiceClient ep = check new (testCoreServiceUrl);
-    
+
     // Test data setup - minimal entity with just required fields
     string testId = "test-minimal-entity";
-    
+
     // Create entity request with only required fields - no metadata, attributes, or relationships
     Entity createEntityRequest = {
         id: testId,
@@ -531,7 +531,7 @@ function testCreateMinimalGraphEntity() returns error? {
     // Create entity
     Entity createEntityResponse = check ep->CreateEntity(createEntityRequest);
     io:println("Minimal entity created with ID: " + createEntityResponse.id);
-    
+
     // Verify entity was created correctly
     ReadEntityRequest readEntityRequest = {
         entity: {
@@ -551,21 +551,21 @@ function testCreateMinimalGraphEntity() returns error? {
         output: ["metadata", "attributes", "relationships"]
     };
     Entity readEntityResponse = check ep->ReadEntity(readEntityRequest);
-    
+
     // Basic entity verification
     test:assertEquals(readEntityResponse.id, testId, "Entity ID doesn't match");
     test:assertEquals(readEntityResponse.kind.major, "test", "Entity kind.major doesn't match");
     test:assertEquals(readEntityResponse.kind.minor, "minimal", "Entity kind.minor doesn't match");
-    
+
     // Verify empty collections
     test:assertEquals(readEntityResponse.metadata.length(), 0, "Metadata should be empty");
     test:assertEquals(readEntityResponse.attributes.length(), 0, "Attributes default value should be empty");
     test:assertEquals(readEntityResponse.relationships.length(), 0, "Relationships should be empty");
-    
+
     // Clean up
     Empty _ = check ep->DeleteEntity({id: testId});
     io:println("Test minimal entity deleted");
-    
+
     return;
 }
 
@@ -576,10 +576,10 @@ function testCreateMinimalGraphEntityViaRest() returns error? {
         httpVersion: "2.0" // Enable HTTP/2
     };
     http:Client restClient = check new (testIngestionServiceUrl, httpConfig);
-    
+
     // Test data setup - minimal JSON entity
     string testId = "test-minimal-json-entity";
-    
+
     // Minimal JSON payload with required fields matching the Entity structure
     json minimalEntityJson = {
         "id": testId,
@@ -601,22 +601,22 @@ function testCreateMinimalGraphEntityViaRest() returns error? {
 
     // Create entity via REST API
     http:Response|error response = restClient->post("/entities", minimalEntityJson);
-    
+
     // Verify HTTP request was successful
     if response is error {
         test:assertFail("Failed to create entity via REST API: " + response.message());
     }
-    
+
     http:Response httpResponse = <http:Response>response;
     test:assertEquals(httpResponse.statusCode, 201, "Expected 201 OK status code");
-    
+
     // Parse response JSON
     json responseJson = check httpResponse.getJsonPayload();
     test:assertEquals(check responseJson.id, testId, "Entity ID in response doesn't match");
-    
+
     // Initialize the gRPC client to verify entity was properly created
     COREServiceClient ep = check new (testCoreServiceUrl);
-    
+
     // Verify entity data
     ReadEntityRequest readEntityRequest = {
         entity: {
@@ -633,24 +633,24 @@ function testCreateMinimalGraphEntityViaRest() returns error? {
             attributes: [],
             relationships: []
         },
-        output: ["metadata","attributes", "relationships"]
+        output: ["metadata", "attributes", "relationships"]
     };
     Entity readEntityResponse = check ep->ReadEntity(readEntityRequest);
-    
+
     // Basic entity verification
     test:assertEquals(readEntityResponse.id, testId, "Entity ID doesn't match");
     test:assertEquals(readEntityResponse.kind.major, "test", "Entity kind.major doesn't match");
     test:assertEquals(readEntityResponse.kind.minor, "minimal-json", "Entity kind.minor doesn't match");
-    
+
     // Verify empty collections
     test:assertEquals(readEntityResponse.metadata.length(), 0, "Metadata should be empty");
     test:assertEquals(readEntityResponse.attributes.length(), 0, "Attributes default value should be empty");
     test:assertEquals(readEntityResponse.relationships.length(), 0, "Relationships should be empty");
-    
+
     // Clean up
     Empty _ = check ep->DeleteEntity({id: testId});
     io:println("Test minimal JSON entity deleted");
-    
+
     return;
 }
 
@@ -661,13 +661,13 @@ function testEntityWithRelationship() returns error? {
     // Test IDs for entities
     string sourceEntityId = "test-entity-with-relationship-source";
     string targetEntityId = "test-entity-with-relationship-target";
-    
+
     // Initialize REST client with HTTP/2 support
     http:ClientConfiguration httpConfig = {
         httpVersion: "2.0" // Enable HTTP/2
     };
     http:Client restClient = check new (testIngestionServiceUrl, httpConfig);
-    
+
     // Create source entity
     json sourceEntityJson = {
         "id": sourceEntityId,
@@ -686,7 +686,7 @@ function testEntityWithRelationship() returns error? {
         "attributes": [],
         "relationships": []
     };
-    
+
     // Create target entity
     json targetEntityJson = {
         "id": targetEntityId,
@@ -694,7 +694,7 @@ function testEntityWithRelationship() returns error? {
             "major": "test",
             "minor": "relationship-target"
         },
-        "created": "2023-01-01", 
+        "created": "2023-01-01",
         "terminated": "",
         "name": {
             "startTime": "2023-01-01",
@@ -705,11 +705,11 @@ function testEntityWithRelationship() returns error? {
         "attributes": [],
         "relationships": []
     };
-    
+
     // Create both entities via REST API
     http:Response|error sourceResponse = restClient->post("/entities", sourceEntityJson);
     http:Response|error targetResponse = restClient->post("/entities", targetEntityJson);
-    
+
     // Verify HTTP requests were successful
     if sourceResponse is error {
         test:assertFail("Failed to create source entity: " + sourceResponse.message());
@@ -717,12 +717,12 @@ function testEntityWithRelationship() returns error? {
     if targetResponse is error {
         test:assertFail("Failed to create target entity: " + targetResponse.message());
     }
-    
+
     http:Response sourceHttpResponse = <http:Response>sourceResponse;
     http:Response targetHttpResponse = <http:Response>targetResponse;
     test:assertEquals(sourceHttpResponse.statusCode, 201, "Expected 201 status code for source entity");
     test:assertEquals(targetHttpResponse.statusCode, 201, "Expected 201 status code for target entity");
-    
+
     // Create relationship between entities - include full entity structure
     string relationshipId = "rel-" + sourceEntityId + "-" + targetEntityId;
     json relationshipJson = {
@@ -745,21 +745,21 @@ function testEntityWithRelationship() returns error? {
             }
         }
     };
-    
+
     // Update source entity with relationship
     http:Response|error updateResponse = restClient->put("/entities/" + sourceEntityId, relationshipJson);
-    
+
     // Verify update was successful
     if updateResponse is error {
         test:assertFail("Failed to update entity with relationship: " + updateResponse.message());
     }
-    
+
     http:Response updateHttpResponse = <http:Response>updateResponse;
     test:assertEquals(updateHttpResponse.statusCode, 200, "Expected 200 status code for relationship update");
-    
+
     // Initialize the gRPC client to verify relationship was properly created
     COREServiceClient ep = check new (testCoreServiceUrl);
-    
+
     // Read source entity to verify relationship
     ReadEntityRequest readEntityRequest = {
         entity: {
@@ -779,10 +779,10 @@ function testEntityWithRelationship() returns error? {
         output: ["relationships"]
     };
     Entity readEntityResponse = check ep->ReadEntity(readEntityRequest);
-    
+
     // Verify relationship data
     test:assertEquals(readEntityResponse.relationships.length(), 1, "Entity should have one relationship");
-    
+
     // Find the relationship by iterating through the array
     Relationship? targetRelationship = ();
     foreach var rel in readEntityResponse.relationships {
@@ -791,7 +791,7 @@ function testEntityWithRelationship() returns error? {
             break;
         }
     }
-    
+
     io:println("Target relationship: " + targetRelationship.toJsonString());
     test:assertFalse(targetRelationship is (), "Relationship with key 'CONNECTS_TO' not found");
     Relationship relationship = <Relationship>targetRelationship;
@@ -799,12 +799,12 @@ function testEntityWithRelationship() returns error? {
     test:assertEquals(relationship.name, "CONNECTS_TO", "Relationship name doesn't match");
     test:assertEquals(relationship.startTime, "2023-01-01T00:00:00Z", "Relationship start time doesn't match");
     test:assertEquals(relationship.id, relationshipId, "Relationship ID doesn't match");
-    
+
     // Clean up
     Empty _ = check ep->DeleteEntity({id: sourceEntityId});
     Empty _ = check ep->DeleteEntity({id: targetEntityId});
     io:println("Test entities with relationship deleted");
-    
+
     return;
 }
 
@@ -816,10 +816,10 @@ function testEntityWithSimpleOnlyNodesGraphAttributes() returns error? {
     // TODO: Complete Test Case https://github.com/LDFLK/nexoan/issues/143
     // Test ID for entity
     string testId = "test-entity-simple-only-nodes-graph";
-    
+
     // Initialize the gRPC client to verify entity
     COREServiceClient ep = check new (testCoreServiceUrl);
-    
+
     // Create entity with tabular data in attributes
     json socialNetworkGraph = {
         "nodes": [
@@ -873,7 +873,7 @@ function testEntityWithSimpleOnlyNodesGraphAttributes() returns error? {
     // Create entity via gRPC
     Entity createEntityResponse = check ep->CreateEntity(createEntityRequest);
     io:println("Entity created with ID: " + createEntityResponse.id);
-    
+
     // Read entity to verify attributes
     ReadEntityRequest readEntityRequest = {
         entity: {
@@ -893,16 +893,16 @@ function testEntityWithSimpleOnlyNodesGraphAttributes() returns error? {
         output: ["metadata", "attributes", "relationships"]
     };
     Entity readEntityResponse = check ep->ReadEntity(readEntityRequest);
-    
+
     // Verify the response
     test:assertTrue(readEntityResponse.id != "", "Entity should be found");
     test:assertEquals(readEntityResponse.id, testId, "Entity ID should match");
-    
+
     // Clean up
     Empty _ = check ep->DeleteEntity({id: testId});
     Empty _ = check ep->DeleteEntity({id: testId});
     io:println("Test entity with graph attributes deleted");
-    
+
     return;
 }
 
@@ -914,10 +914,10 @@ function testEntityWithSimpleGraphAttributes() returns error? {
     // TODO: Complete Test Case https://github.com/LDFLK/nexoan/issues/143
     // Test ID for entity
     string testId = "test-simple-entity-graph";
-    
+
     // Initialize the gRPC client to verify entity
     COREServiceClient ep = check new (testCoreServiceUrl);
-    
+
     // Create entity with tabular data in attributes
     json socialNetworkGraph = {
         "nodes": [
@@ -978,7 +978,7 @@ function testEntityWithSimpleGraphAttributes() returns error? {
     // Create entity via gRPC
     Entity createEntityResponse = check ep->CreateEntity(createEntityRequest);
     io:println("Entity created with ID: " + createEntityResponse.id);
-    
+
     // Read entity to verify attributes
     ReadEntityRequest readEntityRequest = {
         entity: {
@@ -998,16 +998,16 @@ function testEntityWithSimpleGraphAttributes() returns error? {
         output: ["metadata", "attributes", "relationships"]
     };
     Entity readEntityResponse = check ep->ReadEntity(readEntityRequest);
-    
+
     // Verify the response
     test:assertTrue(readEntityResponse.id != "", "Entity should be found");
     test:assertEquals(readEntityResponse.id, testId, "Entity ID should match");
-    
+
     // Clean up
 
     Empty _ = check ep->DeleteEntity({id: testId});
     io:println("Test entity with graph attributes deleted");
-    
+
     return;
 }
 
@@ -1019,26 +1019,26 @@ function testEntityWithMultiGraphAttributes() returns error? {
     // TODO: Complete Test Case https://github.com/LDFLK/nexoan/issues/143
     // Test ID for entity
     string testId = "test-entity-graph";
-    
+
     // Initialize the gRPC client to verify entity
     COREServiceClient ep = check new (testCoreServiceUrl);
-    
+
     // Create entity with tabular data in attributes
     json salaryGraph = {
         "nodes": [
-					{"id": "user1", "type": "user", "properties": {"name": "Alice", "age": 30, "location": "NY"}},
-					{"id": "user2", "type": "user", "properties": {"name": "Bob", "age": 25, "location": "SF"}},
-					{"id": "user3", "type": "user", "properties": {"name": "Charlie", "age": 35, "location": "LA"}},
-					{"id": "post1", "type": "post", "properties": {"title": "Hello", "content": "World", "created": "2024-03-20"}},
-					{"id": "post2", "type": "post", "properties": {"title": "Graph", "content": "DB", "created": "2024-03-21"}}
-				],
-				"edges": [
-					{"source": "user1", "target": "user2", "type": "follows", "properties": {"since": "2024-01-01"}},
-					{"source": "user2", "target": "user3", "type": "follows", "properties": {"since": "2024-02-01"}},
-					{"source": "user1", "target": "post1", "type": "created", "properties": {"timestamp": "2024-03-20T10:00:00Z"}},
-					{"source": "user2", "target": "post1", "type": "likes", "properties": {"timestamp": "2024-03-20T11:00:00Z"}},
-					{"source": "user3", "target": "post2", "type": "created", "properties": {"timestamp": "2024-03-21T09:00:00Z"}}
-				]
+            {"id": "user1", "type": "user", "properties": {"name": "Alice", "age": 30, "location": "NY"}},
+            {"id": "user2", "type": "user", "properties": {"name": "Bob", "age": 25, "location": "SF"}},
+            {"id": "user3", "type": "user", "properties": {"name": "Charlie", "age": 35, "location": "LA"}},
+            {"id": "post1", "type": "post", "properties": {"title": "Hello", "content": "World", "created": "2024-03-20"}},
+            {"id": "post2", "type": "post", "properties": {"title": "Graph", "content": "DB", "created": "2024-03-21"}}
+        ],
+        "edges": [
+            {"source": "user1", "target": "user2", "type": "follows", "properties": {"since": "2024-01-01"}},
+            {"source": "user2", "target": "user3", "type": "follows", "properties": {"since": "2024-02-01"}},
+            {"source": "user1", "target": "post1", "type": "created", "properties": {"timestamp": "2024-03-20T10:00:00Z"}},
+            {"source": "user2", "target": "post1", "type": "likes", "properties": {"timestamp": "2024-03-20T11:00:00Z"}},
+            {"source": "user3", "target": "post2", "type": "created", "properties": {"timestamp": "2024-03-21T09:00:00Z"}}
+        ]
     };
 
     json projectGraph = {
@@ -1113,7 +1113,7 @@ function testEntityWithMultiGraphAttributes() returns error? {
     // Create entity via gRPC
     Entity createEntityResponse = check ep->CreateEntity(createEntityRequest);
     io:println("Entity created with ID: " + createEntityResponse.id);
-    
+
     // Read entity to verify attributes
     ReadEntityRequest readEntityRequest = {
         entity: {
@@ -1133,16 +1133,16 @@ function testEntityWithMultiGraphAttributes() returns error? {
         output: ["metadata", "attributes", "relationships"]
     };
     Entity readEntityResponse = check ep->ReadEntity(readEntityRequest);
-    
+
     // Verify the response
     test:assertTrue(readEntityResponse.id != "", "Entity should be found");
     test:assertEquals(readEntityResponse.id, testId, "Entity ID should match");
-    
+
     // Clean up
-    
+
     Empty _ = check ep->DeleteEntity({id: testId});
     io:println("Test entity with graph attributes deleted");
-    
+
     return;
 }
 
@@ -1154,10 +1154,10 @@ function testEntityWithSimpleListAttributes() returns error? {
     // TODO: Complete Test Case https://github.com/LDFLK/nexoan/issues/143
     // Test ID for entity
     string testId = "test-entity-list";
-    
+
     // Initialize the gRPC client to verify entity
     COREServiceClient ep = check new (testCoreServiceUrl);
-    
+
     // Create entity with list data in attributes
     json salaryList = {
         "values": [
@@ -1209,11 +1209,11 @@ function testEntityWithSimpleListAttributes() returns error? {
     // Create entity via gRPC
     Entity createEntityResponse = check ep->CreateEntity(createEntityRequest);
     io:println("Entity created with ID: " + createEntityResponse.id);
-    
+
     // Clean up
     Empty _ = check ep->DeleteEntity({id: testId});
     io:println("Test entity with list attributes deleted");
-    
+
     return;
 }
 
@@ -1225,10 +1225,10 @@ function testEntityWithMixedTypeListAttributes() returns error? {
     // TODO: Complete Test Case https://github.com/LDFLK/nexoan/issues/143
     // Test ID for entity
     string testId = "test-entity-mixed-list";
-    
+
     // Initialize the gRPC client to verify entity
     COREServiceClient ep = check new (testCoreServiceUrl);
-    
+
     // Create entity with mixed type list data in attributes
     json mixedTypeList = {
         "values": [
@@ -1283,7 +1283,7 @@ function testEntityWithMixedTypeListAttributes() returns error? {
     // Create entity via gRPC
     Entity createEntityResponse = check ep->CreateEntity(createEntityRequest);
     io:println("Entity created with ID: " + createEntityResponse.id);
-    
+
     // Read entity to verify attributes
     ReadEntityRequest readEntityRequest = {
         entity: {
@@ -1303,15 +1303,15 @@ function testEntityWithMixedTypeListAttributes() returns error? {
         output: ["metadata", "attributes", "relationships"]
     };
     Entity readEntityResponse = check ep->ReadEntity(readEntityRequest);
-    
+
     // Verify the response
     test:assertTrue(readEntityResponse.id != "", "Entity should be found");
     test:assertEquals(readEntityResponse.id, testId, "Entity ID should match");
-    
+
     // Clean up
     Empty _ = check ep->DeleteEntity({id: testId});
     io:println("Test entity with mixed type list attributes deleted");
-    
+
     return;
 }
 
@@ -1323,10 +1323,10 @@ function testEntityWithEmptyListAttributes() returns error? {
     // TODO: Complete Test Case https://github.com/LDFLK/nexoan/issues/143
     // Test ID for entity
     string testId = "test-entity-empty-list";
-    
+
     // Initialize the gRPC client to verify entity
     COREServiceClient ep = check new (testCoreServiceUrl);
-    
+
     // Create entity with empty list data in attributes
     json emptyList = {
         "values": []
@@ -1374,7 +1374,7 @@ function testEntityWithEmptyListAttributes() returns error? {
     // Create entity via gRPC
     Entity createEntityResponse = check ep->CreateEntity(createEntityRequest);
     io:println("Entity created with ID: " + createEntityResponse.id);
-    
+
     // Read entity to verify attributes
     ReadEntityRequest readEntityRequest = {
         entity: {
@@ -1394,15 +1394,15 @@ function testEntityWithEmptyListAttributes() returns error? {
         output: ["metadata", "attributes", "relationships"]
     };
     Entity readEntityResponse = check ep->ReadEntity(readEntityRequest);
-    
+
     // Verify the response
     test:assertTrue(readEntityResponse.id != "", "Entity should be found");
     test:assertEquals(readEntityResponse.id, testId, "Entity ID should match");
-    
+
     // Clean up
     Empty _ = check ep->DeleteEntity({id: testId});
     io:println("Test entity with empty list attributes deleted");
-    
+
     return;
 }
 
@@ -1414,17 +1414,17 @@ function testEntityWithMapAttributes() returns error? {
     // TODO: Complete Test Case https://github.com/LDFLK/nexoan/issues/143
     // Test ID for entity
     string testId = "test-entity-map";
-    
+
     // Initialize the gRPC client to verify entity
     COREServiceClient ep = check new (testCoreServiceUrl);
-    
+
     // Create entity with map data in attributes
     json userProfileMap = {
-       "properties": {
-					"name": "John",
-					"age": 30,
-					"active": true
-				}
+        "properties": {
+            "name": "John",
+            "age": 30,
+            "active": true
+        }
     };
 
     // Convert JSON to protobuf Any values
@@ -1469,7 +1469,7 @@ function testEntityWithMapAttributes() returns error? {
     // Create entity via gRPC
     Entity createEntityResponse = check ep->CreateEntity(createEntityRequest);
     io:println("Entity created with ID: " + createEntityResponse.id);
-    
+
     // Read entity to verify attributes
     ReadEntityRequest readEntityRequest = {
         entity: {
@@ -1489,15 +1489,15 @@ function testEntityWithMapAttributes() returns error? {
         output: ["metadata", "attributes", "relationships"]
     };
     Entity readEntityResponse = check ep->ReadEntity(readEntityRequest);
-    
+
     // Verify the response
     test:assertTrue(readEntityResponse.id != "", "Entity should be found");
     test:assertEquals(readEntityResponse.id, testId, "Entity ID should match");
-    
+
     // Clean up
     Empty _ = check ep->DeleteEntity({id: testId});
     io:println("Test entity with map attributes deleted");
-    
+
     return;
 }
 
@@ -1509,10 +1509,10 @@ function testEntityWithNestedMapAttributes() returns error? {
     // TODO: Complete Test Case https://github.com/LDFLK/nexoan/issues/143
     // Test ID for entity
     string testId = "test-entity-nested-map";
-    
+
     // Initialize the gRPC client to verify entity
     COREServiceClient ep = check new (testCoreServiceUrl);
-    
+
     // Create entity with nested map data in attributes
     json nestedMap = {
         "organization": {
@@ -1598,7 +1598,7 @@ function testEntityWithNestedMapAttributes() returns error? {
     // Create entity via gRPC
     Entity createEntityResponse = check ep->CreateEntity(createEntityRequest);
     io:println("Entity created with ID: " + createEntityResponse.id);
-    
+
     // Read entity to verify attributes
     ReadEntityRequest readEntityRequest = {
         entity: {
@@ -1618,15 +1618,15 @@ function testEntityWithNestedMapAttributes() returns error? {
         output: ["metadata", "attributes", "relationships"]
     };
     Entity readEntityResponse = check ep->ReadEntity(readEntityRequest);
-    
+
     // Verify the response
     test:assertTrue(readEntityResponse.id != "", "Entity should be found");
     test:assertEquals(readEntityResponse.id, testId, "Entity ID should match");
-    
+
     // Clean up
     Empty _ = check ep->DeleteEntity({id: testId});
     io:println("Test entity with nested map attributes deleted");
-    
+
     return;
 }
 
@@ -1638,10 +1638,10 @@ function testEntityWithEmptyMapValues() returns error? {
     // TODO: Complete Test Case https://github.com/LDFLK/nexoan/issues/143
     // Test ID for entity
     string testId = "test-entity-empty-map-values";
-    
+
     // Initialize the gRPC client to verify entity
     COREServiceClient ep = check new (testCoreServiceUrl);
-    
+
     // Create entity with map data containing empty values
     // FIXME: https://github.com/LDFLK/nexoan/issues/137
     json emptyValuesMap = {
@@ -1694,7 +1694,7 @@ function testEntityWithEmptyMapValues() returns error? {
     // Create entity via gRPC
     Entity createEntityResponse = check ep->CreateEntity(createEntityRequest);
     io:println("Entity created with ID: " + createEntityResponse.id);
-    
+
     // Read entity to verify attributes
     ReadEntityRequest readEntityRequest = {
         entity: {
@@ -1714,15 +1714,15 @@ function testEntityWithEmptyMapValues() returns error? {
         output: ["metadata", "attributes", "relationships"]
     };
     Entity readEntityResponse = check ep->ReadEntity(readEntityRequest);
-    
+
     // Verify the response
     test:assertTrue(readEntityResponse.id != "", "Entity should be found");
     test:assertEquals(readEntityResponse.id, testId, "Entity ID should match");
-    
+
     // Clean up
     Empty _ = check ep->DeleteEntity({id: testId});
     io:println("Test entity with empty map values deleted");
-    
+
     return;
 }
 
@@ -1734,10 +1734,10 @@ function testEntityWithNestedMapValues() returns error? {
     // TODO: Complete Test Case https://github.com/LDFLK/nexoan/issues/143
     // Test ID for entity
     string testId = "test-entity-nested-map-values";
-    
+
     // Initialize the gRPC client to verify entity
     COREServiceClient ep = check new (testCoreServiceUrl);
-    
+
     // Create entity with deeply nested map data
     json nestedMap = {
         "properties": {
@@ -1832,7 +1832,7 @@ function testEntityWithNestedMapValues() returns error? {
     // Create entity via gRPC
     Entity createEntityResponse = check ep->CreateEntity(createEntityRequest);
     io:println("Entity created with ID: " + createEntityResponse.id);
-    
+
     // Read entity to verify attributes
     ReadEntityRequest readEntityRequest = {
         entity: {
@@ -1852,27 +1852,26 @@ function testEntityWithNestedMapValues() returns error? {
         output: ["metadata", "attributes", "relationships"]
     };
     Entity readEntityResponse = check ep->ReadEntity(readEntityRequest);
-    
+
     // Verify the response
     test:assertTrue(readEntityResponse.id != "", "Entity should be found");
     test:assertEquals(readEntityResponse.id, testId, "Entity ID should match");
-    
+
     // Clean up
     Empty _ = check ep->DeleteEntity({id: testId});
     io:println("Test entity with nested map values deleted");
-    
+
     return;
 }
-
 
 @test:Config {}
 function testEntityWithTabularAttributes() returns error? {
     // Initialize the client
     COREServiceClient ep = check new (testCoreServiceUrl);
-    
+
     // Test data setup
     string testId = "ID-MIN-A";
-    
+
     // Create tabular data structure
     // TODO: https://github.com/LDFLK/nexoan/issues/284
     json tabularData = {
@@ -1937,7 +1936,7 @@ function testEntityWithTabularAttributes() returns error? {
     };
 
     pbAny:Any tabularDataFilterAny = check jsonToAny(tabularDataFilter);
-    
+
     // Read entity to verify attributes
     ReadEntityRequest readEntityRequest = {
         entity: {
@@ -1957,7 +1956,7 @@ function testEntityWithTabularAttributes() returns error? {
                     value: {
                         values: [
                             {
-                                startTime: "",
+                                startTime: "2025-04-01T00:00:00Z",
                                 endTime: "",
                                 value: tabularDataFilterAny
                             }
@@ -1970,7 +1969,7 @@ function testEntityWithTabularAttributes() returns error? {
         output: ["metadata", "attributes", "relationships"]
     };
     Entity readEntityResponse = check ep->ReadEntity(readEntityRequest);
-    
+
     // Verify the response
     test:assertTrue(readEntityResponse.id != "", "Entity should be found");
     test:assertEquals(readEntityResponse.id, testId, "Entity ID should match");
@@ -2001,15 +2000,14 @@ function testEntityWithTabularAttributes() returns error? {
     return;
 }
 
-
 @test:Config {}
 function testEntityWithTabularAttributesMultiRels() returns error? {
     // Initialize the client
     COREServiceClient ep = check new (testCoreServiceUrl);
-    
+
     // Test data setup
     string testId = "ID-MIN-A-MULTI-RELS";
-    
+
     // Create tabular data structure
     // TODO: https://github.com/LDFLK/nexoan/issues/284
     json employeeData = {
@@ -2022,7 +2020,7 @@ function testEntityWithTabularAttributesMultiRels() returns error? {
             [5, "Charlie Davis", 32, "Finance", 80000]
         ]
     };
-    
+
     json budgetData = {
         "columns": ["id", "category", "amount", "quarter", "status"],
         "rows": [
@@ -2104,7 +2102,7 @@ function testEntityWithTabularAttributesMultiRels() returns error? {
 
     pbAny:Any employeeDataFilterAny = check jsonToAny(employeeDataFilter);
     pbAny:Any budgetDataFilterAny = check jsonToAny(budgetDataFilter);
-    
+
     // Read entity to verify attributes
     ReadEntityRequest readEntityWithBudgetDataRequest = {
         entity: {
@@ -2124,7 +2122,7 @@ function testEntityWithTabularAttributesMultiRels() returns error? {
                     value: {
                         values: [
                             {
-                                startTime: "",
+                                startTime: "2025-06-01T00:00:00Z",
                                 endTime: "",
                                 value: budgetDataFilterAny
                             }
@@ -2155,7 +2153,7 @@ function testEntityWithTabularAttributesMultiRels() returns error? {
                     value: {
                         values: [
                             {
-                                startTime: "",
+                                startTime: "2025-04-01T00:00:00Z",
                                 endTime: "",
                                 value: employeeDataFilterAny
                             }
@@ -2215,15 +2213,14 @@ function testEntityWithTabularAttributesMultiRels() returns error? {
     return;
 }
 
-
 @test:Config {}
 function testEntityWithTabularAttributesUpdate() returns error? {
     // Initialize the client
     COREServiceClient ep = check new (testCoreServiceUrl);
-    
+
     // Test data setup
     string testId = "ID-MIN-A-UPDATE";
-    
+
     // Create tabular data structure
     json tabularData = {
         "columns": ["id", "name", "age", "department", "salary"],
@@ -2332,7 +2329,7 @@ function testEntityWithTabularAttributesUpdate() returns error? {
                     value: {
                         values: [
                             {
-                                startTime: "",
+                                startTime: "2025-12-01T00:00:00Z",
                                 endTime: "",
                                 value: tabularDataFilterAny
                             }
@@ -2509,7 +2506,7 @@ function testTabularAttributeIdempotency() returns error? {
                     key: attrName,
                     value: {
                         values: [
-                            { startTime: "", endTime: "", value: allRowsFilterAny }
+                            { startTime: "2025-02-01T00:00:00Z", endTime: "", value: allRowsFilterAny }
                         ]
                     }
                 }

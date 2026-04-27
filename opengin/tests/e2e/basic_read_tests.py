@@ -1,3 +1,4 @@
+from requests import request
 import requests
 import json
 import sys
@@ -633,7 +634,7 @@ def create_entity_for_read():
                     "values": [
                         {
                             "startTime": "2024-11-01T00:00:00Z",
-                            "endTime": "",
+                            "endTime": "2024-11-30T00:00:00Z",
                             "value": {
                                 "columns": ["e_id", "name", "age", "department", "salary"],
                                 "rows": [
@@ -695,6 +696,37 @@ def create_entity_for_read():
         ],
         "attributes": [],
         "relationships": []
+    }
+
+    # first entity with a new attribute
+    payload_child_4 = {
+        "id": RELATED_ID_1,
+        "attributes": [
+            {
+                "key": "test_data",
+                "value": {
+                    "values": [
+                            {
+                                "startTime": "",
+                                "endTime": "",
+                                "value": {
+                                    "columns": [
+                                        "id",
+                                        "name",
+                                        "age",
+                                        "department",
+                                        "salary",
+                                    ],
+                                    "rows": [
+                                        [1, "Iris West", 30, "Marketing", 12300.50],
+                                        [2, "Barry Allen", 25, "Sales", 22300.50],
+                                    ],
+                                },
+                            }
+                        ]
+                    },
+                }
+            ],
     }
 
     payload_source = {
@@ -785,9 +817,36 @@ def create_entity_for_read():
     assert res.status_code == 201 or res.status_code == 200, f"Failed to create entity: {res.text}"
     print("✅ Created third related entity.")
 
+    res = requests.put(INGESTION_API_URL + "/" + RELATED_ID_1, json=payload_child_4)
+    assert res.status_code == 500, f"Failed to update entity: {res.text}"
+    print("✅ Failed to update entity. Working as expected.")
+
     res = requests.post(INGESTION_API_URL, json=payload_source)
     assert res.status_code == 201 or res.status_code == 200, f"Failed to create entity: {res.text}"
     print("✅ Created base entity for read tests.")
+
+    res = requests.get(INGESTION_API_URL + "/" + RELATED_ID_1)
+    assert res.status_code == 200, f"Failed to fetch entity: {res.text}"
+
+    url =  READ_API_URL + "/" + RELATED_ID_1 + "/relations"
+
+    payload = {
+        "name": "IS_ATTRIBUTE",
+        "startTime": "2024-11-01T00:00:00Z",
+        "endTime": "2024-11-30T00:00:00Z"
+    }
+
+    res = requests.post(url, json=payload)
+    print(res.status_code, res.json())
+    assert res.status_code in [200], f"Failed to read relationships: {res.text}"
+    print("✅ Fetched relationship_1...")
+
+    relationship = res.json()
+
+    assert relationship[0]["startTime"] == "2024-11-01T00:00:00Z"
+    assert relationship[0]["endTime"] == "2024-11-30T00:00:00Z"
+    
+    print("✅ Verified start and end times of entity's attributes.")
 
 def test_attribute_fields_combinations():
     """Test different field combinations for attribute retrieval."""

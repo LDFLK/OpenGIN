@@ -56,7 +56,7 @@ type AttributeMetadata struct {
 	StoragePath   string // Path/location in the specific storage system
 	Created       time.Time
 	Updated       time.Time
-	EndTime       time.Time
+	Terminated    *time.Time
 	Schema        map[string]interface{} // Schema information
 }
 
@@ -126,6 +126,14 @@ func (g *GraphMetadataManager) createAttributeLookUpGraph(ctx context.Context, m
 
 	// create the attribute node in the graph
 	// stored parameters: id, kind, name, created
+	log.Printf("DEBUG: Creating attribute node for attribute %s: [endTime: %v] [startTime: %v]", metadata.AttributeName, metadata.Terminated, metadata.Created)
+
+	var terminated string
+
+	if metadata.Terminated != nil {
+		terminated = metadata.Terminated.Format(time.RFC3339)
+	}
+
 	attributeNode := &pb.Entity{
 		Id: metadata.AttributeID,
 		Kind: &pb.Kind{
@@ -134,7 +142,7 @@ func (g *GraphMetadataManager) createAttributeLookUpGraph(ctx context.Context, m
 		},
 		Name:          commons.CreateTimeBasedValue(metadata.Created.Format(time.RFC3339), "", metadata.AttributeName),
 		Created:       metadata.Created.Format(time.RFC3339), // contains the data object's time relation with the world
-		Terminated:    "",                                    // TODO: Implement invalidating a dataset for a specific time range
+		Terminated:    terminated,
 		Metadata:      MakeMetadataOfAttributeMetadata(metadata),
 		Attributes:    make(map[string]*pb.TimeBasedValueList),
 		Relationships: make(map[string]*pb.Relationship),
@@ -234,12 +242,16 @@ func MakeMetadataOfAttributeMetadata(metadata *AttributeMetadata) map[string]*an
 
 // MakeRelationshipProto creates a Relationship protobuf object for IS_ATTRIBUTE relationship
 func MakeRelationshipFromAttributeMetadata(metadata *AttributeMetadata) *pb.Relationship {
+	var endTime string
+	if metadata.Terminated != nil {
+		endTime = metadata.Terminated.Format(time.RFC3339)
+	}
 	return &pb.Relationship{
 		Id:              GenerateAttributeRelationshipID(metadata.EntityID, metadata.AttributeName),
 		RelatedEntityId: metadata.AttributeID,
 		Name:            IS_ATTRIBUTE_RELATIONSHIP,
 		StartTime:       metadata.Created.Format(time.RFC3339),
-		EndTime:         "", // TODO: Implement invalidating a relationship for a specific time range
+		EndTime:         endTime,
 		Direction:       IS_ATTRIBUTE_RELATIONSHIP_DIRECTION,
 	}
 }
