@@ -398,7 +398,7 @@ func (sg *SchemaGenerator) GenerateSchema(anyValue *anypb.Any) (*SchemaInfo, err
 	// Handle different storage types with their specific processing functions
 	switch storageType {
 	case storageinference.TabularData:
-		return sg.handleTabularData(structValue, schema)
+		return sg.inferTabularSchema(structValue, schema)
 	case storageinference.GraphData:
 		return sg.handleGraphData(structValue, schema)
 	case storageinference.ListData:
@@ -480,7 +480,110 @@ func isDateOrDateTime(str string) (bool, bool) {
 	return false, false
 }
 
-// handleTabularData processes tabular data and generates field schemas.
+// structpbScalarIsNull reports whether v represents JSON null or a structpb.Value with no kind set.
+// Some JSON/codecs deserialize null as Value_NullValue; others leave Kind unset (nil).
+func structpbScalarIsNull(v *structpb.Value) bool {
+	if v == nil {
+		return true
+	}
+	if v.GetKind() == nil {
+		return true
+	}
+	_, ok := v.GetKind().(*structpb.Value_NullValue)
+	return ok
+}
+
+// inferColumnTypes scans all rows in tabular data to determine the type of each column.
+// columnsList and rowsList are the list values for column names and row data respectively.
+// It uses the first non-null value in each column to determine the type.
+// All inferred types are marked as nullable.
+// If a column contains only null values, it is assigned NullType.
+func inferColumnTypes(columnsList, rowsList *structpb.ListValue) (map[string]typeinference.TypeInfo, error) {
+	if columnsList == nil || rowsList == nil {
+		return nil, fmt.Errorf("invalid tabular data: 'columns' and 'rows' must be valid lists")
+	}
+
+	const unknown = "__unknown__"
+
+	// Initialise all columns to unknown sentinel
+	columnTypes := make(map[string]typeinference.TypeInfo, len(columnsList.Values))
+	for _, col := range columnsList.Values {
+		columnTypes[col.GetStringValue()] = typeinference.TypeInfo{Type: typeinference.DataType(unknown)}
+	}
+
+	// Scan rows until each column has a type from its first non-null value (or all-null → NullType below).
+	nPending := len(columnTypes)
+	rowsLoop:
+		for rowIndex, row := range rowsList.Values {
+			rowData := row.GetListValue()
+			if len(rowData.Values) != len(columnsList.Values) {
+				return nil, fmt.Errorf("row %d length (%d) does not match number of columns (%d)", rowIndex, len(rowData.Values), len(columnsList.Values))
+			}
+			for i, value := range rowData.Values {
+				colName := columnsList.Values[i].GetStringValue()
+				if columnTypes[colName].Type != typeinference.DataType(unknown) {
+					continue
+				}
+
+				if structpbScalarIsNull(value) {
+					continue
+				}
+
+				matched := false
+				switch value.GetKind().(type) {
+				case *structpb.Value_NumberValue:
+					columnTypes[colName] = typeinference.TypeInfo{
+						Type:       typeinference.NumericType,
+						IsNullable: true,
+					}
+					matched = true
+				case *structpb.Value_BoolValue:
+					columnTypes[colName] = typeinference.TypeInfo{
+						Type:       typeinference.BoolType,
+						IsNullable: true,
+					}
+					matched = true
+				case *structpb.Value_StringValue:
+					str := value.GetStringValue()
+					var inferredType typeinference.DataType
+					if isDate, isDateTime := isDateOrDateTime(str); isDate {
+						if isDateTime {
+							inferredType = typeinference.DateTimeType
+						} else {
+							inferredType = typeinference.DateType
+						}
+					} else {
+						inferredType = typeinference.StringType
+					}
+					columnTypes[colName] = typeinference.TypeInfo{
+						Type:       inferredType,
+						IsNullable: true,
+					}
+					matched = true
+				}
+				if matched {
+					nPending--
+					if nPending == 0 {
+						break rowsLoop
+					}
+				}
+			}
+		}
+
+	// Any column still unknown = all nulls
+	for colName, info := range columnTypes {
+		if info.Type == typeinference.DataType(unknown) {
+			columnTypes[colName] = typeinference.TypeInfo{
+				Type:       typeinference.NullType,
+				IsNullable: true,
+			}
+		}
+	}
+
+	return columnTypes, nil
+}
+
+// inferTabularSchema infers the field schemas for tabular data.
 // The function expects a struct with "columns" and "rows" fields, where:
 //   - columns: A list of strings representing column names
 //   - rows: A list of lists, where each inner list represents a row of data
@@ -554,7 +657,7 @@ func isDateOrDateTime(str string) (bool, bool) {
 //	        }
 //	    }
 //	}
-func (sg *SchemaGenerator) handleTabularData(structValue *structpb.Struct, schema *SchemaInfo) (*SchemaInfo, error) {
+func (sg *SchemaGenerator) inferTabularSchema(structValue *structpb.Struct, schema *SchemaInfo) (*SchemaInfo, error) {
 	// Initialize the Fields map
 	schema.Fields = make(map[string]*SchemaInfo)
 
@@ -566,7 +669,7 @@ func (sg *SchemaGenerator) handleTabularData(structValue *structpb.Struct, schem
 	}
 
 	// Verify columns is a list
-	columnsList, ok := columnsField.GetKind().(*structpb.Value_ListValue)
+	_, ok := columnsField.GetKind().(*structpb.Value_ListValue)
 	if !ok {
 		return nil, fmt.Errorf("columns must be a list")
 	}
@@ -577,68 +680,23 @@ func (sg *SchemaGenerator) handleTabularData(structValue *structpb.Struct, schem
 		return nil, fmt.Errorf("rows must be a list")
 	}
 
-	// Get column names
-	columnNames := make([]string, len(columnsList.ListValue.Values))
-	for i, col := range columnsList.ListValue.Values {
-		if strVal, ok := col.GetKind().(*structpb.Value_StringValue); ok {
-			columnNames[i] = strVal.StringValue
-		} else {
-			return nil, fmt.Errorf("column names must be strings")
-		}
-	}
-
-	// Process first row to determine types
 	if len(rowsList.ListValue.Values) == 0 {
 		return nil, fmt.Errorf("table must have at least one row")
 	}
 
-	firstRow := rowsList.ListValue.Values[0]
-	rowValues, ok := firstRow.GetKind().(*structpb.Value_ListValue)
-	if !ok {
-		return nil, fmt.Errorf("row must be a list")
+	// Infer column types by scanning all rows (first non-null value per column)
+	columnTypes, err := inferColumnTypes(columnsField.GetListValue(), rowsList.ListValue)
+	if err != nil {
+		return nil, err
 	}
 
-	if len(rowValues.ListValue.Values) != len(columnNames) {
-		return nil, fmt.Errorf("row length does not match number of columns")
-	}
-
-	// Create field schemas based on first row values
-	for i, value := range rowValues.ListValue.Values {
-		columnName := columnNames[i]
-		fieldSchema := &SchemaInfo{
+	// Build field schemas from inferred types
+	for colName, typeInfo := range columnTypes {
+		info := typeInfo // copy to avoid loop-variable capture
+		schema.Fields[colName] = &SchemaInfo{
 			StorageType: storageinference.ScalarData,
-			TypeInfo:    &typeinference.TypeInfo{},
+			TypeInfo:    &info,
 		}
-
-		switch value.GetKind().(type) {
-		case *structpb.Value_StringValue:
-			str := value.GetStringValue()
-			if isDate, isDateTime := isDateOrDateTime(str); isDate {
-				if isDateTime {
-					fieldSchema.TypeInfo.Type = typeinference.DateTimeType
-				} else {
-					fieldSchema.TypeInfo.Type = typeinference.DateType
-				}
-			} else {
-				fieldSchema.TypeInfo.Type = typeinference.StringType
-			}
-		case *structpb.Value_NumberValue:
-			num := value.GetNumberValue()
-			if num == float64(int64(num)) {
-				fieldSchema.TypeInfo.Type = typeinference.IntType
-			} else {
-				fieldSchema.TypeInfo.Type = typeinference.FloatType
-			}
-		case *structpb.Value_BoolValue:
-			fieldSchema.TypeInfo.Type = typeinference.BoolType
-		case *structpb.Value_NullValue:
-			fieldSchema.TypeInfo.Type = typeinference.NullType
-			fieldSchema.TypeInfo.IsNullable = true
-		default:
-			return nil, fmt.Errorf("unsupported value type in row: of type %v", value.GetKind())
-		}
-
-		schema.Fields[columnName] = fieldSchema
 	}
 
 	return schema, nil

@@ -11,13 +11,12 @@ import (
 	"time"
 
 	pb "lk/datafoundation/core-api/lk/datafoundation/core-api"
-	schema "lk/datafoundation/core-api/pkg/schema"
-	"lk/datafoundation/core-api/pkg/typeinference"
 
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/structpb"
 )
+
 
 func TestNewPostgresRepository(t *testing.T) {
 	// Build database URI from main PostgreSQL configuration
@@ -109,145 +108,6 @@ func createTabularDataStruct(columns []string, rows [][]interface{}) (*anypb.Any
 
 	// Pack into Any
 	return anypb.New(tabularStruct)
-}
-
-func TestValidateAndReturnTabularDataTypes(t *testing.T) {
-	tests := []struct {
-		name          string
-		columns       []string
-		rows          [][]interface{}
-		expectedTypes map[string]typeinference.TypeInfo
-		expectError   bool
-	}{
-		{
-			name:    "basic types",
-			columns: []string{"int_col", "float_col", "string_col", "bool_col", "date_col"},
-			rows: [][]interface{}{
-				{42, 3.14, "hello", true, "2024-03-14T15:30:45Z"},
-				{123, 2.718, "world", false, "2024-03-14"},
-			},
-			expectedTypes: map[string]typeinference.TypeInfo{
-				"int_col": {
-					Type: typeinference.IntType,
-				},
-				"float_col": {
-					Type: typeinference.FloatType,
-				},
-				"string_col": {
-					Type: typeinference.StringType,
-				},
-				"bool_col": {
-					Type: typeinference.BoolType,
-				},
-				"date_col": {
-					Type: typeinference.DateTimeType,
-				},
-			},
-			expectError: false,
-		},
-		{
-			name:    "mixed types become strings",
-			columns: []string{"mixed_col"},
-			rows: [][]interface{}{
-				{42},
-				{"not a number"},
-			},
-			expectedTypes: map[string]typeinference.TypeInfo{
-				"mixed_col": {
-					Type:       typeinference.StringType,
-					IsNullable: true,
-				},
-			},
-			expectError: false,
-		},
-		{
-			name:    "all integers",
-			columns: []string{"int_col"},
-			rows: [][]interface{}{
-				{1},
-				{2},
-				{3},
-			},
-			expectedTypes: map[string]typeinference.TypeInfo{
-				"int_col": {
-					Type: typeinference.IntType,
-				},
-			},
-			expectError: false,
-		},
-		{
-			name:    "mixed numbers become float",
-			columns: []string{"num_col"},
-			rows: [][]interface{}{
-				{1},
-				{2.5},
-			},
-			expectedTypes: map[string]typeinference.TypeInfo{
-				"num_col": {
-					Type: typeinference.FloatType,
-				},
-			},
-			expectError: false,
-		},
-		{
-			name:    "mixed dates become strings",
-			columns: []string{"date_col"},
-			rows: [][]interface{}{
-				{"2024-03-14T15:30:45Z"},
-				{"not a date"},
-			},
-			expectedTypes: map[string]typeinference.TypeInfo{
-				"date_col": {
-					Type:       typeinference.StringType,
-					IsNullable: true,
-				},
-			},
-			expectError: false,
-		},
-		{
-			name:          "empty table",
-			columns:       []string{"col1", "col2"},
-			rows:          [][]interface{}{},
-			expectedTypes: map[string]typeinference.TypeInfo{},
-			expectError:   false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Create the tabular data struct
-			tabularData, err := createTabularDataStruct(tt.columns, tt.rows)
-			if err != nil {
-				t.Fatalf("Failed to create tabular data struct: %v", err)
-			}
-			assert.NotNil(t, tabularData, "Failed to create tabular data struct")
-
-			// Unmarshal to structpb.Struct
-			var dataStruct structpb.Struct
-			err = tabularData.UnmarshalTo(&dataStruct)
-			assert.NoError(t, err, "Failed to unmarshal tabular data")
-
-			// Call validateAndReturnTabularDataTypes
-			columnTypes, err := validateAndReturnTabularDataTypes(&dataStruct)
-
-			if tt.expectError {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-				assert.Equal(t, len(tt.expectedTypes), len(columnTypes),
-					"Number of column types mismatch")
-
-				for colName, expectedType := range tt.expectedTypes {
-					actualType, exists := columnTypes[colName]
-					assert.True(t, exists, "Column %s not found in results", colName)
-					assert.Equal(t, expectedType.Type, actualType.Type,
-						"Type mismatch for column %s", colName)
-					assert.Equal(t, expectedType.IsNullable, actualType.IsNullable,
-						"Nullable mismatch for column %s", colName)
-				}
-			}
-		})
-	}
 }
 
 func TestDateTimeDetection(t *testing.T) {
@@ -431,12 +291,9 @@ func TestInsertSampleData(t *testing.T) {
 				Value:     dataStruct,
 			}
 
-			schemaInfo, err := schema.GenerateSchema(dataStruct)
-			assert.NoError(t, err, "Failed to generate schema")
-
-			// Handle attributes (this will create table and insert data)
-			err = repo.HandleTabularData(ctx, tt.entityID, tt.attrName, timeBasedValue, schemaInfo)
-			assert.NoError(t, err, "Failed to handle attributes")
+			// Store tabular attribute data (creates table on first call, inserts rows)
+			err = repo.StoreTabularData(ctx, tt.entityID, tt.attrName, timeBasedValue)
+			assert.NoError(t, err, "Failed to store tabular data")
 
 			// Verify table exists by retrieving the actual table name from entity_attributes
 			var tableName string

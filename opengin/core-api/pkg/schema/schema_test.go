@@ -9,6 +9,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/types/known/structpb"
+
+	"lk/datafoundation/core-api/pkg/typeinference"
 )
 
 // TestSchemaGeneration tests the schema generation for different data structures
@@ -525,10 +528,10 @@ func TestSchemaGeneration(t *testing.T) {
 		},
 		"simple_tabular_data": {
 			input: `{
-				"columns": ["id", "name", "age"],
+				"columns": ["id", "name", "age", "salary"],
 				"rows": [
-					[1, "Alice", 30],
-					[2, "Bob", 25]
+					[1, "Alice", 30, 900.60],
+					[2, "Bob", 25, 100]
 				]
 			}`,
 			expected: `{
@@ -540,19 +543,29 @@ func TestSchemaGeneration(t *testing.T) {
 					"id": {
 						"storage_type": "scalar",
 						"type_info": {
-							"type": "int"
+							"type": "numeric",
+							"is_nullable": true
 						}
 					},
 					"name": {
 						"storage_type": "scalar",
 						"type_info": {
-							"type": "string"
+							"type": "string",
+							"is_nullable": true
 						}
 					},
 					"age": {
 						"storage_type": "scalar",
 						"type_info": {
-							"type": "int"
+							"type": "numeric",
+							"is_nullable": true
+						}
+					},
+					"salary": {
+						"storage_type": "scalar",
+						"type_info": {
+							"type": "numeric",
+							"is_nullable": true
 						}
 					}
 				}
@@ -591,4 +604,172 @@ func TestSchemaGeneration(t *testing.T) {
 			assert.Equal(t, expectedJSON, *schemaJSON)
 		})
 	}
+}
+
+// makeTabularStruct builds a *structpb.Struct in {columns:[...], rows:[[...],...]} format.
+func makeTabularStruct(t *testing.T, columns []string, rows [][]interface{}) *structpb.Struct {
+	t.Helper()
+	colVals := make([]*structpb.Value, len(columns))
+	for i, c := range columns {
+		colVals[i] = structpb.NewStringValue(c)
+	}
+	rowVals := make([]*structpb.Value, len(rows))
+	for i, row := range rows {
+		cells := make([]*structpb.Value, len(row))
+		for j, cell := range row {
+			switch v := cell.(type) {
+			case nil:
+				cells[j] = structpb.NewNullValue()
+			case string:
+				cells[j] = structpb.NewStringValue(v)
+			case float64:
+				cells[j] = structpb.NewNumberValue(v)
+			case int:
+				cells[j] = structpb.NewNumberValue(float64(v))
+			case bool:
+				cells[j] = structpb.NewBoolValue(v)
+			}
+		}
+		rowVals[i] = structpb.NewListValue(&structpb.ListValue{Values: cells})
+	}
+	return &structpb.Struct{
+		Fields: map[string]*structpb.Value{
+			"columns": structpb.NewListValue(&structpb.ListValue{Values: colVals}),
+			"rows":    structpb.NewListValue(&structpb.ListValue{Values: rowVals}),
+		},
+	}
+}
+
+// TestInferColumnTypes tests the inferColumnTypes function directly.
+func TestInferColumnTypes(t *testing.T) {
+	tests := []struct {
+		name          string
+		columns       []string
+		rows          [][]interface{}
+		expectError   bool
+		expectedTypes map[string]typeinference.DataType
+	}{
+		{
+			name:    "numbers infer as NumericType",
+			columns: []string{"val"},
+			rows:    [][]interface{}{{42}, {3.14}},
+			expectedTypes: map[string]typeinference.DataType{
+				"val": typeinference.NumericType,
+			},
+		},
+		{
+			name:    "null in row 1 resolved by row 2",
+			columns: []string{"val"},
+			rows:    [][]interface{}{{nil}, {99}},
+			expectedTypes: map[string]typeinference.DataType{
+				"val": typeinference.NumericType,
+			},
+		},
+		{
+			name:    "string column",
+			columns: []string{"name"},
+			rows:    [][]interface{}{{"Alice"}, {"Bob"}},
+			expectedTypes: map[string]typeinference.DataType{
+				"name": typeinference.StringType,
+			},
+		},
+		{
+			name:    "bool column",
+			columns: []string{"active"},
+			rows:    [][]interface{}{{true}, {false}},
+			expectedTypes: map[string]typeinference.DataType{
+				"active": typeinference.BoolType,
+			},
+		},
+		{
+			name:    "datetime string column",
+			columns: []string{"ts"},
+			rows:    [][]interface{}{{"2024-03-20T10:00:00Z"}, {"2024-03-21T10:00:00Z"}},
+			expectedTypes: map[string]typeinference.DataType{
+				"ts": typeinference.DateTimeType,
+			},
+		},
+		{
+			name:    "date string column",
+			columns: []string{"d"},
+			rows:    [][]interface{}{{"2024-03-20"}, {"2024-03-21"}},
+			expectedTypes: map[string]typeinference.DataType{
+				"d": typeinference.DateType,
+			},
+		},
+		{
+			name:    "all nulls infer as NullType",
+			columns: []string{"val"},
+			rows:    [][]interface{}{{nil}, {nil}},
+			expectedTypes: map[string]typeinference.DataType{
+				"val": typeinference.NullType,
+			},
+		},
+		{
+			name:    "type set from first non-null ignores later values",
+			columns: []string{"val"},
+			rows:    [][]interface{}{{nil}, {42}, {"not a number"}},
+			expectedTypes: map[string]typeinference.DataType{
+				"val": typeinference.NumericType, // set by row 1 (42), row 2 irrelevant to inference
+			},
+		},
+		{
+			name:    "multiple columns inferred independently",
+			columns: []string{"num", "str", "flag"},
+			rows: [][]interface{}{
+				{nil, "hello", nil},
+				{7, nil, true},
+			},
+			expectedTypes: map[string]typeinference.DataType{
+				"num":  typeinference.NumericType,
+				"str":  typeinference.StringType,
+				"flag": typeinference.BoolType,
+			},
+		},
+		{
+			name:    "multiple columns inferred independently with nulls",
+			columns: []string{"num", "str"},
+			rows: [][]interface{}{
+				{nil, ""},
+				{7.00, nil},
+			},
+			expectedTypes: map[string]typeinference.DataType{
+				"num": typeinference.NumericType,
+				"str": typeinference.StringType,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			data := makeTabularStruct(t, tt.columns, tt.rows)
+			colTypes, err := inferColumnTypes(data.Fields["columns"].GetListValue(), data.Fields["rows"].GetListValue())
+
+			if tt.expectError {
+				assert.Error(t, err)
+				return
+			}
+			assert.NoError(t, err)
+			for col, expectedType := range tt.expectedTypes {
+				actual, ok := colTypes[col]
+				assert.True(t, ok, "column %q missing from result", col)
+				assert.Equal(t, expectedType, actual.Type, "type mismatch for column %q", col)
+				assert.True(t, actual.IsNullable, "column %q should be nullable", col)
+			}
+		})
+	}
+}
+
+func TestInferColumnTypesUnsetKindActsAsNull(t *testing.T) {
+	columnsList := &structpb.ListValue{Values: []*structpb.Value{
+		structpb.NewStringValue("x"),
+	}}
+	rowsList := &structpb.ListValue{Values: []*structpb.Value{
+		structpb.NewListValue(&structpb.ListValue{Values: []*structpb.Value{{Kind: nil}}}),
+		structpb.NewListValue(&structpb.ListValue{Values: []*structpb.Value{structpb.NewNumberValue(1)}}),
+	}}
+	colTypes, err := inferColumnTypes(columnsList, rowsList)
+	assert.NoError(t, err)
+	assert.Equal(t, typeinference.NumericType, colTypes["x"].Type)
+	assert.True(t, colTypes["x"].IsNullable)
 }

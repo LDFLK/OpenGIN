@@ -10,7 +10,6 @@ import (
 	neo4jrepository "lk/datafoundation/core-api/db/repository/neo4j"
 	postgresrepository "lk/datafoundation/core-api/db/repository/postgres"
 	pb "lk/datafoundation/core-api/lk/datafoundation/core-api"
-	schema "lk/datafoundation/core-api/pkg/schema"
 	storageinference "lk/datafoundation/core-api/pkg/storageinference"
 	"log"
 
@@ -542,16 +541,7 @@ func (r *TabularAttributeResolver) CreateResolve(ctx context.Context, entityID, 
 		}
 	}
 
-	schemaInfo, err := schema.GenerateSchema(value.Value)
-	if err != nil {
-		return &Result{
-			Data:    nil,
-			Success: false,
-			Error:   fmt.Errorf("failed to generate schema: %v", err),
-		}
-	}
-
-	err = r.repo.HandleTabularData(ctx, entityID, attrName, value, schemaInfo)
+	err := r.repo.StoreTabularData(ctx, entityID, attrName, value)
 	if err != nil {
 		return &Result{
 			Data:    nil,

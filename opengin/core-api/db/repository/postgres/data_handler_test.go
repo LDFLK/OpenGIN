@@ -1073,3 +1073,215 @@ func TestGetDataWithRowFiltering(t *testing.T) {
 
 	})
 }
+
+// TestValidateRowsAgainstSchema tests shared row validation.
+func TestValidateRowsAgainstSchema(t *testing.T) {
+	numericSchema := &schema.SchemaInfo{
+		StorageType: storageinference.TabularData,
+		Fields: map[string]*schema.SchemaInfo{
+			"num": {
+				StorageType: storageinference.ScalarData,
+				TypeInfo:    &typeinference.TypeInfo{Type: typeinference.NumericType, IsNullable: true},
+			},
+			"name": {
+				StorageType: storageinference.ScalarData,
+				TypeInfo:    &typeinference.TypeInfo{Type: typeinference.StringType, IsNullable: true},
+			},
+			"flag": {
+				StorageType: storageinference.ScalarData,
+				TypeInfo:    &typeinference.TypeInfo{Type: typeinference.BoolType, IsNullable: true},
+			},
+		},
+	}
+
+	makeStruct := func(columns []string, rows [][]interface{}) *structpb.Struct {
+		colVals := make([]*structpb.Value, len(columns))
+		for i, c := range columns {
+			colVals[i] = structpb.NewStringValue(c)
+		}
+		rowVals := make([]*structpb.Value, len(rows))
+		for i, row := range rows {
+			cells := make([]*structpb.Value, len(row))
+			for j, cell := range row {
+				switch v := cell.(type) {
+				case nil:
+					cells[j] = structpb.NewNullValue()
+				case string:
+					cells[j] = structpb.NewStringValue(v)
+				case float64:
+					cells[j] = structpb.NewNumberValue(v)
+				case int:
+					cells[j] = structpb.NewNumberValue(float64(v))
+				case bool:
+					cells[j] = structpb.NewBoolValue(v)
+				}
+			}
+			rowVals[i] = structpb.NewListValue(&structpb.ListValue{Values: cells})
+		}
+		return &structpb.Struct{
+			Fields: map[string]*structpb.Value{
+				"columns": structpb.NewListValue(&structpb.ListValue{Values: colVals}),
+				"rows":    structpb.NewListValue(&structpb.ListValue{Values: rowVals}),
+			},
+		}
+	}
+
+	tests := []struct {
+		name        string
+		columns     []string
+		rows        [][]interface{}
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name:    "all rows valid",
+			columns: []string{"num", "name", "flag"},
+			rows: [][]interface{}{
+				{42, "Alice", true},
+				{3.14, "Bob", false},
+			},
+			expectError: false,
+		},
+		{
+			name:    "null values always accepted",
+			columns: []string{"num", "name", "flag"},
+			rows: [][]interface{}{
+				{nil, nil, nil},
+			},
+			expectError: false,
+		},
+		{
+			name:    "string in numeric column rejected",
+			columns: []string{"num"},
+			rows: [][]interface{}{
+				{"not a number"},
+			},
+			expectError: true,
+			errorMsg:    "expected numeric",
+		},
+		{
+			name:    "number in string column rejected",
+			columns: []string{"name"},
+			rows: [][]interface{}{
+				{99},
+			},
+			expectError: true,
+			errorMsg:    "expected string",
+		},
+		{
+			name:    "string in bool column rejected",
+			columns: []string{"flag"},
+			rows: [][]interface{}{
+				{"true"},
+			},
+			expectError: true,
+			errorMsg:    "expected bool",
+		},
+		{
+			name:    "error reports correct row and column",
+			columns: []string{"num", "name"},
+			rows: [][]interface{}{
+				{1, "Alice"},
+				{2, 999}, // row 1, column "name" is wrong
+			},
+			expectError: true,
+			errorMsg:    `row 1, column "name"`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			data := makeStruct(tt.columns, tt.rows)
+			err := validateRowsAgainstSchema(data, numericSchema)
+			if tt.expectError {
+				assert.Error(t, err)
+				if tt.errorMsg != "" {
+					assert.Contains(t, err.Error(), tt.errorMsg)
+				}
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+// JSON null in tabular rows can deserialize to structpb.Value with Kind unset (nil) instead of
+// Value_NullValue; that must still pass validation for nullable columns.
+func TestValidateRowsAgainstSchemaUnsetKindActsAsNull(t *testing.T) {
+	dateSchema := &schema.SchemaInfo{
+		StorageType: storageinference.TabularData,
+		Fields: map[string]*schema.SchemaInfo{
+			"testNull": {
+				StorageType: storageinference.ScalarData,
+				TypeInfo:    &typeinference.TypeInfo{Type: typeinference.DateType, IsNullable: true},
+			},
+		},
+	}
+	data := &structpb.Struct{
+		Fields: map[string]*structpb.Value{
+			"columns": structpb.NewListValue(&structpb.ListValue{Values: []*structpb.Value{structpb.NewStringValue("testNull")}}),
+			"rows": structpb.NewListValue(&structpb.ListValue{Values: []*structpb.Value{
+				structpb.NewListValue(&structpb.ListValue{Values: []*structpb.Value{
+					{Kind: nil},
+				}}),
+			}}),
+		},
+	}
+	err := validateRowsAgainstSchema(data, dateSchema)
+	assert.NoError(t, err)
+}
+
+func TestValidateRowsAgainstSchemaRejectsWrongTypeOnAppend(t *testing.T) {
+	stringSchema := &schema.SchemaInfo{
+		StorageType: storageinference.TabularData,
+		Fields: map[string]*schema.SchemaInfo{
+			"val": {
+				StorageType: storageinference.ScalarData,
+				TypeInfo:    &typeinference.TypeInfo{Type: typeinference.StringType, IsNullable: true},
+			},
+		},
+	}
+
+	data := &structpb.Struct{
+		Fields: map[string]*structpb.Value{
+			"columns": structpb.NewListValue(&structpb.ListValue{Values: []*structpb.Value{
+				structpb.NewStringValue("val"),
+			}}),
+			"rows": structpb.NewListValue(&structpb.ListValue{Values: []*structpb.Value{
+				structpb.NewListValue(&structpb.ListValue{Values: []*structpb.Value{
+					structpb.NewNumberValue(123),
+				}}),
+			}}),
+		},
+	}
+
+	err := validateRowsAgainstSchema(data, stringSchema)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "expected string")
+}
+
+func TestIsTypeCompatibleAllowsNullTypeOnIncomingSchema(t *testing.T) {
+	assert.True(t, isTypeCompatible(typeinference.StringType, typeinference.NullType))
+	assert.True(t, isTypeCompatible(typeinference.NumericType, typeinference.NullType))
+	assert.True(t, isTypeCompatible(typeinference.DateType, typeinference.NullType))
+}
+
+func TestHasNullOnlyColumns(t *testing.T) {
+	schemaInfo := &schema.SchemaInfo{
+		StorageType: storageinference.TabularData,
+		Fields: map[string]*schema.SchemaInfo{
+			"id": {
+				StorageType: storageinference.ScalarData,
+				TypeInfo:    &typeinference.TypeInfo{Type: typeinference.NumericType, IsNullable: true},
+			},
+			"val": {
+				StorageType: storageinference.ScalarData,
+				TypeInfo:    &typeinference.TypeInfo{Type: typeinference.NullType, IsNullable: true},
+			},
+		},
+	}
+
+	nullOnlyCols := hasNullOnlyColumns(schemaInfo)
+	assert.Equal(t, []string{"val"}, nullOnlyCols)
+}
+

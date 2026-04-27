@@ -1093,6 +1093,44 @@ class TabularIntegrityTests(BasicCORETests):
         super().__init__(None)
         self.ATTR_NAME = "test_data"
 
+    def _create_base_entity(self, entity_id, minor_kind="tabular-inference"):
+        payload = {
+            "id": entity_id,
+            "kind": {"major": "test", "minor": minor_kind},
+            "created": "2025-01-01T00:00:00Z",
+            "terminated": "",
+            "name": {"startTime": "2025-01-01T00:00:00Z", "endTime": "", "value": "Tabular E2E Entity"},
+            "metadata": [],
+            "attributes": [],
+            "relationships": []
+        }
+        res = requests.post(self.base_url, json=payload)
+        assert res.status_code == 201, f"Failed to create base entity {entity_id}: {res.text}"
+
+    def _put_tabular_attribute(self, entity_id, attr_name, columns, rows, start_time="2025-01-01T00:00:00Z"):
+        payload = {
+            "id": entity_id,
+            "attributes": [
+                {
+                    "key": attr_name,
+                    "value": {
+                        "values": [
+                            {
+                                "startTime": start_time,
+                                "endTime": "",
+                                "value": {
+                                    "columns": columns,
+                                    "rows": rows
+                                }
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+        return requests.put(f"{self.base_url}/{entity_id}", json=payload, headers={"Content-Type": "application/json"})
+
+
     # Test 1 – Idempotency
 
     def test_idempotency(self):
@@ -1352,6 +1390,155 @@ class TabularIntegrityTests(BasicCORETests):
         )
         print("  ✅ [Test 3] Duplicate PK PASSED")
 
+    # Test 4 – New Attribute on Existing Entity (schema inferred on add)
+    def test_add_new_attribute_inference_cases(self):
+        print("\n🧪 [Test 4] Add New Attribute Inference Cases")
+        entity_id = "e2e-tabular-add-attr-cases"
+        self._create_base_entity(entity_id, "tabular-add-attr-cases")
+
+        cases = [
+            {
+                "name": "infer from first row",
+                "attr": "attr_valid_first_row",
+                "columns": ["id", "name"],
+                "rows": [[1, "Alice"], [2, "Bob"]],
+                "should_succeed": True
+            },
+            {
+                "name": "infer from non-first row when first row null",
+                "attr": "attr_null_first_row",
+                "columns": ["id", "description"],
+                "rows": [[1, None], [2, "second row valid"]],
+                "should_succeed": True
+            },
+            {
+                "name": "fail mixed wrong type in lower row",
+                "attr": "attr_type_mismatch",
+                "columns": ["id", "value"],
+                "rows": [[1, "string value"], [2, 123]],
+                "should_succeed": False
+            },
+            {
+                "name": "allow big decimal and normal numbers",
+                "attr": "attr_mixed_numbers",
+                "columns": ["id", "big_num", "decimal_num", "normal_num"],
+                "rows": [[1, 90, 1.5, 42], [2, 8007199254740990, 2.5, 43]],
+                "should_succeed": True
+            },
+            {
+                "name": "allow null in middle row",
+                "attr": "attr_mid_null",
+                "columns": ["id", "val"],
+                "rows": [[1, "a"], [2, None], [3, "c"]],
+                "should_succeed": True
+            },
+            {
+                "name": "fail when entire column all null",
+                "attr": "attr_all_null",
+                "columns": ["id", "all_null_col"],
+                "rows": [[1, None], [2, None]],
+                "should_succeed": False
+            },
+            {
+                "name": "single-row table",
+                "attr": "attr_single_row",
+                "columns": ["id", "value"],
+                "rows": [[1, "only-row"]],
+                "should_succeed": True
+            },
+            {
+                "name": "column count mismatch",
+                "attr": "attr_col_count_mismatch",
+                "columns": ["id", "value"],
+                "rows": [[1], [2, "ok"]],  # first row has fewer columns than declared
+                "should_succeed": False
+            },
+            {
+                "name": "zero rows",
+                "attr": "attr_zero_rows",
+                "columns": ["id", "value"],
+                "rows": [],
+                "should_succeed": False
+            },
+            {
+                "name": "bool/string mismatch",
+                "attr": "attr_bool_string_mismatch",
+                "columns": ["id", "flag"],
+                "rows": [[1, True], [2, "true"]],
+                "should_succeed": False
+            },
+        ]
+
+        for case in cases:
+            res = self._put_tabular_attribute(entity_id, case["attr"], case["columns"], case["rows"])
+            if case["should_succeed"]:
+                assert res.status_code == 200, f"[{case['name']}] expected success, got {res.status_code}: {res.text}"
+            else:
+                assert res.status_code != 200, f"[{case['name']}] expected failure, got {res.status_code}: {res.text}"
+            print(f"  ✅ {case['name']} -> HTTP {res.status_code}")
+
+        print("  ✅ [Test 4] Add Attribute Inference Cases PASSED")
+
+    # Test 5 – Update Existing Attribute (append against stored schema)
+    def test_update_existing_attribute_inference_cases(self):
+        print("\n🧪 [Test 5] Update Existing Attribute Inference Cases")
+        entity_id = "e2e-tabular-update-attr-cases"
+        attr_name = "update_attr"
+        self._create_base_entity(entity_id, "tabular-update-attr-cases")
+
+        # Initial schema-establishing batch
+        res = self._put_tabular_attribute(
+            entity_id,
+            attr_name,
+            ["id", "val", "num"],
+            [[1, "a", 10]],
+            start_time="2025-01-01T00:00:00Z"
+        )
+        assert res.status_code == 200, f"Initial append should succeed, got {res.status_code}: {res.text}"
+
+        cases = [
+            {
+                "name": "fail wrong type against existing table",
+                "columns": ["id", "val", "num"],
+                "rows": [[2, 123, 20]],
+                "should_succeed": False
+            },
+            {
+                "name": "allow decimal and big numbers after integers",
+                "columns": ["id", "val", "num"],
+                "rows": [[3, "b", 10.5], [4, "c", 9007199254740991]],
+                "should_succeed": True
+            },
+            {
+                "name": "allow row with null values",
+                "columns": ["id", "val", "num"],
+                "rows": [[5, None, None]],
+                "should_succeed": True
+            },
+            {
+                "name": "allow append where column values are all null in this batch",
+                "columns": ["id", "val", "num"],
+                "rows": [[6, None, None], [7, None, None]],
+                "should_succeed": True
+            },
+        ]
+
+        for i, case in enumerate(cases):
+            res = self._put_tabular_attribute(
+                entity_id,
+                attr_name,
+                case["columns"],
+                case["rows"],
+                start_time=f"2025-02-0{i+1}T00:00:00Z"
+            )
+            if case["should_succeed"]:
+                assert res.status_code == 200, f"[{case['name']}] expected success, got {res.status_code}: {res.text}"
+            else:
+                assert res.status_code != 200, f"[{case['name']}] expected failure, got {res.status_code}: {res.text}"
+            print(f"  ✅ {case['name']} -> HTTP {res.status_code}")
+
+        print("  ✅ [Test 5] Update Existing Attribute Inference Cases PASSED")
+
 
 if __name__ == "__main__":
     print("🚀 Running End-to-End API Test Suite...")
@@ -1394,6 +1581,8 @@ if __name__ == "__main__":
         tabular_integrity_tests.test_idempotency()
         tabular_integrity_tests.test_schema_mismatch()
         tabular_integrity_tests.test_duplicate_primary_key()
+        tabular_integrity_tests.test_add_new_attribute_inference_cases()
+        tabular_integrity_tests.test_update_existing_attribute_inference_cases()
         print("\n🟢 Running Tabular Integrity Tests... Done")
 
         print("\n🎉 All tests passed successfully!")

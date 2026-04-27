@@ -18,17 +18,21 @@ import (
 type DataType string
 
 const (
-	// Primitive Types
+	// Primitive Types — inferred directly from a single value
 	IntType    DataType = "int"    // Integer values (e.g., 42, -1)
 	FloatType  DataType = "float"  // Floating-point numbers (e.g., 3.14, -0.001)
 	StringType DataType = "string" // Text data
 	BoolType   DataType = "bool"   // Boolean values (true/false)
 	NullType   DataType = "null"   // Null values
 
-	// Special Types
+	// Special String Sub-types — detected from string content
 	DateType     DataType = "date"     // Date values (e.g., "2024-03-20")
 	TimeType     DataType = "time"     // Time values (e.g., "14:30:00")
 	DateTimeType DataType = "datetime" // Date and time values (e.g., "2024-03-20T14:30:00Z")
+	
+	// Schema/DB-level Types — not produced by value inference;
+	// used when column-level precision is unknown (e.g., tabular data).
+	NumericType  DataType = "numeric"  // Any numeric value, int or float (maps to Postgres NUMERIC)
 )
 
 // TypeInfo contains both the data type and additional metadata about the type.

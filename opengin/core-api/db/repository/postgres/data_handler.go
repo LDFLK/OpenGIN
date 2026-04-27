@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 	"time"
 
@@ -167,104 +168,17 @@ func isTabularData(value *anypb.Any) (bool, *structpb.Struct, error) {
 	return true, &dataStruct, nil
 }
 
-// validateAndReturnTabularDataTypes validates that all values in each column have consistent types
-// and returns a map of column names to their inferred TypeInfo
-func validateAndReturnTabularDataTypes(data *structpb.Struct) (map[string]typeinference.TypeInfo, error) {
-	columnsList := data.Fields["columns"].GetListValue()
-	rowsList := data.Fields["rows"].GetListValue()
-
-	columnTypes := make(map[string]typeinference.TypeInfo)
-
-	// If there are no rows, return empty map
-	if len(rowsList.Values) == 0 {
-		return columnTypes, nil
+// isStructpbNull reports whether a structpb scalar should be treated as SQL NULL.
+// JSON null may deserialize as either Value_NullValue or a Value with an unset Kind.
+func isStructpbNull(v *structpb.Value) bool {
+	if v == nil {
+		return true
 	}
-
-	// Initialize column types
-	for _, col := range columnsList.Values {
-		colName := col.GetStringValue()
-		columnTypes[colName] = typeinference.TypeInfo{
-			Type:       typeinference.StringType, // Default to string
-			IsNullable: false,
-		}
+	if v.Kind == nil {
+		return true
 	}
-
-	// Process all rows to determine types
-	for _, row := range rowsList.Values {
-		rowData := row.GetListValue()
-		for i, value := range rowData.Values {
-			colName := columnsList.Values[i].GetStringValue()
-			currentType := columnTypes[colName]
-
-			switch v := value.Kind.(type) {
-			case *structpb.Value_NumberValue:
-				num := v.NumberValue
-				switch currentType.Type {
-				case typeinference.StringType:
-					// First number we've seen
-					if num == float64(int64(num)) {
-						columnTypes[colName] = typeinference.TypeInfo{Type: typeinference.IntType}
-					} else {
-						columnTypes[colName] = typeinference.TypeInfo{Type: typeinference.FloatType}
-					}
-				case typeinference.IntType:
-					// If we see a float, promote to float
-					if num != float64(int64(num)) {
-						columnTypes[colName] = typeinference.TypeInfo{Type: typeinference.FloatType}
-					}
-				case typeinference.FloatType:
-					// Already float, no change needed
-				default:
-					// Mixed types, convert to string
-					columnTypes[colName] = typeinference.TypeInfo{
-						Type:       typeinference.StringType,
-						IsNullable: true,
-					}
-				}
-			case *structpb.Value_StringValue:
-				str := v.StringValue
-				switch currentType.Type {
-				case typeinference.StringType:
-					// Check if it's a datetime
-					if isDateTime(str) {
-						columnTypes[colName] = typeinference.TypeInfo{Type: typeinference.DateTimeType}
-					}
-				case typeinference.DateTimeType:
-					// If current string is not a datetime, convert to string
-					if !isDateTime(str) {
-						columnTypes[colName] = typeinference.TypeInfo{
-							Type:       typeinference.StringType,
-							IsNullable: true,
-						}
-					}
-				default:
-					// Mixed types, convert to string
-					columnTypes[colName] = typeinference.TypeInfo{
-						Type:       typeinference.StringType,
-						IsNullable: true,
-					}
-				}
-			case *structpb.Value_BoolValue:
-				if currentType.Type != typeinference.BoolType && currentType.Type != typeinference.StringType {
-					// Mixed types, convert to string
-					columnTypes[colName] = typeinference.TypeInfo{
-						Type:       typeinference.StringType,
-						IsNullable: true,
-					}
-				} else if currentType.Type == typeinference.StringType {
-					columnTypes[colName] = typeinference.TypeInfo{Type: typeinference.BoolType}
-				}
-			default:
-				// Unknown type, convert to string
-				columnTypes[colName] = typeinference.TypeInfo{
-					Type:       typeinference.StringType,
-					IsNullable: true,
-				}
-			}
-		}
-	}
-
-	return columnTypes, nil
+	_, ok := v.Kind.(*structpb.Value_NullValue)
+	return ok
 }
 
 // isDateTime checks if a string is a valid datetime
@@ -292,48 +206,60 @@ func isDateTime(val string) bool {
 	return false
 }
 
-// validateDataAgainstSchema validates that the data matches the schema
-func validateDataAgainstSchema(data *structpb.Struct, schemaInfo *schema.SchemaInfo) error {
+func validateRowsAgainstSchema(data *structpb.Struct, schemaInfo *schema.SchemaInfo) error {
 	columnsList := data.Fields["columns"].GetListValue()
 	rowsList := data.Fields["rows"].GetListValue()
 
-	// Validate column names match schema
-	schemaColumns := make(map[string]bool)
-	for fieldName := range schemaInfo.Fields {
-		schemaColumns[fieldName] = true
+	if columnsList == nil || rowsList == nil {
+		return fmt.Errorf("invalid tabular data: 'columns' and 'rows' must be valid lists")
 	}
 
-	for _, col := range columnsList.Values {
-		colName := col.GetStringValue()
-		if !schemaColumns[colName] {
-			return fmt.Errorf("column %s not found in schema", colName)
-		}
-	}
-
-	// Validate data types for each row
 	for i, row := range rowsList.Values {
 		rowData := row.GetListValue()
+		if len(rowData.Values) != len(columnsList.Values) {
+			return fmt.Errorf("row %d length (%d) does not match number of columns (%d)", i, len(rowData.Values), len(columnsList.Values))
+		}
 		for j, value := range rowData.Values {
 			colName := columnsList.Values[j].GetStringValue()
-			fieldSchema := schemaInfo.Fields[colName]
+			fieldSchema, exists := schemaInfo.Fields[colName]
+			if !exists {
+				return fmt.Errorf("row %d, column %q: not found in schema", i, colName)
+			}
+
+			// Null is always allowed (all columns are nullable)
+			if isStructpbNull(value) {
+				continue
+			}
 
 			// Validate type
 			switch fieldSchema.TypeInfo.Type {
+			case typeinference.NumericType:
+				if _, ok := value.Kind.(*structpb.Value_NumberValue); !ok {
+					return fmt.Errorf("row %d, column %q: expected numeric, got %T", i, colName, value.Kind)
+				}
 			case typeinference.IntType:
 				if v, ok := value.Kind.(*structpb.Value_NumberValue); !ok || v.NumberValue != float64(int64(v.NumberValue)) {
-					return fmt.Errorf("row %d, column %s: expected integer, got %v", i, colName, value)
+					return fmt.Errorf("row %d, column %q: expected integer, got %T", i, colName, value.Kind)
 				}
 			case typeinference.FloatType:
 				if _, ok := value.Kind.(*structpb.Value_NumberValue); !ok {
-					return fmt.Errorf("row %d, column %s: expected float, got %v", i, colName, value)
+					return fmt.Errorf("row %d, column %q: expected float, got %T", i, colName, value.Kind)
 				}
 			case typeinference.BoolType:
 				if _, ok := value.Kind.(*structpb.Value_BoolValue); !ok {
-					return fmt.Errorf("row %d, column %s: expected boolean, got %v", i, colName, value)
+					return fmt.Errorf("row %d, column %q: expected bool, got %T", i, colName, value.Kind)
+				}
+			case typeinference.StringType:
+				if _, ok := value.Kind.(*structpb.Value_StringValue); !ok {
+					return fmt.Errorf("row %d, column %q: expected string, got %T", i, colName, value.Kind)
+				}
+			case typeinference.DateType:
+				if v, ok := value.Kind.(*structpb.Value_StringValue); !ok || !isDateTime(v.StringValue) {
+					return fmt.Errorf("row %d, column %q: expected date string, got %T", i, colName, value.Kind)
 				}
 			case typeinference.DateTimeType:
 				if v, ok := value.Kind.(*structpb.Value_StringValue); !ok || !isDateTime(v.StringValue) {
-					return fmt.Errorf("row %d, column %s: expected datetime, got %v", i, colName, value)
+					return fmt.Errorf("row %d, column %q: expected datetime string, got %T", i, colName, value.Kind)
 				}
 			}
 		}
@@ -378,6 +304,11 @@ func isTypeCompatible(existingType, newType typeinference.DataType) bool {
 	if existingType == newType {
 		return true
 	}
+	// NullType means the incoming batch only had nulls for this column.
+	// For existing tables, that's compatible with any existing column type.
+	if newType == typeinference.NullType {
+		return true
+	}
 
 	// Type promotion rules
 	switch existingType {
@@ -395,8 +326,21 @@ func isTypeCompatible(existingType, newType typeinference.DataType) bool {
 	return false
 }
 
-// handleTabularData processes tabular data attributes
-func (repo *PostgresRepository) HandleTabularData(ctx context.Context, entityID, attrName string, value *pb.TimeBasedValue, schemaInfo *schema.SchemaInfo) error {
+func hasNullOnlyColumns(schemaInfo *schema.SchemaInfo) []string {
+	if schemaInfo == nil {
+		return nil
+	}
+	var cols []string
+	for fieldName, field := range schemaInfo.Fields {
+		if field != nil && field.TypeInfo != nil && field.TypeInfo.Type == typeinference.NullType {
+			cols = append(cols, fieldName)
+		}
+	}
+	return cols
+}
+
+// StoreTabularData persists tabular attribute data to Postgres, creating the backing table if needed and validating incoming rows against the applicable schema.
+func (repo *PostgresRepository) StoreTabularData(ctx context.Context, entityID, attrName string, value *pb.TimeBasedValue) error {
 	// Generate table name - UUID without hyphens (32 chars) + prefix (5 chars) = 37 chars total
 	name := fmt.Sprintf("%s:%s", entityID, attrName)
 	namespace := commons.GetNamespace("attributes")
@@ -404,8 +348,11 @@ func (repo *PostgresRepository) HandleTabularData(ctx context.Context, entityID,
 	unique_id = strings.ReplaceAll(unique_id, "-", "") // Remove hyphens for database compatibility
 	tableName := fmt.Sprintf("attr_%s", unique_id)
 
-	// Convert schema to columns
-	columns := schemaToColumns(schemaInfo)
+	// Unmarshal tabular data once at the beginning to avoid redundant work
+	var tabularStruct structpb.Struct
+	if err := value.Value.UnmarshalTo(&tabularStruct); err != nil {
+		return fmt.Errorf("error unmarshaling tabular data: %v", err)
+	}
 
 	// Check if table exists
 	exists, err := repo.TableExists(ctx, tableName)
@@ -428,26 +375,27 @@ func (repo *PostgresRepository) HandleTabularData(ctx context.Context, entityID,
 			return fmt.Errorf("error unmarshaling existing schema: %v", err)
 		}
 
-		// Compare schemas
-		compatible, err := compareSchemas(&existingSchema, schemaInfo)
-		if err != nil {
-			return fmt.Errorf("schema compatibility check failed: %v", err)
-		}
-
-		if !compatible {
-			return fmt.Errorf("incompatible schema changes detected")
-		}
-
 		// Validate data against existing schema
-		var tabularStruct structpb.Struct
-		if err := value.Value.UnmarshalTo(&tabularStruct); err != nil {
-			return fmt.Errorf("error unmarshaling tabular data: %v", err)
-		}
-
-		if err := validateDataAgainstSchema(&tabularStruct, &existingSchema); err != nil {
+		if err := validateRowsAgainstSchema(&tabularStruct, &existingSchema); err != nil {
 			return fmt.Errorf("data validation failed: %v", err)
 		}
 	} else {
+		schemaInfo, err := schema.GenerateSchema(value.Value)
+		if err != nil {
+			return fmt.Errorf("failed to generate schema: %v", err)
+		}
+		if nullOnlyCols := hasNullOnlyColumns(schemaInfo); len(nullOnlyCols) > 0 {
+			return fmt.Errorf("pre-insert schema validation failed: columns %v have only null values; cannot create new table with null-only inferred types", nullOnlyCols)
+		}
+
+		// Validate all rows against the inferred schema before creating the table
+		if err := validateRowsAgainstSchema(&tabularStruct, schemaInfo); err != nil {
+			return fmt.Errorf("pre-insert schema validation failed: %v", err)
+		}
+
+		// Convert schema to columns
+		columns := schemaToColumns(schemaInfo)
+
 		// Create new table
 		if err := repo.CreateDynamicTable(ctx, tableName, columns); err != nil {
 			return fmt.Errorf("error creating table: %v", err)
@@ -482,12 +430,6 @@ func (repo *PostgresRepository) HandleTabularData(ctx context.Context, entityID,
 		return fmt.Errorf("error creating entity attribute record: %v", err)
 	}
 
-	// Extract data from the TimeBasedValue
-	var tabularStruct structpb.Struct
-	if err := value.Value.UnmarshalTo(&tabularStruct); err != nil {
-		return fmt.Errorf("error unmarshaling tabular data: %v", err)
-	}
-
 	// Extract columns and rows
 	columnsValue := tabularStruct.Fields["columns"].GetListValue()
 	rowsValue := tabularStruct.Fields["rows"].GetListValue()
@@ -512,6 +454,10 @@ func (repo *PostgresRepository) HandleTabularData(ctx context.Context, entityID,
 
 		rows[i] = make([]interface{}, len(rowList.Values))
 		for j, cell := range rowList.Values {
+			if isStructpbNull(cell) {
+				rows[i][j] = nil
+				continue
+			}
 			switch cell.Kind.(type) {
 			case *structpb.Value_StringValue:
 				rows[i][j] = cell.GetStringValue()
@@ -545,6 +491,8 @@ func schemaToColumns(schemaInfo *schema.SchemaInfo) []Column {
 
 		var colType string
 		switch field.TypeInfo.Type {
+		case typeinference.NumericType:
+			colType = "NUMERIC"
 		case typeinference.IntType:
 			colType = "INTEGER"
 		case typeinference.FloatType:
@@ -632,6 +580,83 @@ func GetSchemaOfTable(ctx context.Context, repo *PostgresRepository, tableName s
 	}
 
 	return &schemaInfo, nil
+}
+
+type columnCaster func(interface{}) (interface{}, bool)
+
+func makeColumnCaster(schemaInfo *schema.SchemaInfo, colName string) columnCaster {
+	if schemaInfo == nil {
+		return nil
+	}
+	fieldInfo, exists := schemaInfo.Fields[colName]
+	if !exists || fieldInfo == nil || fieldInfo.TypeInfo == nil {
+		return nil
+	}
+
+	switch fieldInfo.TypeInfo.Type {
+	case typeinference.IntType:
+		return func(val interface{}) (interface{}, bool) {
+			if val == nil {
+				return nil, false
+			}
+			var strVal string
+			switch v := val.(type) {
+			case []byte:
+				strVal = string(v)
+			case string:
+				strVal = v
+			default:
+				return nil, false
+			}
+			intVal, err := strconv.ParseInt(strVal, 10, 64)
+			if err != nil {
+				return nil, false
+			}
+			return intVal, true
+		}
+	case typeinference.NumericType, typeinference.FloatType:
+		return func(val interface{}) (interface{}, bool) {
+			if val == nil {
+				return nil, false
+			}
+			var strVal string
+			switch v := val.(type) {
+			case []byte:
+				strVal = string(v)
+			case string:
+				strVal = v
+			default:
+				return nil, false
+			}
+			floatVal, err := strconv.ParseFloat(strVal, 64)
+			if err != nil {
+				return nil, false
+			}
+			return floatVal, true
+		}
+	case typeinference.BoolType:
+		return func(val interface{}) (interface{}, bool) {
+			if val == nil {
+				return nil, false
+			}
+			var strVal string
+			switch v := val.(type) {
+			case []byte:
+				strVal = string(v)
+			case string:
+				strVal = v
+			default:
+				return nil, false
+			}
+			boolVal, err := strconv.ParseBool(strVal)
+			if err != nil {
+				return nil, false
+			}
+			return boolVal, true
+		}
+	default:
+		return nil
+	}
 }
 
 // TabularData represents the structure of tabular data with columns and rows
@@ -769,6 +794,18 @@ func (repo *PostgresRepository) GetData(ctx context.Context, tableName string, f
 		}
 	}
 
+	// Get schema for the table to cast values correctly
+	schemaInfo, err := GetSchemaOfTable(ctx, repo, tableName)
+	if err != nil {
+		log.Printf("Warning: failed to get schema for table %s: %v", tableName, err)
+	}
+
+	// Precompute per-column casters once to avoid repeated map lookups and type switches per cell.
+	columnCasters := make([]columnCaster, len(filteredColumns))
+	for i, colName := range filteredColumns {
+		columnCasters[i] = makeColumnCaster(schemaInfo, colName)
+	}
+
 	var tabularRows [][]interface{}
 	for rows.Next() {
 		rowValues := make([]interface{}, len(resultColumns))
@@ -786,11 +823,22 @@ func (repo *PostgresRepository) GetData(ctx context.Context, tableName string, f
 		row := make([]interface{}, len(filteredColumns))
 		for i, colIndex := range columnIndices {
 			val := rowValues[colIndex]
-			// Handle byte slices (common for text, json, etc.)
-			if b, ok := val.([]byte); ok {
-				row[i] = string(b)
-			} else {
-				row[i] = val
+
+			var assigned bool
+			if caster := columnCasters[i]; caster != nil {
+				if castedVal, ok := caster(val); ok {
+					row[i] = castedVal
+					assigned = true
+				}
+			}
+
+			if !assigned {
+				// Handle byte slices (common for text, json, etc.)
+				if b, ok := val.([]byte); ok {
+					row[i] = string(b)
+				} else {
+					row[i] = val
+				}
 			}
 		}
 		tabularRows = append(tabularRows, row)
