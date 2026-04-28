@@ -362,7 +362,7 @@ backup_postgres() {
     
     # Run pg_dump and capture output
     log "INFO" "Running pg_dump command..."
-    pg_dump_output=$(docker exec postgres pg_dump -U postgres -h localhost -d ${POSTGRES_DATABASE} -f "/var/lib/postgresql/backup/${backup_file}.sql" 2>&1)
+    pg_dump_output=$(docker exec postgres pg_dump -U "$POSTGRES_USER" -h localhost -d "$POSTGRES_DATABASE" --clean --if-exists -f "/var/lib/postgresql/backup/${backup_file}.sql" 2>&1)
     pg_dump_exit_code=$?
     
     log "INFO" "Pg_dump output: $pg_dump_output"
