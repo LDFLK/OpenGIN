@@ -53,7 +53,7 @@ func (repo *MongoRepository) HandleMetadata(ctx context.Context, entityId string
 
 // Improved GetMetadata function that handles conversion internally
 func (repo *MongoRepository) GetMetadata(ctx context.Context, entityId string) (map[string]*anypb.Any, error) {
-	// Use the existing method for consistency
+// Use the existing ReadMetadata method for consistency
 	entity, err := repo.ReadMetadata(ctx, entityId)
 	if err != nil {
 		// Log error and return empty metadata map
