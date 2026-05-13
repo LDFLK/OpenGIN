@@ -67,13 +67,13 @@ func TestMain(m *testing.M) {
 	os.Exit(exitCode)
 }
 
-// TestCreateAndReadEntity verifies the entity creation and reading functionality:
-// 1. Creates an entity with test metadata
-// 2. Confirms the entity exists in the database after creation
-// 3. Reads the entity and verifies the metadata values
-// 4. Validates that the entity ID is correctly set
+// TestCreateAndReadMetadata verifies the metadata creation and reading functionality:
+// 1. Creates a metadata document with test values
+// 2. Confirms the metadata exists in the database after creation
+// 3. Reads the metadata and verifies the values
+// 4. Validates that the document ID (entity ID) is correctly set
 // 5. Confirms the metadata values are stored correctly
-func TestCreateAndReadEntity(t *testing.T) {
+func TestCreateAndReadMetadata(t *testing.T) {
 	// Log database and collection information
 	log.Printf("Test using database: %s, collection: %s", testRepo.GetDBName(), testRepo.GetCollectionName())
 
@@ -119,14 +119,13 @@ func TestCreateAndReadEntity(t *testing.T) {
 	assert.Contains(t, readEntity.Metadata, "key2")
 }
 
-// TestUpdateEntityMetadata verifies the metadata update functionality:
-// 1. Creates an entity with initial metadata
+// TestUpdateMetadata verifies the metadata update functionality:
+// 1. Creates initial metadata for a document
 // 2. Updates the metadata with new values
-// 3. Reads the updated entity and verifies the metadata changes
+// 3. Reads the updated metadata and verifies the changes
 // 4. Confirms that the metadata values are updated correctly
-// 5. Validates that the entity ID remains unchanged
-// TestUpdateEntityMetadata tests updating entity metadata
-func TestUpdateEntityMetadata(t *testing.T) {
+// 5. Validates that the document ID remains unchanged
+func TestUpdateMetadata(t *testing.T) {
 	// Log database and collection information
 	log.Printf("Test using database: %s, collection: %s", testRepo.GetDBName(), testRepo.GetCollectionName())
 
@@ -174,14 +173,14 @@ func TestUpdateEntityMetadata(t *testing.T) {
 	assert.Contains(t, readEntity.Metadata, "key3")
 }
 
-// TestDeleteEntity verifies the entity deletion functionality:
-// 1. Creates an entity with test metadata
-// 2. Confirms the entity exists in the database after creation
-// 3. Tests the DeleteEntity method by removing the entity
+// TestDeleteMetadata verifies the metadata deletion functionality:
+// 1. Creates a metadata document with test values
+// 2. Confirms the metadata exists in the database after creation
+// 3. Tests the DeleteMetadata method by removing the document
 // 4. Verifies that exactly one document was deleted (DeletedCount = 1)
-// 5. Confirms the entity no longer exists by attempting to read it
-// 6. Validates that an error is returned when trying to read a deleted entity
-func TestDeleteEntity(t *testing.T) {
+// 5. Confirms the metadata no longer exists by attempting to read it
+// 6. Validates that an error is returned when trying to read deleted metadata
+func TestDeleteMetadata(t *testing.T) {
 	// Log database and collection information
 	log.Printf("Test using database: %s, collection: %s", testRepo.GetDBName(), testRepo.GetCollectionName())
 

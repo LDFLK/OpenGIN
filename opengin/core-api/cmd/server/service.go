@@ -303,7 +303,7 @@ func (s *Server) UpdateEntity(ctx context.Context, req *pb.UpdateEntityRequest) 
 func (s *Server) DeleteEntity(ctx context.Context, req *pb.EntityId) (*pb.Empty, error) {
 	log.Printf("[server.DeleteEntity] Deleting Entity metadata: %s", req.Id)
 
-	// Check if entity exists before deleting
+	// Check if metadata exists before deleting
 	_, err := s.mongoRepo.ReadMetadata(ctx, req.Id)
 	if err != nil {
 		// NOTE: Not returning an error here because we want to delete the
