@@ -83,7 +83,7 @@ func (repo *MongoRepository) CreateMetadata(ctx context.Context, entity *pb.Enti
 	return result, err
 }
 
-// ReadMetadata fetches an entity by ID from MongoDB
+// ReadMetadata fetches metadata by ID from MongoDB
 func (repo *MongoRepository) ReadMetadata(ctx context.Context, id string) (*pb.Entity, error) {
 	var doc entityDocument
 	err := repo.collection().FindOne(ctx, bson.M{"_id": id}).Decode(&doc)
