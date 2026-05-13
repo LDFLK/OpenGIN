@@ -304,14 +304,14 @@ func (s *Server) DeleteEntity(ctx context.Context, req *pb.EntityId) (*pb.Empty,
 	log.Printf("[server.DeleteEntity] Deleting Entity metadata: %s", req.Id)
 
 	// Check if entity exists before deleting
-	_, err := s.mongoRepo.ReadEntity(ctx, req.Id)
+	_, err := s.mongoRepo.ReadMetadata(ctx, req.Id)
 	if err != nil {
 		// NOTE: Not returning an error here because we want to delete the
 		// entity even if it does not contain metadata
 		log.Printf("[server.DeleteEntity] Entity %s does not contain metadata: %v", req.Id, err)
 	} else {
 		log.Printf("[server.DeleteEntity] Entity %s metadata exists.", req.Id)
-		_, err = s.mongoRepo.DeleteEntity(ctx, req.Id)
+		_, err = s.mongoRepo.DeleteMetadata(ctx, req.Id)
 		if err != nil {
 			// Log error
 			log.Printf("[server.DeleteEntity] Error deleting metadata for entity %s: %v", req.Id, err)

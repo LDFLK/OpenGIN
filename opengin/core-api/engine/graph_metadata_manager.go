@@ -220,12 +220,12 @@ func (g *GraphMetadataManager) createAttributeLookUpGraph(ctx context.Context, m
 	}
 
 	// Check if the attribute metadata already exists
-	existingMetadata, err := mongoRepository.ReadEntity(ctx, metadata.AttributeID)
+	existingMetadata, err := mongoRepository.ReadMetadata(ctx, metadata.AttributeID)
 	if err == nil && existingMetadata != nil {
 		log.Printf("[GraphMetadataManager.CreateAttribute] Attribute metadata already exists: %s, skipping creation", metadata.AttributeID)
 	} else {
 		// Metadata doesn't exist, create it
-		_, err = mongoRepository.CreateEntity(ctx, attributeNode)
+		_, err = mongoRepository.CreateMetadata(ctx, attributeNode)
 		if err != nil {
 			log.Printf("[GraphMetadataManager.CreateAttribute] Error creating attribute metadata: %v", err)
 			return err
@@ -341,7 +341,7 @@ func (g *GraphMetadataManager) GetAttribute(ctx context.Context, entityID string
 		log.Printf("[GraphMetadataManager.GetAttribute] Error getting Mongo repository: %v", err)
 		return nil, err
 	}
-	attributeMetadataEntity, err := mongoRepository.ReadEntity(ctx, targetAttributeID)
+	attributeMetadataEntity, err := mongoRepository.ReadMetadata(ctx, targetAttributeID)
 	if err != nil {
 		log.Printf("[GraphMetadataManager.GetAttribute] Error getting attribute metadata from MongoDB for attribute %s (entity %s): %v", targetAttributeID, entityID, err)
 		return nil, fmt.Errorf("failed to get attribute metadata from MongoDB for attribute %s (entity %s): %w", targetAttributeID, entityID, err)
@@ -417,7 +417,7 @@ func (g *GraphMetadataManager) ListAttributes(ctx context.Context, entityID stri
 			log.Printf("[GraphMetadataManager.ListAttributes] Error getting Mongo repository: %v", err)
 			return nil, err
 		}
-		attributeMetadataEntity, err := mongoRepository.ReadEntity(ctx, attributeID)
+		attributeMetadataEntity, err := mongoRepository.ReadMetadata(ctx, attributeID)
 		if err != nil {
 			log.Printf("[GraphMetadataManager.ListAttributes] Error getting attribute metadata from MongoDB for attribute %s (entity %s): %v", attributeID, entityID, err)
 			return nil, fmt.Errorf("failed to get attribute metadata from MongoDB for attribute %s (entity %s): %w", attributeID, entityID, err)
