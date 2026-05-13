@@ -100,7 +100,7 @@ func (repo *MongoRepository) UpdateMetadata(ctx context.Context, id string, upda
 	return result, err
 }
 
-// DeleteMetadata removes an entity from MongoDB
+// DeleteMetadata removes metadata from MongoDB
 func (repo *MongoRepository) DeleteMetadata(ctx context.Context, id string) (*mongo.DeleteResult, error) {
 	result, err := repo.collection().DeleteOne(ctx, bson.M{"_id": id})
 	return result, err
