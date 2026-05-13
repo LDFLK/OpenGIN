@@ -93,7 +93,7 @@ func (repo *MongoRepository) ReadMetadata(ctx context.Context, id string) (*pb.E
 	return fromDocument(&doc), nil
 }
 
-// UpdateMetadata updates an entity's attributes in MongoDB
+// UpdateMetadata updates metadata in MongoDB
 func (repo *MongoRepository) UpdateMetadata(ctx context.Context, id string, updates bson.M) (*mongo.UpdateResult, error) {
 	update := bson.M{"$set": updates}
 	result, err := repo.collection().UpdateOne(ctx, bson.M{"_id": id}, update)
