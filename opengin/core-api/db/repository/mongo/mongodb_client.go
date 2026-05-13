@@ -74,17 +74,17 @@ func (repo *MongoRepository) collection() *mongo.Collection {
 	return repo.client.Database(repo.config.DBName).Collection(repo.config.Collection)
 }
 
-// CreateEntity inserts a new entity in MongoDB
+// CreateMetadata inserts a new entity in MongoDB
 // FIXME: https://github.com/LDFLK/nexoan/issues/118
-func (repo *MongoRepository) CreateEntity(ctx context.Context, entity *pb.Entity) (*mongo.InsertOneResult, error) {
+func (repo *MongoRepository) CreateMetadata(ctx context.Context, entity *pb.Entity) (*mongo.InsertOneResult, error) {
 	// Use the entity.Id as MongoDB's _id field
 	doc := toDocument(entity)
 	result, err := repo.collection().InsertOne(ctx, doc)
 	return result, err
 }
 
-// ReadEntity fetches an entity by ID from MongoDB
-func (repo *MongoRepository) ReadEntity(ctx context.Context, id string) (*pb.Entity, error) {
+// ReadMetadata fetches an entity by ID from MongoDB
+func (repo *MongoRepository) ReadMetadata(ctx context.Context, id string) (*pb.Entity, error) {
 	var doc entityDocument
 	err := repo.collection().FindOne(ctx, bson.M{"_id": id}).Decode(&doc)
 	if err != nil {
@@ -93,15 +93,15 @@ func (repo *MongoRepository) ReadEntity(ctx context.Context, id string) (*pb.Ent
 	return fromDocument(&doc), nil
 }
 
-// UpdateEntity updates an entity's attributes in MongoDB
-func (repo *MongoRepository) UpdateEntity(ctx context.Context, id string, updates bson.M) (*mongo.UpdateResult, error) {
+// UpdateMetadata updates an entity's attributes in MongoDB
+func (repo *MongoRepository) UpdateMetadata(ctx context.Context, id string, updates bson.M) (*mongo.UpdateResult, error) {
 	update := bson.M{"$set": updates}
 	result, err := repo.collection().UpdateOne(ctx, bson.M{"_id": id}, update)
 	return result, err
 }
 
-// DeleteEntity removes an entity from MongoDB
-func (repo *MongoRepository) DeleteEntity(ctx context.Context, id string) (*mongo.DeleteResult, error) {
+// DeleteMetadata removes an entity from MongoDB
+func (repo *MongoRepository) DeleteMetadata(ctx context.Context, id string) (*mongo.DeleteResult, error) {
 	result, err := repo.collection().DeleteOne(ctx, bson.M{"_id": id})
 	return result, err
 }
