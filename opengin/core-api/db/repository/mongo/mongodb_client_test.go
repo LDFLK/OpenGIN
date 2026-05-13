@@ -67,13 +67,13 @@ func TestMain(m *testing.M) {
 	os.Exit(exitCode)
 }
 
-// TestCreateAndReadEntity verifies the entity creation and reading functionality:
-// 1. Creates an entity with test metadata
-// 2. Confirms the entity exists in the database after creation
-// 3. Reads the entity and verifies the metadata values
-// 4. Validates that the entity ID is correctly set
+// TestCreateAndReadMetadata verifies the metadata creation and reading functionality:
+// 1. Creates a metadata document with test values
+// 2. Confirms the metadata exists in the database after creation
+// 3. Reads the metadata and verifies the values
+// 4. Validates that the document ID (entity ID) is correctly set
 // 5. Confirms the metadata values are stored correctly
-func TestCreateAndReadEntity(t *testing.T) {
+func TestCreateAndReadMetadata(t *testing.T) {
 	// Log database and collection information
 	log.Printf("Test using database: %s, collection: %s", testRepo.GetDBName(), testRepo.GetCollectionName())
 
@@ -95,19 +95,19 @@ func TestCreateAndReadEntity(t *testing.T) {
 		Metadata: metadata,
 	}
 
-	// Create entity
-	result, err := testRepo.CreateEntity(testCtx, entity)
+	// Create metadata
+	result, err := testRepo.CreateMetadata(testCtx, entity)
 	assert.NoError(t, err)
 	assert.NotNil(t, result, "Insert result should not be nil")
 	log.Printf("Inserted document with ID: %v", result.InsertedID)
 
-	// Read entity with error check
-	readEntity, err := testRepo.ReadEntity(testCtx, entityID)
+	// Read metadata with error check
+	readEntity, err := testRepo.ReadMetadata(testCtx, entityID)
 	if err != nil {
-		t.Fatalf("Failed to read entity: %v", err)
+		t.Fatalf("Failed to read metadata: %v", err)
 	}
 	if readEntity == nil {
-		t.Fatal("Entity not found after creation")
+		t.Fatal("Metadata not found after creation")
 	}
 
 	// Verify entity data
@@ -119,14 +119,13 @@ func TestCreateAndReadEntity(t *testing.T) {
 	assert.Contains(t, readEntity.Metadata, "key2")
 }
 
-// TestUpdateEntityMetadata verifies the metadata update functionality:
-// 1. Creates an entity with initial metadata
+// TestUpdateMetadata verifies the metadata update functionality:
+// 1. Creates initial metadata for a document
 // 2. Updates the metadata with new values
-// 3. Reads the updated entity and verifies the metadata changes
+// 3. Reads the updated metadata and verifies the changes
 // 4. Confirms that the metadata values are updated correctly
-// 5. Validates that the entity ID remains unchanged
-// TestUpdateEntityMetadata tests updating entity metadata
-func TestUpdateEntityMetadata(t *testing.T) {
+// 5. Validates that the document ID remains unchanged
+func TestUpdateMetadata(t *testing.T) {
 	// Log database and collection information
 	log.Printf("Test using database: %s, collection: %s", testRepo.GetDBName(), testRepo.GetCollectionName())
 
@@ -145,8 +144,8 @@ func TestUpdateEntityMetadata(t *testing.T) {
 		Metadata: metadata,
 	}
 
-	// Create entity
-	_, err = testRepo.CreateEntity(testCtx, entity)
+	// Create metadata
+	_, err = testRepo.CreateMetadata(testCtx, entity)
 	assert.NoError(t, err)
 
 	// Update metadata
@@ -158,14 +157,14 @@ func TestUpdateEntityMetadata(t *testing.T) {
 	updatedMetadata["key1"] = val2 // Update existing key
 	updatedMetadata["key3"] = val3 // Add new key
 
-	// Update entity
-	_, err = testRepo.UpdateEntity(testCtx, entityID, map[string]interface{}{
+	// Update metadata
+	_, err = testRepo.UpdateMetadata(testCtx, entityID, map[string]interface{}{
 		"metadata": updatedMetadata,
 	})
 	assert.NoError(t, err)
 
-	// Read updated entity
-	readEntity, err := testRepo.ReadEntity(testCtx, entityID)
+	// Read updated metadata
+	readEntity, err := testRepo.ReadMetadata(testCtx, entityID)
 	assert.NoError(t, err)
 
 	// Verify updated metadata
@@ -174,14 +173,14 @@ func TestUpdateEntityMetadata(t *testing.T) {
 	assert.Contains(t, readEntity.Metadata, "key3")
 }
 
-// TestDeleteEntity verifies the entity deletion functionality:
-// 1. Creates an entity with test metadata
-// 2. Confirms the entity exists in the database after creation
-// 3. Tests the DeleteEntity method by removing the entity
+// TestDeleteMetadata verifies the metadata deletion functionality:
+// 1. Creates a metadata document with test values
+// 2. Confirms the metadata exists in the database after creation
+// 3. Tests the DeleteMetadata method by removing the document
 // 4. Verifies that exactly one document was deleted (DeletedCount = 1)
-// 5. Confirms the entity no longer exists by attempting to read it
-// 6. Validates that an error is returned when trying to read a deleted entity
-func TestDeleteEntity(t *testing.T) {
+// 5. Confirms the metadata no longer exists by attempting to read it
+// 6. Validates that an error is returned when trying to read deleted metadata
+func TestDeleteMetadata(t *testing.T) {
 	// Log database and collection information
 	log.Printf("Test using database: %s, collection: %s", testRepo.GetDBName(), testRepo.GetCollectionName())
 
@@ -200,18 +199,18 @@ func TestDeleteEntity(t *testing.T) {
 		Metadata: metadata,
 	}
 
-	// Create entity
-	_, err = testRepo.CreateEntity(testCtx, entity)
+	// Create metadata
+	_, err = testRepo.CreateMetadata(testCtx, entity)
 	assert.NoError(t, err)
 
-	// Delete entity
-	result, err := testRepo.DeleteEntity(testCtx, entityID)
+	// Delete metadata
+	result, err := testRepo.DeleteMetadata(testCtx, entityID)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(1), result.DeletedCount)
 
-	// Verify entity is deleted
-	_, err = testRepo.ReadEntity(testCtx, entityID)
-	assert.Error(t, err) // Should return an error since entity doesn't exist
+	// Verify metadata is deleted
+	_, err = testRepo.ReadMetadata(testCtx, entityID)
+	assert.Error(t, err) // Should return an error since metadata doesn't exist
 }
 
 // TestMetadataHandling verifies the handling of complex metadata with various data types:
@@ -249,13 +248,13 @@ func TestMetadataHandling(t *testing.T) {
 		Metadata: metadata,
 	}
 
-	// Create entity - this should use the entityID as the document ID
-	result, err := testRepo.CreateEntity(testCtx, entity)
+	// Create metadata - this should use the entityID as the document ID
+	result, err := testRepo.CreateMetadata(testCtx, entity)
 	assert.NoError(t, err)
 	assert.NotNil(t, result, "Insert result should not be nil")
 
-	// Read entity to verify metadata was stored correctly
-	readEntity, err := testRepo.ReadEntity(testCtx, entityID)
+	// Read metadata to verify it was stored correctly
+	readEntity, err := testRepo.ReadMetadata(testCtx, entityID)
 	assert.NoError(t, err)
 
 	// Verify metadata with different value types
