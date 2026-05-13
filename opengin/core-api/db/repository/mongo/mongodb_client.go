@@ -74,7 +74,7 @@ func (repo *MongoRepository) collection() *mongo.Collection {
 	return repo.client.Database(repo.config.DBName).Collection(repo.config.Collection)
 }
 
-// CreateMetadata inserts a new entity in MongoDB
+// CreateMetadata inserts new metadata in MongoDB
 // FIXME: https://github.com/LDFLK/nexoan/issues/118
 func (repo *MongoRepository) CreateMetadata(ctx context.Context, entity *pb.Entity) (*mongo.InsertOneResult, error) {
 	// Use the entity.Id as MongoDB's _id field
