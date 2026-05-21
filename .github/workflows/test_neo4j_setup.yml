@@ -21,8 +21,8 @@ jobs:
 
     - name: Install Neo4j
       run: |
-        wget -O - https://debian.neo4j.com/neotechnology.gpg.key | apt-key add -
-        echo 'deb https://debian.neo4j.com stable latest' | tee /etc/apt/sources.list.d/neo4j.list
+        curl -fsSL https://debian.neo4j.com/neotechnology.gpg.key | gpg --dearmor -o /usr/share/keyrings/neo4j.gpg
+        echo "deb [signed-by=/usr/share/keyrings/neo4j.gpg] https://debian.neo4j.com stable latest" | tee /etc/apt/sources.list.d/neo4j.list
         apt-get update
         apt-get install -y neo4j
 
