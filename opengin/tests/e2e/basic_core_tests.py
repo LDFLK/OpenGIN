@@ -1071,7 +1071,7 @@ def get_base_url():
 
 def get_base_read_url():
     print("🟢 Setting up test environment...")
-    read_service_url = os.getenv("READ_SERVICE_URL", "http://read:8081")
+    read_service_url = os.getenv("READ_SERVICE_URL", "http://0.0.0.0:8081")
     print("🟢 READ_SERVICE_URL: ", read_service_url)
     return f"{read_service_url}/v1/entities"
 
