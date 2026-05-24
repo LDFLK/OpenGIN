@@ -9,7 +9,7 @@
 [![Security](https://img.shields.io/badge/Security-Policy-green.svg)](SECURITY.md)
 [![Contributing](https://img.shields.io/badge/Contributing-Guidelines-blue.svg)](CONTRIBUTING.md)
 
-Open General Information Network here after referred to as **OpenGIN** is an open-source platform designed to build a time-aware digital twin of an eco-system by defining its entities, relationships and data according to a specification. OpenGIN core supports a wide variety of data formats to provide efficient querying to simulate the digital twin. Underneath OpenGIN uses a polyglot database definition which supports to represent the changes of an eco-system through time-travelling. 
+Open General Information Network, hereafter referred to as **OpenGIN**, is an open-source platform designed to build a time-aware digital twin of an ecosystem by defining its entities, relationships, and data according to a specification. OpenGIN core supports a wide variety of data formats to provide efficient querying to simulate the digital twin. Underneath, OpenGIN uses a polyglot database definition which supports representing the changes of an ecosystem through time-travelling. 
 
 **See OpenGIN in action**: [OpenGINXplore](https://github.com/LDFLK/openginxplore) is a reference application built with OpenGIN, designed to explore Sri Lankan government data.
 
