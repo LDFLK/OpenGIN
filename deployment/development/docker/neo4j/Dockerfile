@@ -6,16 +6,16 @@ FROM neo4j:5.12.0
 
 # Set environment variables
 ENV NEO4J_AUTH=neo4j/neo4j123
-ENV NEO4J_dbms_memory_pagecache_size=512M
-ENV NEO4J_dbms_memory_heap_initial__size=512M
-ENV NEO4J_dbms_memory_heap_max__size=512M
-ENV NEO4J_dbms_security_procedures_unrestricted=gds.*,apoc.*
+ENV NEO4J_server_memory_pagecache_size=512M
+ENV NEO4J_server_memory_heap_initial__size=512M
+ENV NEO4J_server_memory_heap_max__size=512M
+ENV NEO4J_server_security_procedures_unrestricted=gds.*,apoc.*
 
 # Set data directory paths
-ENV NEO4J_dbms_directories_data=/neo4j_data
-ENV NEO4J_dbms_directories_logs=/neo4j_logs
-ENV NEO4J_dbms_directories_import=/var/lib/neo4j/import
-ENV NEO4J_dbms_directories_plugins=/neo4j_plugins
+ENV NEO4J_server_directories_data=/neo4j_data
+ENV NEO4J_server_directories_logs=/neo4j_logs
+ENV NEO4J_server_directories_import=/var/lib/neo4j/import
+ENV NEO4J_server_directories_plugins=/neo4j_plugins
 
 # Expose ports
 EXPOSE 7474 7687
