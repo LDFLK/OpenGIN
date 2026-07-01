@@ -41,7 +41,7 @@
 # docker network create core-network
 
 # Build stage for CORE service
-FROM golang:1.23-bookworm AS builder
+FROM golang:1.24-bookworm AS builder
 
 # Set working directory
 WORKDIR /app
