@@ -4,8 +4,8 @@
 package typeinference
 
 import (
-	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
@@ -29,10 +29,10 @@ const (
 	DateType     DataType = "date"     // Date values (e.g., "2024-03-20")
 	TimeType     DataType = "time"     // Time values (e.g., "14:30:00")
 	DateTimeType DataType = "datetime" // Date and time values (e.g., "2024-03-20T14:30:00Z")
-	
+
 	// Schema/DB-level Types — not produced by value inference;
 	// used when column-level precision is unknown (e.g., tabular data).
-	NumericType  DataType = "numeric"  // Any numeric value, int or float (maps to Postgres NUMERIC)
+	NumericType DataType = "numeric" // Any numeric value, int or float (maps to Postgres NUMERIC)
 )
 
 // TypeInfo contains both the data type and additional metadata about the type.
@@ -108,27 +108,18 @@ func (ti *TypeInferrer) inferTypeFromValue(value *structpb.Value) (*TypeInfo, er
 
 	case *structpb.Value_NumberValue:
 		num := v.NumberValue
-		// Check if the number is a float by comparing it with its integer conversion
-		// This works because float64(int64(num)) truncates any decimal part
-		// If the original number has a decimal part, the comparison will be false
+		// Check if the number is a float by comparing it with its integer conversion.
+		// This works because float64(int64(num)) truncates any decimal part.
 		if num != float64(int64(num)) {
 			return &TypeInfo{Type: FloatType}, nil
-		}
-
-		// For zero, check if it was originally a float by looking at the string representation
-		// This is necessary because 0.0 and 0 have the same numeric value but different types
-		// We convert to string to check if the original format had a decimal point
-		if num == 0 {
-			// Use %g format to preserve decimal point for zero values
-			str := fmt.Sprintf("%g", num)
-			if strings.Contains(str, ".") {
-				return &TypeInfo{Type: FloatType}, nil
-			}
 		}
 		return &TypeInfo{Type: IntType}, nil
 
 	case *structpb.Value_StringValue:
 		str := v.StringValue
+		if inferredType, ok := inferNumericTypeFromString(str); ok {
+			return &TypeInfo{Type: inferredType}, nil
+		}
 		// Check for special string types
 		if isDate(str) {
 			return &TypeInfo{Type: DateType}, nil
@@ -196,6 +187,23 @@ func (ti *TypeInferrer) inferTypeFromValue(value *structpb.Value) (*TypeInfo, er
 // Returns:
 //   - *TypeInfo: The inferred type information
 //   - error: Any error that occurred during inference
+func inferNumericTypeFromString(str string) (DataType, bool) {
+	trimmed := strings.TrimSpace(str)
+	if trimmed == "" {
+		return "", false
+	}
+
+	if _, err := strconv.ParseInt(trimmed, 10, 64); err == nil {
+		return IntType, true
+	}
+
+	if _, err := strconv.ParseFloat(trimmed, 64); err == nil {
+		return FloatType, true
+	}
+
+	return "", false
+}
+
 func (ti *TypeInferrer) inferTypeFromReflection(rv reflect.Value) (*TypeInfo, error) {
 	switch rv.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
