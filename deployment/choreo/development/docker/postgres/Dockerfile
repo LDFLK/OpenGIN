@@ -22,15 +22,15 @@ RUN groupadd -g 10014 choreo && \
 ARG GITHUB_BACKUP_REPO=LDFLK/data-backups
 ARG BACKUP_VERSION=0.0.4
 ARG BACKUP_ENVIRONMENT=development
+# Superuser password is only needed at build time to seed the DB. ARG keeps
+# the value out of the runtime image (ENV would persist it in image layers).
+# Override at build time: docker build --build-arg POSTGRES_PASSWORD=... .
+ARG POSTGRES_PASSWORD=postgres
 
 # Place data outside /var/lib/postgresql/ entirely so that the base image's
 # VOLUME ["/var/lib/postgresql/data"] and Choreo's runtime volume management
 # cannot hide the baked-in files.
 ENV PGDATA=/opt/pgdata
-# Set superuser password so the entrypoint never fails on uninitialized-DB check.
-# Must match the password set during build-time data ingestion below.
-# FIXME: https://github.com/LDFLK/OpenGIN/issues/448 - Hardcoded password. Use build args instead.
-ENV POSTGRES_PASSWORD=postgres
 
 # Create directory and set permissions
 RUN mkdir -p "$PGDATA" && chown -R postgres:postgres "$PGDATA"
@@ -52,9 +52,8 @@ RUN echo "Initializing database in $PGDATA..." && \
     echo "Starting PostgreSQL..." && \
     pg_ctl -D "$PGDATA" -o "-c listen_addresses='localhost'" -w start && \
     \
-    # Set default password to match docker-compose config
-    # FIXME: https://github.com/LDFLK/OpenGIN/issues/448 - Hardcoded password.
-    psql -U postgres -c "ALTER USER postgres WITH PASSWORD 'postgres';" && \
+    # Set superuser password from the POSTGRES_PASSWORD build arg.
+    psql -U postgres -c "ALTER USER postgres WITH PASSWORD '${POSTGRES_PASSWORD}';" && \
     \
     # Create temp workspace
     temp_dir=$(mktemp -d) && \
