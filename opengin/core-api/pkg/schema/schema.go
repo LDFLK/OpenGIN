@@ -271,6 +271,11 @@ func (sg *SchemaGenerator) GenerateSchema(anyValue *anypb.Any) (*SchemaInfo, err
 				StorageType: storageinference.ScalarData,
 				TypeInfo:    &typeinference.TypeInfo{},
 			}
+			if m == nil || m.GetKind() == nil {
+				schema.TypeInfo.Type = typeinference.NullType
+				schema.TypeInfo.IsNullable = true
+				return schema, nil
+			}
 			switch m.GetKind().(type) {
 			case *structpb.Value_StringValue:
 				schema.TypeInfo.Type = typeinference.StringType
@@ -339,6 +344,11 @@ func (sg *SchemaGenerator) GenerateSchema(anyValue *anypb.Any) (*SchemaInfo, err
 			schema := &SchemaInfo{
 				StorageType: storageinference.ScalarData,
 				TypeInfo:    &typeinference.TypeInfo{},
+			}
+			if value == nil || value.GetKind() == nil {
+				schema.TypeInfo.Type = typeinference.NullType
+				schema.TypeInfo.IsNullable = true
+				return schema, nil
 			}
 			switch value.GetKind().(type) {
 			case *structpb.Value_StringValue:
@@ -513,62 +523,62 @@ func inferColumnTypes(columnsList, rowsList *structpb.ListValue) (map[string]typ
 
 	// Scan rows until each column has a type from its first non-null value (or all-null → NullType below).
 	nPending := len(columnTypes)
-	rowsLoop:
-		for rowIndex, row := range rowsList.Values {
-			rowData := row.GetListValue()
-			if len(rowData.Values) != len(columnsList.Values) {
-				return nil, fmt.Errorf("row %d length (%d) does not match number of columns (%d)", rowIndex, len(rowData.Values), len(columnsList.Values))
+rowsLoop:
+	for rowIndex, row := range rowsList.Values {
+		rowData := row.GetListValue()
+		if len(rowData.Values) != len(columnsList.Values) {
+			return nil, fmt.Errorf("row %d length (%d) does not match number of columns (%d)", rowIndex, len(rowData.Values), len(columnsList.Values))
+		}
+		for i, value := range rowData.Values {
+			colName := columnsList.Values[i].GetStringValue()
+			if columnTypes[colName].Type != typeinference.DataType(unknown) {
+				continue
 			}
-			for i, value := range rowData.Values {
-				colName := columnsList.Values[i].GetStringValue()
-				if columnTypes[colName].Type != typeinference.DataType(unknown) {
-					continue
-				}
 
-				if structpbScalarIsNull(value) {
-					continue
-				}
+			if structpbScalarIsNull(value) {
+				continue
+			}
 
-				matched := false
-				switch value.GetKind().(type) {
-				case *structpb.Value_NumberValue:
-					columnTypes[colName] = typeinference.TypeInfo{
-						Type:       typeinference.NumericType,
-						IsNullable: true,
-					}
-					matched = true
-				case *structpb.Value_BoolValue:
-					columnTypes[colName] = typeinference.TypeInfo{
-						Type:       typeinference.BoolType,
-						IsNullable: true,
-					}
-					matched = true
-				case *structpb.Value_StringValue:
-					str := value.GetStringValue()
-					var inferredType typeinference.DataType
-					if isDate, isDateTime := isDateOrDateTime(str); isDate {
-						if isDateTime {
-							inferredType = typeinference.DateTimeType
-						} else {
-							inferredType = typeinference.DateType
-						}
+			matched := false
+			switch value.GetKind().(type) {
+			case *structpb.Value_NumberValue:
+				columnTypes[colName] = typeinference.TypeInfo{
+					Type:       typeinference.NumericType,
+					IsNullable: true,
+				}
+				matched = true
+			case *structpb.Value_BoolValue:
+				columnTypes[colName] = typeinference.TypeInfo{
+					Type:       typeinference.BoolType,
+					IsNullable: true,
+				}
+				matched = true
+			case *structpb.Value_StringValue:
+				str := value.GetStringValue()
+				var inferredType typeinference.DataType
+				if isDate, isDateTime := isDateOrDateTime(str); isDate {
+					if isDateTime {
+						inferredType = typeinference.DateTimeType
 					} else {
-						inferredType = typeinference.StringType
+						inferredType = typeinference.DateType
 					}
-					columnTypes[colName] = typeinference.TypeInfo{
-						Type:       inferredType,
-						IsNullable: true,
-					}
-					matched = true
+				} else {
+					inferredType = typeinference.StringType
 				}
-				if matched {
-					nPending--
-					if nPending == 0 {
-						break rowsLoop
-					}
+				columnTypes[colName] = typeinference.TypeInfo{
+					Type:       inferredType,
+					IsNullable: true,
+				}
+				matched = true
+			}
+			if matched {
+				nPending--
+				if nPending == 0 {
+					break rowsLoop
 				}
 			}
 		}
+	}
 
 	// Any column still unknown = all nulls
 	for colName, info := range columnTypes {
@@ -2015,6 +2025,11 @@ func (sg *SchemaGenerator) handleScalarData(structValue *structpb.Struct, schema
 	// Find the first scalar field
 	var scalarField *structpb.Value
 	for _, field := range structValue.Fields {
+		if field == nil || field.GetKind() == nil || structpbScalarIsNull(field) {
+			scalarField = field
+			break
+		}
+
 		switch field.GetKind().(type) {
 		case *structpb.Value_StringValue, *structpb.Value_NumberValue, *structpb.Value_BoolValue, *structpb.Value_NullValue:
 			scalarField = field

@@ -9,8 +9,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/structpb"
 
+	"lk/datafoundation/core-api/pkg/storageinference"
 	"lk/datafoundation/core-api/pkg/typeinference"
 )
 
@@ -772,4 +774,21 @@ func TestInferColumnTypesUnsetKindActsAsNull(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, typeinference.NumericType, colTypes["x"].Type)
 	assert.True(t, colTypes["x"].IsNullable)
+}
+
+func TestGenerateSchemaScalarNullWithUnsetKind(t *testing.T) {
+	structValue := &structpb.Struct{Fields: map[string]*structpb.Value{
+		"value": {
+			Kind: nil,
+		},
+	}}
+	anyValue, err := anypb.New(structValue)
+	assert.NoError(t, err)
+
+	generator := NewSchemaGenerator()
+	schema, err := generator.GenerateSchema(anyValue)
+	assert.NoError(t, err)
+	assert.Equal(t, storageinference.ScalarData, schema.StorageType)
+	assert.Equal(t, typeinference.NullType, schema.TypeInfo.Type)
+	assert.True(t, schema.TypeInfo.IsNullable)
 }

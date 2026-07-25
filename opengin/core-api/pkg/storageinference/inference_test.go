@@ -172,6 +172,7 @@ func TestDirectScalarEntity(t *testing.T) {
 		"float":   `3.14159`,
 		"string":  `"test"`,
 		"boolean": `true`,
+		"null":    `null`,
 	}
 
 	inferrer := &StorageInferrer{}
