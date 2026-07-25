@@ -197,6 +197,9 @@ func isScalar(structValue *structpb.Struct) bool {
 	// Check if the struct has a single field with a scalar value
 	if len(structValue.Fields) == 1 {
 		for _, value := range structValue.Fields {
+			if value == nil || value.GetKind() == nil {
+				return true
+			}
 			switch value.GetKind().(type) {
 			case *structpb.Value_NumberValue, *structpb.Value_StringValue, *structpb.Value_BoolValue, *structpb.Value_NullValue:
 				return true
