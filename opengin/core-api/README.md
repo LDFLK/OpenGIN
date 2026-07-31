@@ -33,7 +33,18 @@ source .env
 # make sure to clean the dbs before running the tests
 go test -v ./... -count=1 -p=1
 ./core-service
+```
 
+For Windows (PowerShell)
+```powershell
+cd core-api
+Copy-Item env.template.ps1 .env.ps1
+# after updating the required fields to be added to the environment
+. .\.env.ps1
+# make sure to clean the dbs before running the tests
+go test -v ./... -count=1 -p=1
+.\core-service.exe
+```
 
 ## Go Module Setup
 
@@ -115,8 +126,14 @@ docker run -d \
 
 #### Validate 
 
+For LINUX & macOS
 ```bash
 brew install grpcurl
+```
+
+For Windows, install grpcurl via Chocolatey:
+```powershell
+choco install grpcurl
 ```
 
 ```bash
