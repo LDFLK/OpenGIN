@@ -223,6 +223,10 @@ func ValidateSchema(value interface{}, schema *SchemaInfo) error {
 
 // Helper functions for schema validation
 func validateScalarValue(value interface{}, typeInfo *typeinference.TypeInfo) error {
+	if typeInfo == nil {
+		return fmt.Errorf("type info is nil")
+	}
+
 	if value == nil {
 		if !typeInfo.IsNullable {
 			return fmt.Errorf("value cannot be null")
@@ -288,6 +292,10 @@ func validateMapValue(value interface{}, schema *SchemaInfo) error {
 			if err := ValidateSchema(val, propSchema); err != nil {
 				return fmt.Errorf("invalid value for key %s: %v", key, err)
 			}
+		} else if propSchema == nil {
+			return fmt.Errorf("schema for key %s is nil", key)
+		} else if propSchema.TypeInfo == nil {
+			return fmt.Errorf("type info for key %s is nil", key)
 		} else if !propSchema.TypeInfo.IsNullable {
 			return fmt.Errorf("required key %s is missing", key)
 		}
