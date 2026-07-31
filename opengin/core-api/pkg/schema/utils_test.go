@@ -427,6 +427,46 @@ func TestValidateSchema(t *testing.T) {
 	}
 }
 
+func TestValidateSchemaRejectsNilTypeInfo(t *testing.T) {
+	schema := &SchemaInfo{StorageType: ScalarData}
+
+	err := ValidateSchema("value", schema)
+
+	assert.EqualError(t, err, "type info is nil")
+}
+
+func TestValidateSchemaRejectsInvalidMissingPropertySchema(t *testing.T) {
+	testCases := []struct {
+		name       string
+		property   *SchemaInfo
+		expectedErr string
+	}{
+		{
+			name:        "nil property schema",
+			property:    nil,
+			expectedErr: "schema for key name is nil",
+		},
+		{
+			name:        "nil property type info",
+			property:    &SchemaInfo{StorageType: ScalarData},
+			expectedErr: "type info for key name is nil",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			schema := &SchemaInfo{
+				StorageType: MapData,
+				Properties:  map[string]*SchemaInfo{"name": tc.property},
+			}
+
+			err := ValidateSchema(map[string]interface{}{}, schema)
+
+			assert.EqualError(t, err, tc.expectedErr)
+		})
+	}
+}
+
 func TestValidateTabularData(t *testing.T) {
 	// Create a schema for tabular data
 	schema := &SchemaInfo{
