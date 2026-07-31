@@ -14,12 +14,6 @@ $env:MONGO_COLLECTION=""
 # $env:NEO4J_USER=$env:NEO4J_TESTING_USERNAME
 # $env:NEO4J_PASSWORD=$env:NEO4J_TESTING_PASSWORD
 
-## For Local testing
-
-$env:NEO4J_URI=""
-$env:NEO4J_USER=""
-$env:NEO4J_PASSWORD=""
-
 ## PostgreSQL configuration
 
 $env:POSTGRES_HOST="localhost"
