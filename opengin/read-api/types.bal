@@ -16,14 +16,14 @@ public type entities_search_body record {
     string name?;
     @constraint:String {
         pattern: {
-            value: re `(\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?(\.\d+)?(Z|[+-]\d{2}:?\d{2})?)?)?`,
+            value: re `\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?(\.\d+)?(Z|[+-]\d{2}:?\d{2})?)?`,
             message: "Invalid created format, expected YYYY-MM-DD or RFC3339"
         }
     }
     string created?;
     @constraint:String {
         pattern: {
-            value: re `(\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?(\.\d+)?(Z|[+-]\d{2}:?\d{2})?)?)?`,
+            value: re `\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?(\.\d+)?(Z|[+-]\d{2}:?\d{2})?)?`,
             message: "Invalid terminated format, expected YYYY-MM-DD or RFC3339"
         }
     }
@@ -62,7 +62,8 @@ public type attributes_attributeName_body record {
     # List of record filters to apply row base filtering
     record {
         @constraint:String {
-            minLength: {value: 1, message: "records[].field_name is required"}
+            minLength: {value: 1, message: "records[].field_name is required"},
+            pattern: {value: re `.*\S.*`, message: "records[].field_name is required"}
         }
         string field_name;
         "eq"|"neq"|"gt"|"lt"|"gte"|"lte"|"contains"|"notcontains" operator = "eq";
@@ -86,7 +87,7 @@ public type entityId_relations_body record {
     # Filter relations active at this specific time
     @constraint:String {
         pattern: {
-            value: re `(\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?(\.\d+)?(Z|[+-]\d{2}:?\d{2})?)?)?`,
+            value: re `\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?(\.\d+)?(Z|[+-]\d{2}:?\d{2})?)?`,
             message: "Invalid activeAt format, expected YYYY-MM-DD or RFC3339"
         }
     }
@@ -94,7 +95,7 @@ public type entityId_relations_body record {
     # Filter relations with start time
     @constraint:String {
         pattern: {
-            value: re `(\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?(\.\d+)?(Z|[+-]\d{2}:?\d{2})?)?)?`,
+            value: re `\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?(\.\d+)?(Z|[+-]\d{2}:?\d{2})?)?`,
             message: "Invalid startTime format, expected YYYY-MM-DD or RFC3339"
         }
     }
@@ -102,7 +103,7 @@ public type entityId_relations_body record {
     # Filter relations with end time
     @constraint:String {
         pattern: {
-            value: re `(\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?(\.\d+)?(Z|[+-]\d{2}:?\d{2})?)?)?`,
+            value: re `\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?(\.\d+)?(Z|[+-]\d{2}:?\d{2})?)?`,
             message: "Invalid endTime format, expected YYYY-MM-DD or RFC3339"
         }
     }
