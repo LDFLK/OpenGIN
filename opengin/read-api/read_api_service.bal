@@ -10,6 +10,7 @@ import ballerina/io;
 import ballerina/lang.'int as langint;
 import ballerina/protobuf.types.'any;
 import ballerina/protobuf.types.'any as pbAny;
+import ballerina/constraint;
 
 // BAL_CONFIG_VAR_CORESERVICEURL
 configurable string coreServiceUrl = "http://localhost:50051";
@@ -32,6 +33,27 @@ grpc:ClientConfiguration grpcConfig = {
 };
 
 COREServiceClient ep = check new (coreServiceUrl, grpcConfig);
+
+// Constrained path and query parameter types. The HTTP listener validates
+// these at binding time and rejects invalid values with 400 before any gRPC
+// call is made (see https://github.com/LDFLK/OpenGIN/issues/344).
+@constraint:String {
+    pattern: {value: re `.*\S.*`, message: "entityId is required"}
+}
+type EntityIdParam string;
+
+@constraint:String {
+    pattern: {value: re `.*\S.*`, message: "attributeName is required"}
+}
+type AttributeNameParam string;
+
+@constraint:String {
+    pattern: {
+        value: re `(\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?(\.\d+)?(Z|[+-]\d{2}:?\d{2})?)?)?`,
+        message: "Invalid date-time format, expected YYYY-MM-DD or RFC3339"
+    }
+}
+type DateTimeParam string;
 
 // Helper function to extract string representation based on typeUrl
 function extractValueAsString('any:Any anyValue) returns string {
@@ -137,7 +159,7 @@ service /v1 on ep0 {
     #
     # + fields - List of field names to return. Defaults to ['*'] (all fields).
     # + return - Attribute value(s)
-    resource function post entities/[string entityId]/attributes/[string attributeName](string? startTime, string? endTime, @http:Payload attributes_attributeName_body payload, string[]? fields) returns RecordStringStartStringendStringvalueRecordStringStartStringendStringvalueArrayOk|http:NotFound|error {
+    resource function post entities/[EntityIdParam entityId]/attributes/[AttributeNameParam attributeName](DateTimeParam? startTime, DateTimeParam? endTime, @http:Payload attributes_attributeName_body payload, string[]? fields) returns RecordStringStartStringendStringvalueRecordStringStartStringendStringvalueArrayOk|http:NotFound|error {
         // Set default fields value to ["*"] if not provided or if empty array
         string[] fieldsToUse = (fields == () || fields.length() == 0) ? [] : fields;
         json recordsToUse = (payload.records ?: []).toJson();
@@ -244,7 +266,7 @@ service /v1 on ep0 {
     # Get metadata of an entity
     #
     # + return - Entity metadata 
-    resource function get entities/[string entityId]/metadata() returns EntitiesEntityIdMetadataResponse|error {
+    resource function get entities/[EntityIdParam entityId]/metadata() returns EntitiesEntityIdMetadataResponse|error {
         // Create entity filter with empty fields
         Entity entityFilter = {
             id: entityId,
@@ -298,7 +320,7 @@ service /v1 on ep0 {
     # Get related entity IDs
     #
     # + return - List of related entities 
-    resource function post entities/[string entityId]/relations(@http:Payload entityId_relations_body payload) returns RecordStringidStringrelatedEntityIdStringnameStringstartTimeStringendTimeStringdirectionArrayOk|http:BadRequest|error {
+    resource function post entities/[EntityIdParam entityId]/relations(@http:Payload entityId_relations_body payload) returns RecordStringidStringrelatedEntityIdStringnameStringstartTimeStringendTimeStringdirectionArrayOk|http:BadRequest|error {
         // Validate that startTime/endTime and activeAt are not used together
         boolean hasTimeRange = (payload.startTime is string && payload.startTime != "") || (payload.endTime is string && payload.endTime != "");
         boolean hasActiveAt = payload.activeAt is string && payload.activeAt != "";
