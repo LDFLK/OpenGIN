@@ -3,7 +3,7 @@
 //
 // Field constraints below use the `ballerina/constraint` standard library so
 // invalid payloads are rejected with 400 at request binding time, before any
-// gRPC call is made (see https://github.com/LDFLK/OpenGIN/issues/344).
+// gRPC call is made (issue #344).
 // If this file is regenerated, re-apply the `@constraint` annotations.
 
 import ballerina/constraint;

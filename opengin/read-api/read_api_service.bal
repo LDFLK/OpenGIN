@@ -36,7 +36,7 @@ COREServiceClient ep = check new (coreServiceUrl, grpcConfig);
 
 // Constrained path and query parameter types. The HTTP listener validates
 // these at binding time and rejects invalid values with 400 before any gRPC
-// call is made (see https://github.com/LDFLK/OpenGIN/issues/344).
+// call is made (issue #344).
 @constraint:String {
     pattern: {value: re `.*\S.*`, message: "entityId is required"}
 }
