@@ -46,7 +46,7 @@ type EntityIdParam string;
 
 @constraint:String {
     pattern: {
-        value: re `(\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?(\.\d+)?(Z|[+-]\d{2}:?\d{2})?)?)?`,
+        value: re `\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?(\.\d+)?(Z|[+-]\d{2}:?\d{2})?)?`,
         message: "Invalid date-time format, expected YYYY-MM-DD or RFC3339"
     }
 }
@@ -142,6 +142,10 @@ function validateNewRelationships(json rels) returns string? {
     if rels is json[] {
         foreach json item in rels {
             if item is map<json> {
+                json|error rawKey = item.key;
+                if rawKey is error || rawKey.toString().trim().length() == 0 {
+                    return "relationship entry key is required";
+                }
                 RelationshipPayload|error rel = constraint:validate(item["value"]);
                 if rel is error {
                     return "invalid relationship: " + rel.message();
@@ -172,6 +176,10 @@ function validateUpdateRelationships(json rels) returns string? {
     if rels is json[] {
         foreach json item in rels {
             if item is map<json> {
+                json|error rawKey = item.key;
+                if rawKey is error || rawKey.toString().trim().length() == 0 {
+                    return "relationship entry key is required";
+                }
                 RelationshipUpdatePayload|error rel = constraint:validate(item["value"]);
                 if rel is error {
                     return "invalid relationship: " + rel.message();
@@ -225,6 +233,10 @@ function validateAttributeValues(json attrs) returns string? {
     if attrs is json[] {
         foreach json item in attrs {
             if item is map<json> {
+                json|error rawKey = item.key;
+                if rawKey is error || rawKey.toString().trim().length() == 0 {
+                    return "attribute entry key is required";
+                }
                 string? err = validateAttributeValue(item["value"]);
                 if err is string {
                     return err;

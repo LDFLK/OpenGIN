@@ -49,7 +49,7 @@ type AttributeNameParam string;
 
 @constraint:String {
     pattern: {
-        value: re `(\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?(\.\d+)?(Z|[+-]\d{2}:?\d{2})?)?)?`,
+        value: re `\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?(\.\d+)?(Z|[+-]\d{2}:?\d{2})?)?`,
         message: "Invalid date-time format, expected YYYY-MM-DD or RFC3339"
     }
 }
@@ -160,7 +160,7 @@ service /v1 on ep0 {
     # + fields - List of field names to return. Defaults to ['*'] (all fields).
     # + return - Attribute value(s)
     resource function post entities/[EntityIdParam entityId]/attributes/[AttributeNameParam attributeName](DateTimeParam? startTime, DateTimeParam? endTime, @http:Payload attributes_attributeName_body payload, string[]? fields) returns RecordStringStartStringendStringvalueRecordStringStartStringendStringvalueArrayOk|http:NotFound|error {
-        // Set default fields value to ["*"] if not provided or if empty array
+        // Defaults to empty array when fields is omitted or empty
         string[] fieldsToUse = (fields == () || fields.length() == 0) ? [] : fields;
         json recordsToUse = (payload.records ?: []).toJson();
 
