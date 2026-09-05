@@ -38,7 +38,7 @@ COREServiceClient ep = check new (coreServiceUrl, grpcConfig);
 // Request validation uses the `ballerina/constraint` standard library.
 // `constraint:validate` clones the untyped JSON payload into the constrained
 // record types below and rejects missing fields, wrong types and format
-// violations with an error before any gRPC call is made (issue #344).
+// violations with an error before any gRPC call is made.
 @constraint:String {
     pattern: {value: re `.*\S.*`, message: "Entity id is required"}
 }
