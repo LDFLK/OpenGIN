@@ -37,21 +37,22 @@ COREServiceClient ep = check new (coreServiceUrl, grpcConfig);
 function extractValueAsString('any:Any anyValue) returns string {
     string typeUrl = anyValue.typeUrl;
 
-    // Default to using the value's string representation
-    string valueStr = anyValue.toString();
+    // Unpack protobuf StringValue (used for entity names) to the plain string.
+    // any:toString() would otherwise return a JSON blob of {typeUrl, hex value}.
+    if typeUrl.endsWith("StringValue") || typeUrl.endsWith("string") {
+        string|error unpacked = pbAny:unpack(anyValue, string);
+        if unpacked is string {
+            return unpacked;
+        }
+    }
 
-    // Check if it's a known primitive type and handle accordingly
-    if (typeUrl.endsWith("string")) {
-        return anyValue.value.toString();
-    } else if (typeUrl.endsWith("int32") || typeUrl.endsWith("int64") ||
+    if (typeUrl.endsWith("int32") || typeUrl.endsWith("int64") ||
             typeUrl.endsWith("float") || typeUrl.endsWith("double")) {
         return anyValue.value.toString();
     } else if (typeUrl.endsWith("bool")) {
         return anyValue.value.toString();
-    } else {
-        // For complex types, attempt to return as JSON string if possible
-        return valueStr;
     }
+    return anyValue.toString();
 }
 
 // Helper function to convert decimal values to float for protobuf compatibility

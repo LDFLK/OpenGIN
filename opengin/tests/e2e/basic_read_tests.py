@@ -18,6 +18,15 @@ urls = get_service_urls()
 READ_API_URL = urls['read']
 INGESTION_API_URL = urls['ingestion']
 
+def search_result_name(entity):
+    """Return the entity name from a search hit as a plain string."""
+    name = entity.get("name")
+    if not isinstance(name, str):
+        raise AssertionError(f"search name should be a string, got {type(name)}: {name}")
+    if name.startswith("{") and "typeUrl" in name:
+        raise AssertionError(f"search name is still a serialized protobuf Any: {name}")
+    return name
+
 ENTITY_ID = "read-test-entity"
 RELATED_ID_1 = "read-related-entity-1"
 RELATED_ID_2 = "read-related-entity-2"
@@ -1428,6 +1437,9 @@ def test_search_by_name():
     entity = body["body"][0]
     assert entity["id"] == MINISTER_ID_1, f"Expected minister ID {MINISTER_ID_1}, got {entity['id']}"
     assert entity["kind"]["minor"] == "Minister", f"Expected minor kind 'Minister', got {entity['kind']['minor']}"
+    assert search_result_name(entity) == "Ministry of Technology", (
+        f"Expected name 'Ministry of Technology', got {entity['name']}"
+    )
     
     print("✅ Search by name successful")
 
@@ -1625,10 +1637,7 @@ def test_search_by_name_kind_and_created_date():
     # Verify the names contain "Alice"
     for entity in body["body"]:
         if entity["id"] in [entity1_id, entity2_id]:
-            # Decode the name from protobuf
-            name_obj = json.loads(entity["name"])
-            hex_value = name_obj["value"]
-            decoded_name = bytes.fromhex(hex_value).decode('utf-8')
+            decoded_name = search_result_name(entity)
             assert "Alice" in decoded_name, f"Entity {entity['id']} name '{decoded_name}' should contain 'Alice'"
     
     print(f"✅ Found {len(body['body'])} entities matching partial name 'Alice'")
@@ -1762,10 +1771,7 @@ def test_search_by_partial_name_match():
     assert len(entities) == 4, f"Expected 4 entities with 'Diana' in the name, got {len(entities)}"
     names = []
     for entity in entities:
-        name_obj = json.loads(entity["name"])
-        hex_value = name_obj["value"]
-        decoded_name = bytes.fromhex(hex_value).decode('utf-8')
-        names.append(decoded_name)
+            names.append(search_result_name(entity))
     assert "Diana Thompson" in names, "Expected 'Diana Thompson' to be in results"
     assert "Diana Williams" in names, "Expected 'Diana Williams' to be in results"
     assert "Diana Thompson Williams" in names, "Expected 'Diana Thompson Williams' to be in results"
@@ -1785,10 +1791,7 @@ def test_search_by_partial_name_match():
     assert len(entities) == 3, f"Expected 3 entities with 'Thompson' in the name, got {len(entities)}"
     names = []
     for entity in entities:
-        name_obj = json.loads(entity["name"])
-        hex_value = name_obj["value"]
-        decoded_name = bytes.fromhex(hex_value).decode('utf-8')
-        names.append(decoded_name)
+            names.append(search_result_name(entity))
     assert "Diana Thompson" in names, "Expected 'Diana Thompson' to be in results"
     assert "Franklin Thompson" in names, "Expected 'Franklin Thompson' to be in results"
     assert "Diana Thompson Williams" in names, "Expected 'Diana Thompson Williams' to be in results"
@@ -1807,10 +1810,7 @@ def test_search_by_partial_name_match():
     assert len(entities) == 4, f"Expected 4 entities with 'diana' (case-insensitive) in the name, got {len(entities)}"
     names = []
     for entity in entities:
-        name_obj = json.loads(entity["name"])
-        hex_value = name_obj["value"]
-        decoded_name = bytes.fromhex(hex_value).decode('utf-8')
-        names.append(decoded_name)
+            names.append(search_result_name(entity))
     assert "Diana Thompson" in names, "Expected 'Diana Thompson' to be in results (case-insensitive match)"
     assert "Diana Williams" in names, "Expected 'Diana Williams' to be in results (case-insensitive match)"
     assert "Diana (test)" in names, "Expected 'Diana (test)' to be in results (case-insensitive match)"
@@ -1830,10 +1830,7 @@ def test_search_by_partial_name_match():
     assert len(entities) == 3, f"Expected 3 entities with 'WILLIAMS' (case-insensitive) in the name, got {len(entities)}"
     names = []
     for entity in entities:
-        name_obj = json.loads(entity["name"])
-        hex_value = name_obj["value"]
-        decoded_name = bytes.fromhex(hex_value).decode('utf-8')
-        names.append(decoded_name)
+            names.append(search_result_name(entity))
     assert "Diana Williams" in names, "Expected 'Diana Williams' to be in results (case-insensitive match)"
     assert "Gabrielle Williams" in names, "Expected 'Gabrielle Williams' to be in results (case-insensitive match)"
     assert "Diana Thompson Williams" in names, "Expected 'Diana Thompson Williams' to be in results (case-insensitive match)"
@@ -1852,10 +1849,7 @@ def test_search_by_partial_name_match():
     assert len(entities) == 3, f"Expected 3 entities with 'Williams' in the name, got {len(entities)}"
     names = []
     for entity in entities:
-        name_obj = json.loads(entity["name"])
-        hex_value = name_obj["value"]
-        decoded_name = bytes.fromhex(hex_value).decode('utf-8')
-        names.append(decoded_name)
+            names.append(search_result_name(entity))
     assert "Diana Williams" in names, "Expected 'Diana Williams' to be in results"
     assert "Gabrielle Williams" in names, "Expected 'Gabrielle Williams' to be in results"
     assert "Diana Thompson Williams" in names, "Expected 'Diana Thompson Williams' to be in results"
@@ -1901,10 +1895,7 @@ def test_search_by_partial_name_match():
     assert len(entities) == 4, f"Expected 4 entities with 'Diana' in the name and matching created date, got {len(entities)}"
     names = []
     for entity in entities:
-        name_obj = json.loads(entity["name"])
-        hex_value = name_obj["value"]
-        decoded_name = bytes.fromhex(hex_value).decode('utf-8')
-        names.append(decoded_name)
+            names.append(search_result_name(entity))
     expected_names = ["Diana Thompson", "Diana Williams", "Diana Thompson Williams", "Diana (test)"]
     for name in names:
         assert name in expected_names, f"Expected entity name '{name}' to be one of the Diana entities"
@@ -1936,10 +1927,7 @@ def test_search_by_partial_name_match():
     assert len(entities) == 1, f"Expected 1 entity with 'Diana (test)' in the name, got {len(entities)}"
     names = []
     for entity in entities:
-        name_obj = json.loads(entity["name"])
-        hex_value = name_obj["value"]
-        decoded_name = bytes.fromhex(hex_value).decode('utf-8')
-        names.append(decoded_name)
+            names.append(search_result_name(entity))
     assert "Diana (test)" in names, "Expected 'Diana (test)' to be in results"
     # Verify it doesn't match other Diana entities (regex injection would cause false matches)
     assert "Diana Thompson" not in names, "Should not match 'Diana Thompson' when searching for 'Diana (test)'"
@@ -1958,10 +1946,7 @@ def test_search_by_partial_name_match():
     assert len(entities) == 1, f"Expected 1 entity with 'Fran.klin' in the name, got {len(entities)}"
     names = []
     for entity in entities:
-        name_obj = json.loads(entity["name"])
-        hex_value = name_obj["value"]
-        decoded_name = bytes.fromhex(hex_value).decode('utf-8')
-        names.append(decoded_name)
+            names.append(search_result_name(entity))
     assert "Fran.klin" in names, "Expected 'Fran.klin' to be in results"
     # Verify it doesn't match "Franklin" (regex injection would cause false matches)
     assert "Franklin Thompson" not in names, "Should not match 'Franklin Thompson' when searching for 'Fran.klin'"
@@ -1980,10 +1965,7 @@ def test_search_by_partial_name_match():
     assert len(entities) == 1, f"Expected 1 entity with '(test)' in the name, got {len(entities)}"
     names = []
     for entity in entities:
-        name_obj = json.loads(entity["name"])
-        hex_value = name_obj["value"]
-        decoded_name = bytes.fromhex(hex_value).decode('utf-8')
-        names.append(decoded_name)
+            names.append(search_result_name(entity))
     assert "Diana (test)" in names, "Expected 'Diana (test)' to be in results"
     print("  ✅ Regex injection prevention - partial match with special chars successful")
     
@@ -2125,11 +2107,7 @@ def test_search_by_id():
     assert entity["id"] == DEPT_ID_1, f"Expected department ID {DEPT_ID_1}, got {entity['id']}"
     assert entity["kind"]["minor"] == "Department", f"Expected minor kind 'Department', got {entity['kind']['minor']}"
         
-    # Parse the name JSON string and decode the hex value directly
-    name_obj = json.loads(entity["name"])
-    hex_value = name_obj["value"]
-    decoded_name = bytes.fromhex(hex_value).decode('utf-8')
-    
+    decoded_name = search_result_name(entity)
     assert decoded_name == "IT Department", f"Expected name 'IT Department', got {decoded_name}"
     
     print("✅ Search by ID successful")
@@ -2182,10 +2160,7 @@ def test_search_by_id_with_other_filters():
     assert entity["id"] == DEPT_ID_1, f"Expected department ID {DEPT_ID_1}, got {entity['id']}"
     assert entity["kind"]["minor"] == "Department", f"Expected minor kind 'Department', got {entity['kind']['minor']}"
     
-    # Decode the name value from protobuf Any type
-    name_obj = json.loads(entity["name"])
-    hex_value = name_obj["value"]
-    decoded_name = bytes.fromhex(hex_value).decode('utf-8')
+    decoded_name = search_result_name(entity)
     assert decoded_name == "IT Department", f"Expected name 'IT Department', got {decoded_name}"
     
     print("✅ Search by ID ignored additional filters as expected")

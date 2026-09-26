@@ -27,10 +27,10 @@ import (
 // Server implements the COREService
 type Server struct {
 	pb.UnimplementedCOREServiceServer
-	mongoRepo            *mongorepository.MongoRepository
-	neo4jRepo            *neo4jrepository.Neo4jRepository
-	postgresRepo         *postgres.PostgresRepository
-	attributeProcessor   *engine.EntityAttributeProcessor
+	mongoRepo          *mongorepository.MongoRepository
+	neo4jRepo          *neo4jrepository.Neo4jRepository
+	postgresRepo       *postgres.PostgresRepository
+	attributeProcessor *engine.EntityAttributeProcessor
 }
 
 // CreateEntity handles entity creation with relationships, metadata and attributes
@@ -354,29 +354,7 @@ func (s *Server) ReadEntities(ctx context.Context, req *pb.ReadEntityRequest) (*
 	// Convert filtered entities to pb.Entity format
 	var entities []*pb.Entity
 	for _, entity := range filteredEntities {
-		pbEntity := &pb.Entity{
-			Id: entity["id"].(string),
-			Kind: &pb.Kind{
-				Major: entity["kind"].(string),
-				Minor: entity["minorKind"].(string),
-			},
-			Created: entity["created"].(string),
-			Name: &pb.TimeBasedValue{ // How to represent time based value name?
-				StartTime: entity["created"].(string),
-				Value: &anypb.Any{
-					TypeUrl: "type.googleapis.com/google.protobuf.StringValue",
-					Value:   []byte(entity["name"].(string)),
-				},
-			},
-		}
-
-		// Add terminated if present
-		if terminated, ok := entity["terminated"].(string); ok && terminated != "" {
-			pbEntity.Terminated = terminated
-			pbEntity.Name.EndTime = terminated
-		}
-
-		entities = append(entities, pbEntity)
+		entities = append(entities, entityFromGraphFilterResult(entity))
 	}
 
 	return &pb.EntityList{
