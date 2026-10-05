@@ -1357,3 +1357,88 @@ func TestFilterEntitiesWithPartialNameMatch(t *testing.T) {
 		assert.Contains(t, names, "Alice (test)", "Expected 'Alice (test)' to be in results")
 	})
 }
+
+func TestFilterEntitiesByMinorKindSubtype(t *testing.T) {
+	ctx := context.Background()
+
+	// A label unused by the other tests, so these filters only see the nodes created here.
+	const major = "Region"
+
+	testEntities := []struct {
+		id    string
+		name  string
+		minor string
+	}{
+		{"minor_kind_subtype_parent", "Parent", "country-level-2"},
+		{"minor_kind_subtype_district", "District", "country-level-2+lk-electoral-district"},
+		{"minor_kind_subtype_ward", "Ward", "country-level-2+lk-electoral-district+ward"},
+		{"minor_kind_subtype_province", "Province", "country-level-2+lk-province"},
+		{"minor_kind_subtype_level20", "Level 20", "country-level-20"},
+		{"minor_kind_subtype_level21", "Level 21", "country-level-21"},
+	}
+
+	for _, entity := range testEntities {
+		_, err := repository.CreateGraphEntity(ctx, &pb.Kind{Major: major, Minor: entity.minor}, map[string]interface{}{
+			"Id":      entity.id,
+			"Name":    entity.name,
+			"Created": "2025-04-01T00:00:00Z",
+		})
+		assert.Nil(t, err, "Expected no error when creating %s", entity.minor)
+	}
+
+	minorKinds := func(entities []map[string]interface{}) []string {
+		kinds := make([]string, 0, len(entities))
+		for _, entity := range entities {
+			kinds = append(kinds, entity["minorKind"].(string))
+		}
+		return kinds
+	}
+
+	filterByMinor := func(t *testing.T, minor string) []string {
+		t.Helper()
+		entities, err := repository.FilterEntities(ctx, &pb.Kind{Major: major, Minor: minor}, map[string]interface{}{})
+		assert.Nil(t, err, "Expected no error when filtering by minor kind %q", minor)
+		return minorKinds(entities)
+	}
+
+	t.Run("parent includes itself and every subtype", func(t *testing.T) {
+		kinds := filterByMinor(t, "country-level-2")
+		assert.ElementsMatch(t, []string{
+			"country-level-2",
+			"country-level-2+lk-electoral-district",
+			"country-level-2+lk-electoral-district+ward",
+			"country-level-2+lk-province",
+		}, kinds)
+	})
+
+	t.Run("specific subtype includes itself and deeper segments only", func(t *testing.T) {
+		kinds := filterByMinor(t, "country-level-2+lk-electoral-district")
+		assert.ElementsMatch(t, []string{
+			"country-level-2+lk-electoral-district",
+			"country-level-2+lk-electoral-district+ward",
+		}, kinds)
+	})
+
+	t.Run("subtype does not include siblings", func(t *testing.T) {
+		kinds := filterByMinor(t, "country-level-2+lk-electoral-district")
+		assert.NotContains(t, kinds, "country-level-2+lk-province")
+		assert.NotContains(t, kinds, "country-level-2")
+
+		// Hierarchy exists only at '+'. "lk" must not pull in "lk-electoral-district".
+		hyphenPrefix := filterByMinor(t, "country-level-2+lk")
+		assert.Empty(t, hyphenPrefix)
+		assert.NotContains(t, hyphenPrefix, "country-level-2+lk-electoral-district")
+		assert.NotContains(t, hyphenPrefix, "country-level-2+lk-province")
+	})
+
+	t.Run("country-level-2 does not include country-level-20", func(t *testing.T) {
+		kinds := filterByMinor(t, "country-level-2")
+		assert.Contains(t, kinds, "country-level-2")
+		assert.Contains(t, kinds, "country-level-2+lk-electoral-district")
+		assert.NotContains(t, kinds, "country-level-20")
+		assert.NotContains(t, kinds, "country-level-21")
+
+		level20 := filterByMinor(t, "country-level-20")
+		assert.ElementsMatch(t, []string{"country-level-20"}, level20)
+	})
+}
