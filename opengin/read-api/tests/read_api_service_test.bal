@@ -1255,6 +1255,147 @@ function testEntitySearch() returns error? {
     return;
 }
 
+function createMinorKindEntity(COREServiceClient ep, string major, string id, string minor) returns error? {
+    Entity entity = {
+        id: id,
+        kind: {
+            major: major,
+            minor: minor
+        },
+        created: "2025-04-01T00:00:00Z",
+        terminated: "",
+        name: {
+            startTime: "2025-04-01T00:00:00Z",
+            endTime: "",
+            value: check pbAny:pack(id)
+        },
+        metadata: [],
+        attributes: [],
+        relationships: []
+    };
+    Entity _ = check ep->CreateEntity(entity);
+}
+
+function searchByMinorKind(COREServiceClient ep, string major, string minor) returns string[]|error {
+    ReadEntityRequest request = {
+        entity: {
+            id: "",
+            kind: {
+                major: major,
+                minor: minor
+            },
+            created: "",
+            terminated: "",
+            name: {
+                startTime: "",
+                endTime: "",
+                value: check pbAny:pack("")
+            },
+            metadata: [],
+            attributes: [],
+            relationships: []
+        },
+        output: []
+    };
+    EntityList entityList = check ep->ReadEntities(request);
+    string[] minors = [];
+    foreach Entity entity in entityList.entities {
+        minors.push(entity.kind.minor);
+    }
+    return minors.sort();
+}
+
+// Minor kind filters match a value and every subtype after a '+' boundary.
+@test:Config {
+    groups: ["entity", "minor-kind"]
+}
+function testFilterEntitiesByMinorKindSubtype() returns error? {
+    io:println("[read_api_service_test.bal][testFilterEntitiesByMinorKindSubtype]");
+    string|error coreUrl = getCoreServiceUrl();
+    if coreUrl is error {
+        return coreUrl;
+    }
+    COREServiceClient ep = check new (coreUrl);
+
+    // A fresh label so earlier runs and other tests are not included in the filter.
+    string major = "Region_Test";
+
+    map<string> entities = {
+        "minor_kind_parent": "country-level-2",
+        "minor_kind_district": "country-level-2+lk-electoral-district",
+        "minor_kind_ward": "country-level-2+lk-electoral-district+ward",
+        "minor_kind_province": "country-level-2+lk-province",
+        "minor_kind_level20": "country-level-20",
+        "minor_kind_level21": "country-level-21"
+    };
+    foreach var [id, minor] in entities.entries() {
+        check createMinorKindEntity(ep, major, id, minor);
+    }
+
+    string[] parentMatches = check searchByMinorKind(ep, major, "country-level-2");
+    string[] expectedParent = [
+        "country-level-2",
+        "country-level-2+lk-electoral-district",
+        "country-level-2+lk-electoral-district+ward",
+        "country-level-2+lk-province"
+    ];
+    test:assertEquals(parentMatches, expectedParent.sort(), "Parent minor kind should include itself and every subtype");
+
+    string[] subtypeMatches = check searchByMinorKind(ep, major, "country-level-2+lk-electoral-district");
+    string[] expectedSubtype = [
+        "country-level-2+lk-electoral-district",
+        "country-level-2+lk-electoral-district+ward"
+    ];
+    test:assertEquals(subtypeMatches, expectedSubtype.sort(), "A subtype should include itself and deeper segments only");
+    test:assertFalse(subtypeMatches.indexOf("country-level-2+lk-province") is int, "A subtype should not include its sibling");
+    test:assertFalse(subtypeMatches.indexOf("country-level-2") is int, "A subtype should not include its parent");
+
+    // Hierarchy exists only at '+'. The next character after "lk" is '-', so this matches nothing.
+    string[] hyphenPrefix = check searchByMinorKind(ep, major, "country-level-2+lk");
+    string[] expectedNone = [];
+    test:assertEquals(hyphenPrefix, expectedNone, "A minor kind should not match a longer name that continues with '-'");
+
+    string[] level2 = check searchByMinorKind(ep, major, "country-level-2");
+    test:assertFalse(level2.indexOf("country-level-20") is int, "country-level-2 should not include country-level-20");
+    test:assertFalse(level2.indexOf("country-level-21") is int, "country-level-2 should not include country-level-21");
+    string[] level20 = check searchByMinorKind(ep, major, "country-level-20");
+    string[] expectedLevel20 = ["country-level-20"];
+    test:assertEquals(level20, expectedLevel20, "country-level-20 should match only itself");
+
+    Entity invalidCreate = {
+        id: "minor_kind_invalid",
+        kind: {
+            major: major,
+            minor: "country-level-2+"
+        },
+        created: "2025-04-01T00:00:00Z",
+        terminated: "",
+        name: {
+            startTime: "2025-04-01T00:00:00Z",
+            endTime: "",
+            value: check pbAny:pack("minor_kind_invalid")
+        },
+        metadata: [],
+        attributes: [],
+        relationships: []
+    };
+    Entity|error createResult = ep->CreateEntity(invalidCreate);
+    if createResult is error {
+        test:assertTrue(createResult.message().includes("invalid minor kind"), createResult.message());
+    } else {
+        test:assertFail("Create should reject a minor kind with an empty '+' segment");
+    }
+
+    string[]|error filterResult = searchByMinorKind(ep, major, "+country-level-2");
+    if filterResult is error {
+        test:assertTrue(filterResult.message().includes("invalid minor kind"), filterResult.message());
+    } else {
+        test:assertFail("Filter should reject a minor kind with an empty '+' segment");
+    }
+
+    return;
+}
+
 // After Suite Function
 @test:AfterSuite
 function afterSuiteFunc() {
