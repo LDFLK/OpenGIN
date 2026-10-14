@@ -108,8 +108,17 @@ jobs:
           exit 1
         fi
 
-        # Run ingestion with exit-code propagation — no fragile log-grepping
-        echo "Running ingestion with exit-code propagation..."
-        docker compose $COMPOSE_FILES up --abort-on-container-exit --exit-code-from ingestion ingestion
+        # Run only the tests (override the entrypoint so the service doesn't start after tests)
+        echo "Running ingestion tests with exit-code propagation..."
+        docker compose $COMPOSE_FILES run --rm ingestion sh -c '
+          CORE_HOST=$(echo ${BAL_CONFIG_VAR_CORESERVICEURL} | sed "s|http://||" | cut -d: -f1)
+          CORE_PORT=$(echo ${BAL_CONFIG_VAR_CORESERVICEURL} | sed "s|http://||" | cut -d: -f2)
+          until nc -z -w 5 ${CORE_HOST} ${CORE_PORT}; do
+            echo "Waiting for CORE service at ${CORE_HOST}:${CORE_PORT}..."
+            sleep 2
+          done
+          echo "CORE service is ready!"
+          bal test opengin/ingestion-api
+        '
 
-        echo "Ingestion finished successfully."
+        echo "Ingestion tests finished successfully."
