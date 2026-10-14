@@ -19,173 +19,118 @@ on:
 jobs:
   ingestion-api-workflow:
     runs-on: ubuntu-latest
-    
+
     steps:
 
     - uses: actions/checkout@v3
-    
+
     - name: Clear GitHub Actions cache
       run: |
         echo "🧹 Clearing GitHub Actions cache..."
         rm -rf ~/.cache || true
         rm -rf /tmp/* || true
-        
+
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
-    
+
     - name: Build and test Ingestion service
       run: |
-        # Complete cache and container cleanup for fresh start
-        echo "🧹 Complete cleanup - removing all containers, images, and cache..."
-        docker compose down --remove-orphans || true
-        docker system prune -af || true  # -a removes all unused images, -f forces without prompt
-        docker builder prune -af || true  # Clean build cache
-        docker volume prune -f || true    # Clean unused volumes
-        
-        # Build Ingestion service (force rebuild to pick up environment variable changes)
-        docker compose build --no-cache ingestion
+        #!/bin/bash
+        set -euo pipefail
+        set -x
 
-        # Start required dependencies with tmpfs volumes for fresh databases
-        docker compose -f docker-compose.yml -f docker-compose.override.yml up -d mongodb neo4j postgres core
-        
-        # Wait for databases to be fully initialized
-        echo "⏳ Waiting for databases to be fully initialized..."
-        sleep 30
+        COMPOSE_FILES="-f docker-compose.yml -f docker-compose.override.yml"
 
-        # Verify databases are fresh and ready
-        echo "🔍 Verifying database state..."
-        echo "MongoDB collections:"
-        docker exec mongodb mongosh --eval "db.getMongo().getDBNames()" || echo "MongoDB not ready yet"
-        echo "Neo4j nodes:"
-        docker exec neo4j cypher-shell -u neo4j -p neo4j123 "MATCH (n) RETURN count(n) as nodeCount" || echo "Neo4j not ready yet"
-        echo "PostgreSQL tables:"
-        docker exec postgres psql -U postgres -d opengin -c "\dt" || echo "PostgreSQL not ready yet"
+        # Ensure cleanup always runs and we preserve the original exit code
+        function finish {
+          rc=$?
+          echo "===== CI STEP EXIT CODE: $rc ====="
+          echo "Dumping CORE logs (last 200 lines):"
+          docker compose $COMPOSE_FILES logs --tail=200 core || true
+          echo "Dumping Ingestion logs (last 200 lines):"
+          docker compose $COMPOSE_FILES logs --tail=200 ingestion || true
+          echo "Service status:"
+          docker compose $COMPOSE_FILES ps || true
+          docker compose $COMPOSE_FILES down --remove-orphans || true
+          docker system prune -f || true
+          exit $rc
+        }
+        trap finish EXIT
 
-        # Wait for dependencies to be healthy
-        echo "Waiting for dependencies to be healthy..."
-        timeout=300
-        while [ $timeout -gt 0 ]; do
-          if docker compose ps | grep -q "healthy"; then
-            echo "Dependencies are starting to be healthy..."
-            break
-          fi
-          # Check if any services have failed
-          if docker compose ps | grep -q "Exit"; then
-            echo "❌ Some services have failed during startup!"
-            echo "=== Service Status ==="
-            docker compose ps
-            echo "=== Failed Service Logs ==="
-            docker compose logs mongodb neo4j postgres core
-            docker compose down
-            exit 1
-          fi
-          echo "Waiting for health checks... ($timeout seconds remaining)"
-          sleep 5
-          timeout=$((timeout - 5))
-        done
-        
-        if [ $timeout -le 0 ]; then
-          echo "❌ Timeout waiting for dependencies to be healthy!"
-          echo "=== Service Status ==="
-          docker compose ps
-          echo "=== Dependency Logs ==="
-          docker compose logs mongodb neo4j postgres core
-          docker compose down
+        # Fresh start
+        echo "===== [1/5] Cleaning up stale containers, images, volumes ====="
+        docker compose $COMPOSE_FILES down --remove-orphans || true
+        docker system prune -af || true
+        docker builder prune -af || true
+        docker volume prune -f || true
+        echo "===== [1/5] Cleanup done ====="
+
+        # Build ingestion image
+        echo "===== [2/5] Building ingestion image (no-cache) ====="
+        docker compose $COMPOSE_FILES build --no-cache ingestion
+        echo "===== [2/5] Ingestion image built successfully ====="
+
+        # Start required dependencies (detached)
+        echo "===== [3/5] Starting dependencies: mongodb neo4j postgres core ====="
+        docker compose $COMPOSE_FILES up -d mongodb neo4j postgres core
+        echo "===== [3/5] Dependencies started (detached) ====="
+
+        # Helper to check container health using docker inspect
+        function wait_for_services {
+          services=(mongodb neo4j postgres core)
+          timeout=${1:-300}
+          echo "--- wait_for_services: checking ${services[*]} (timeout=${timeout}s) ---"
+          until [ $timeout -le 0 ]; do
+            all_ok=true
+            for svc in "${services[@]}"; do
+              cid=$(docker compose $COMPOSE_FILES ps -q "$svc" || true)
+              if [ -z "$cid" ]; then
+                echo "Service $svc has no container id yet"
+                all_ok=false
+                break
+              fi
+              status=$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$cid" 2>/dev/null || echo "unknown")
+              echo "Service $svc status: $status"
+              if [[ "$status" != "healthy" && "$status" != "running" ]]; then
+                all_ok=false
+                break
+              fi
+            done
+
+            if [ "$all_ok" = true ]; then
+              echo "All services are healthy/running"
+              return 0
+            fi
+
+            docker compose $COMPOSE_FILES ps
+            sleep 5
+            timeout=$((timeout - 5))
+          done
+          echo "--- wait_for_services: timed out ---"
+          echo "--- Final service state at timeout ---"
+          docker compose $COMPOSE_FILES ps
+          echo "--- mongodb logs ---"
+          docker compose $COMPOSE_FILES logs --tail=50 mongodb || true
+          echo "--- neo4j logs ---"
+          docker compose $COMPOSE_FILES logs --tail=50 neo4j || true
+          echo "--- postgres logs ---"
+          docker compose $COMPOSE_FILES logs --tail=50 postgres || true
+          echo "--- core logs ---"
+          docker compose $COMPOSE_FILES logs --tail=100 core || true
+          return 1
+        }
+
+        echo "===== [4/5] Waiting for all services to be healthy ====="
+        if ! wait_for_services 300; then
+          echo "Timeout waiting for dependencies to be healthy"
+          docker compose $COMPOSE_FILES logs mongodb neo4j postgres core || true
           exit 1
         fi
-        
-        # Wait for CORE service to complete tests and start the server
-        echo "Waiting for CORE service to complete tests and start server..."
-        timeout=600  # 10 minutes for Go tests to complete
-        while [ $timeout -gt 0 ]; do
-          if docker compose logs core | grep -q "CORE Service is running on"; then
-            echo "✅ CORE service is now running!"
-            break
-          elif docker compose logs core | grep -q "FAILED\|failed\|error.*test"; then
-            echo "❌ CORE service tests failed!"
-            echo "CORE service logs:"
-            docker compose logs core
-            docker compose down
-            exit 1
-          elif docker compose logs core | grep -q "duplicate key error"; then
-            echo "❌ CORE service tests failed due to duplicate key error!"
-            echo "This indicates database cleanup didn't work properly."
-            echo "CORE service logs:"
-            docker compose logs core
-            docker compose down
-            exit 1
-          fi
-          echo "Waiting for CORE service startup... ($timeout seconds remaining)"
-          sleep 10
-          timeout=$((timeout - 10))
-        done
-        
-        if [ $timeout -le 0 ]; then
-          echo "❌ Timeout waiting for CORE service to start!"
-          echo "CORE service logs:"
-          docker compose logs core
-          docker compose down
-          exit 1
-        fi
-        
-        # Start Ingestion service in detached mode
-        echo "Starting Ingestion service and running tests..."
-        if ! docker compose up -d ingestion; then
-          echo "❌ Failed to start Ingestion service!"
-          echo "=== All Service Status ==="
-          docker compose ps
-          echo "=== CORE Service Logs ==="
-          docker compose logs core
-          echo "=== Ingestion Service Logs ==="
-          docker compose logs ingestion
-          docker compose down
-          exit 1
-        fi
-        
-        # Wait for tests to complete
-        echo "Waiting for tests to complete..."
-        sleep 30
-        
-        # Check the logs for test results
-        echo "=== Ingestion Service Logs ==="
-        docker compose logs ingestion
-        
-        echo "=== CORE Service Logs ==="
-        docker compose logs core
-        
-        echo "=== All Service Status ==="
-        docker compose ps
-        
-        if docker compose logs ingestion | grep -q "failing" && ! docker compose logs ingestion | grep -q "0 failing"; then
-          echo "❌ Ingestion API tests failed!"
-          echo "Checking for specific error patterns..."
-          
-          if docker compose logs ingestion | grep -q "500"; then
-            echo "🔍 Found HTTP 500 errors - likely CORE service connectivity issue"
-            echo "CORE service status:"
-            docker compose ps core
-          fi
-          
-          if docker compose logs ingestion | grep -q "Connection refused\|connect: connection refused"; then
-            echo "🔍 Found connection refused errors - CORE service may not be responding"
-          fi
-          
-          docker compose down
-          exit 1
-        elif docker compose logs ingestion | grep -q "0 failing"; then
-          echo "✅ Ingestion API tests passed!"
-        else
-          echo "⚠️  Test results not found in logs. Checking for service startup..."
-          if docker compose logs ingestion | grep -q "Starting Ingestion service\|Running executable"; then
-            echo "✅ Ingestion API service started successfully!"
-          else
-            echo "❌ Could not determine test status and service may not have started properly"
-            docker compose down
-            exit 1
-          fi
-        fi
-        
-        # Cleanup - ensure complete cleanup for next CI run
-        echo "🧹 Final cleanup - removing all containers..."
-        docker compose -f docker-compose.yml -f docker-compose.override.yml down --remove-orphans
-        docker system prune -f
+        echo "===== [4/5] All services healthy ====="
+
+        # Run ingestion with exit-code propagation — no fragile log-grepping
+        echo "===== [5/5] Running ingestion tests (abort-on-container-exit) ====="
+        echo "--- docker compose ps before test run ---"
+        docker compose $COMPOSE_FILES ps
+        docker compose $COMPOSE_FILES up --abort-on-container-exit --exit-code-from ingestion ingestion
+        echo "===== [5/5] Ingestion finished successfully ====="
