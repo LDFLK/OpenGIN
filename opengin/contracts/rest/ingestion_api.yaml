@@ -124,9 +124,12 @@ components:
               key:
                 type: string
               value:
-                type: array
-                items:
-                  $ref: '#/components/schemas/TimeBasedValue'
+                type: object
+                properties:
+                  values:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TimeBasedValue'
         relationships:
           type: array
           items:
