@@ -107,15 +107,20 @@ components:
         name:
           $ref: '#/components/schemas/TimeBasedValue'
         metadata:
-          type: array
-          items:
-            type: object
-            properties:
-              key:
-                type: string
-              value:
+          oneOf:
+            - type: object
+              additionalProperties: true
+            - type: array
+              items:
                 type: object
-                additionalProperties: true
+                properties:
+                  key:
+                    type: string
+                  value:
+                    oneOf:
+                      - type: string
+                      - type: object
+                        additionalProperties: true
         attributes:
           type: array
           items:
