@@ -113,6 +113,9 @@ components:
             - type: array
               items:
                 type: object
+                required:
+                  - key
+                  - value
                 properties:
                   key:
                     type: string
@@ -122,19 +125,22 @@ components:
                       - type: object
                         additionalProperties: true
         attributes:
-          type: array
-          items:
-            type: object
-            properties:
-              key:
-                type: string
-              value:
+          oneOf:
+            - type: object
+              additionalProperties: true
+            - type: array
+              items:
                 type: object
                 properties:
-                  values:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/TimeBasedValue'
+                  key:
+                    type: string
+                  value:
+                    type: object
+                    properties:
+                      values:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/TimeBasedValue'
         relationships:
           type: array
           items:
