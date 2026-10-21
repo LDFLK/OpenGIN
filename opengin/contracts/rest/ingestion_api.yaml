@@ -125,30 +125,24 @@ components:
                       - type: object
                         additionalProperties: true
         attributes:
-          oneOf:
-            - type: object
-              additionalProperties:
-                type: array
-                items:
-                  $ref: '#/components/schemas/TimeBasedValue'
-            - type: array
-              items:
+          type: array
+          items:
+            type: object
+            required:
+              - key
+              - value
+            properties:
+              key:
+                type: string
+              value:
                 type: object
                 required:
-                  - key
-                  - value
+                  - values
                 properties:
-                  key:
-                    type: string
-                  value:
-                    type: object
-                    required:
-                      - values
-                    properties:
-                      values:
-                        type: array
-                        items:
-                          $ref: '#/components/schemas/TimeBasedValue'
+                  values:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TimeBasedValue'
         relationships:
           type: array
           items:
