@@ -96,12 +96,6 @@ func TestParseRejectsUnknownFields(t *testing.T) {
 // The remaining invalid fixtures break schema rules, not the document format, so they must
 // parse successfully and be left for Validate to reject.
 func TestParseAcceptsRuleViolationFixtures(t *testing.T) {
-	parseErrorFixtures := map[string]bool{
-		"unknown_top_level_key.json": true,
-		"category_field.json":        true,
-		"cardinality_field.json":     true,
-	}
-
 	files, err := filepath.Glob(filepath.Join("testdata", "invalid", "*.json"))
 	if !assert.NoError(t, err) || !assert.NotEmpty(t, files) {
 		return

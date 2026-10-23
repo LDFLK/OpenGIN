@@ -21,6 +21,7 @@ so the purpose of each file is recorded here.
 | `invalid/duplicate_major.json` | Violation at `kindDefs[1].major`: duplicate Major "region"; add minors to kindDefs[0]. |
 | `invalid/duplicate_minor.json` | Violation at `kindDefs[0].minors[2]`: duplicate minor kind "country". |
 | `invalid/duplicate_relationship_name.json` | Violation at `relationshipDefs[1].name`: duplicate "located_in"; add the pair to relationshipDefs[0].endpoints instead. |
+| `invalid/empty_kind_defs.json` | Violation at `kindDefs`: at least one kind definition is required. |
 | `invalid/empty_endpoints.json` | Violation at `relationshipDefs[0].endpoints`: required, non-empty. |
 | `invalid/empty_minor.json` | Violation at `kindDefs[0].minors[1]`: empty minor kind. |
 | `invalid/invalid_major_name.json` | Violation at `kindDefs[0].major`: "lk-region" is not a safe Neo4j label. |
