@@ -1,8 +1,0 @@
-# Expected violation: kindDefs[0].major ("lk-region" is not a safe Neo4j label).
-kindDefs:
-  - major: lk-region
-    minors: [country, province]
-relationshipDefs:
-  - name: has_province
-    endpoints:
-      - { from: lk-region/country, to: lk-region/province }

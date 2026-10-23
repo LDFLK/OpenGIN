@@ -4,7 +4,7 @@
 // Package graphschema defines the user-supplied schema that describes the shape of the
 // entity graph: which kinds (Major/Minor) exist and which relationships may connect them.
 //
-// The same types are used for the document users write (YAML or JSON) and for the form
+// The same types are used for the JSON document users submit and for the form
 // stored in MongoDB, so there is no conversion step between the two.
 package graphschema
 
@@ -22,30 +22,30 @@ const AnyMinor = "*"
 
 // Schema is the complete graph schema for a deployment.
 type Schema struct {
-	Description      string            `yaml:"description,omitempty" json:"description,omitempty" bson:"description,omitempty"`
-	KindDefs         []KindDef         `yaml:"kindDefs" json:"kindDefs" bson:"kindDefs"`
-	RelationshipDefs []RelationshipDef `yaml:"relationshipDefs" json:"relationshipDefs" bson:"relationshipDefs"`
+	Description      string            `json:"description,omitempty" bson:"description,omitempty"`
+	KindDefs         []KindDef         `json:"kindDefs" bson:"kindDefs"`
+	RelationshipDefs []RelationshipDef `json:"relationshipDefs" bson:"relationshipDefs"`
 }
 
 // KindDef declares a Major kind and the Minor kinds allowed under it.
 type KindDef struct {
-	Major  string   `yaml:"major" json:"major" bson:"major"`
-	Minors []string `yaml:"minors" json:"minors" bson:"minors"`
+	Major  string   `json:"major" bson:"major"`
+	Minors []string `json:"minors" bson:"minors"`
 }
 
 // RelationshipDef declares a relationship name and every (from, to) kind pair it may connect.
 // A name is declared once; additional valid pairs are added to its Endpoints.
 type RelationshipDef struct {
-	Name      string     `yaml:"name" json:"name" bson:"name"`
-	Endpoints []Endpoint `yaml:"endpoints" json:"endpoints" bson:"endpoints"`
+	Name      string     `json:"name" bson:"name"`
+	Endpoints []Endpoint `json:"endpoints" bson:"endpoints"`
 }
 
 // Endpoint is one allowed (from, to) pair for a relationship. Both sides are kind references
 // in "Major/Minor" form. From is the entity that holds the relationship and To is its
 // relatedEntityId, matching the direction edges are created in Neo4j.
 type Endpoint struct {
-	From string `yaml:"from" json:"from" bson:"from"`
-	To   string `yaml:"to" json:"to" bson:"to"`
+	From string `json:"from" bson:"from"`
+	To   string `json:"to" bson:"to"`
 }
 
 // ParseKindRef splits a kind reference such as "region/country-level-1+lk-province" into its

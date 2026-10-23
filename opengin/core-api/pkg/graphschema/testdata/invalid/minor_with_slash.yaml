@@ -1,8 +1,0 @@
-# Expected violation: kindDefs[0].minors[1] (minor kind contains "/").
-kindDefs:
-  - major: region
-    minors: [country, province/east]
-relationshipDefs:
-  - name: has_province
-    endpoints:
-      - { from: region/country, to: region/province/east }

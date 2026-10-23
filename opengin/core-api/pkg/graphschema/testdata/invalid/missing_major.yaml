@@ -1,9 +1,0 @@
-# Expected violation: kindDefs[1].major (required).
-kindDefs:
-  - major: region
-    minors: [country, province]
-  - minors: [Department]
-relationshipDefs:
-  - name: has_province
-    endpoints:
-      - { from: region/country, to: region/province }

@@ -1,8 +1,0 @@
-# Expected violation: kindDefs[0].minors[2] (duplicate minor kind "country").
-kindDefs:
-  - major: region
-    minors: [country, province, country]
-relationshipDefs:
-  - name: has_province
-    endpoints:
-      - { from: region/country, to: region/province }
