@@ -1,0 +1,11 @@
+# Valid: "*" as a minor kind allows any minor under that Major, and "Major/*" in an
+# endpoint matches every minor kind of a declared Major.
+kindDefs:
+  - major: Organization
+    minors: [Minister, Department]
+  - major: Person
+    minors: ["*"]
+relationshipDefs:
+  - name: works_at
+    endpoints:
+      - { from: Person/*, to: Organization/* }

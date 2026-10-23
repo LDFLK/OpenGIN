@@ -1,0 +1,9 @@
+# Expected violation: relationshipDefs[0].endpoints[0].from (Organization/* used but Major
+# "Organization" is not declared).
+kindDefs:
+  - major: region
+    minors: [country, province]
+relationshipDefs:
+  - name: located_in
+    endpoints:
+      - { from: Organization/*, to: region/country }

@@ -1,0 +1,10 @@
+# Expected: parse error, unknown key "cardinality". Cardinality is not part of the v1 schema.
+kindDefs:
+  - major: region
+    minors: [country, province]
+relationshipDefs:
+  - name: has_province
+    endpoints:
+      - from: region/country
+        to: region/province
+        cardinality: SINGLE
