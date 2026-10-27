@@ -39,6 +39,14 @@ function unwrapAny(pbAny:Any anyValue) returns string|error {
     return pbAny:unpack(anyValue, string);
 }
 
+@test:Config {}
+function testExtractValueAsStringReturnsPlainName() returns error? {
+    pbAny:Any packed = check pbAny:pack("Ministry of Health");
+    string name = extractValueAsString(packed);
+    test:assertEquals(name, "Ministry of Health");
+    test:assertFalse(name.startsWith("{"), "name must not be a JSON-serialized Any");
+}
+
 // Helper function to convert decimal values to float for protobuf compatibility
 // Note that this is a temporary solution to convert decimal values to float for protobuf compatibility.
 // It is not a permanent solution and should be removed when the protobuf library is updated to support decimal values.
