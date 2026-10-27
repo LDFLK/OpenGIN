@@ -27,6 +27,15 @@ RUN mkdir -p /neo4j_data && \
     chown -R neo4j:neo4j /neo4j_data /neo4j_logs /neo4j_plugins && \
     chmod -R 755 /neo4j_data /neo4j_logs /neo4j_plugins
 
+# CVE-2026-91403: remove the roots behind the compromised eMudhra intermediates
+# (the ones Oracle's CheckCerts.java flags) from the JVM trust store, and fail
+# the build if any remain. Drop this once the base JDK ships the upstream fix.
+RUN ROOTS='^Owner: CN=(emSign ECC Root CA - G3|AAA Certificate Services|emSign Root CA - G1|emSign Root CA - G2),' && \
+    keytool -list -v -cacerts -storepass changeit \
+    | awk -F': ' -v roots="$ROOTS" '/^Alias name:/ {alias=$2} $0 ~ roots {print alias}' \
+    | while IFS= read -r alias; do keytool -delete -cacerts -storepass changeit -alias "$alias"; done && \
+    ! keytool -list -v -cacerts -storepass changeit | grep -qE "$ROOTS"
+
 # Set working directory
 WORKDIR /var/lib/neo4j
 
