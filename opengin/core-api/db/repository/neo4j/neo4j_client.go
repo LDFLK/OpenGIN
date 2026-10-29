@@ -10,6 +10,7 @@ import (
 	pb "lk/datafoundation/core-api/lk/datafoundation/core-api"
 	"log"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
@@ -58,6 +59,22 @@ func (r *Neo4jRepository) getSession(ctx context.Context) neo4j.SessionWithConte
 	})
 }
 
+// validateMinorKind rejects a minor kind whose '+' segments are empty.
+// An empty string is valid: create stores no subtype, and filter means any minor kind.
+// A leading, trailing, or doubled '+' leaves an empty segment. Those values are rejected
+// so a filter prefix cannot be widened by a malformed minor kind.
+func validateMinorKind(minor string) error {
+	if minor == "" {
+		return nil
+	}
+	for _, segment := range strings.Split(minor, "+") {
+		if segment == "" {
+			return fmt.Errorf("invalid minor kind %q: '+' segments must be non-empty", minor)
+		}
+	}
+	return nil
+}
+
 // CreateGraphEntity checks if an entity exists and creates it if it doesn't
 func (r *Neo4jRepository) CreateGraphEntity(ctx context.Context, kind *pb.Kind, entityMap map[string]interface{}) (map[string]interface{}, error) {
 	// Validate the kind parameter
@@ -66,6 +83,11 @@ func (r *Neo4jRepository) CreateGraphEntity(ctx context.Context, kind *pb.Kind, 
 		return nil, fmt.Errorf("[neo4j_client.CreateGraphEntity] missing or invalid 'Kind.Major' field")
 	} else {
 		log.Printf("[neo4j_client.CreateGraphEntity] Kind.Major: %v", kind.Major)
+	}
+
+	if err := validateMinorKind(kind.Minor); err != nil {
+		log.Printf("[neo4j_client.CreateGraphEntity] %v", err)
+		return nil, fmt.Errorf("[neo4j_client.CreateGraphEntity] %w", err)
 	}
 
 	// Extract the required fields from the entityMap
@@ -863,10 +885,18 @@ func (r *Neo4jRepository) FilterEntities(ctx context.Context, kind *pb.Kind, fil
 		query = `MATCH (e:` + kind.Major + `) WHERE 1=1 ` // Use kind.Major as the label
 		params = map[string]interface{}{}
 
-		// Add MinorKind filter if provided
+		// Add MinorKind filter if provided.
+		// Exact value, or a subtype that continues after a '+' boundary.
+		// "country-level-2" matches "country-level-2+lk-electoral-district"
+		// and does not match "country-level-20".
 		if kind.Minor != "" {
-			query += `AND e.MinorKind = $minorKind `
+			if err := validateMinorKind(kind.Minor); err != nil {
+				log.Printf("[neo4j_client.FilterEntities] %v", err)
+				return nil, fmt.Errorf("[neo4j_client.FilterEntities] %w", err)
+			}
+			query += `AND (e.MinorKind = $minorKind OR e.MinorKind STARTS WITH $minorKindPrefix) `
 			params["minorKind"] = kind.Minor
+			params["minorKindPrefix"] = kind.Minor + "+"
 		}
 
 		// Add optional filters
