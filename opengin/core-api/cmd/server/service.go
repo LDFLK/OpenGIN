@@ -616,6 +616,10 @@ func main() {
 	}
 	defer postgresRepo.Close()
 
+	if err := postgresRepo.InitializeTables(ctx); err != nil {
+		log.Fatalf("[service.main] Failed to initialize PostgreSQL tables: %v", err)
+	}
+
 	attributeProcessor, err := engine.NewEntityAttributeProcessor(engine.ProcessorDependencies{
 		PostgresRepo: postgresRepo,
 		Neo4jRepo:    neo4jRepo,
