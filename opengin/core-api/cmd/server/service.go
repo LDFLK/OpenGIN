@@ -9,6 +9,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"time"
 
 	"lk/datafoundation/core-api/db/config"
 	pb "lk/datafoundation/core-api/lk/datafoundation/core-api"
@@ -616,7 +617,9 @@ func main() {
 	}
 	defer postgresRepo.Close()
 
-	if err := postgresRepo.InitializeTables(ctx); err != nil {
+	initCtx, initCancel := context.WithTimeout(ctx, 5*time.Minute)
+	defer initCancel()
+	if err := postgresRepo.InitializeTables(initCtx); err != nil {
 		log.Fatalf("[service.main] Failed to initialize PostgreSQL tables: %v", err)
 	}
 
