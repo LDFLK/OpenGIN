@@ -81,17 +81,17 @@ RUN apt-get update && \
     apt-get update && \
     apt-get install -y mongodb-mongosh && \
     # Download and install Cypher Shell
-    wget https://dist.neo4j.org/cypher-shell/cypher-shell-2026.10.0.zip && \
-    unzip cypher-shell-2026.10.0.zip && \
+    wget https://dist.neo4j.org/cypher-shell/cypher-shell-5.26.32.zip && \
+    unzip cypher-shell-5.26.32.zip && \
     mkdir -p /usr/local/lib/cypher-shell && \
-    mv cypher-shell-2026.10.0/lib/* /usr/local/lib/cypher-shell/ && \
+    mv cypher-shell-5.26.32/lib/* /usr/local/lib/cypher-shell/ && \
     # Create a wrapper script with proper classpath
     echo '#!/bin/sh\n\
     CLASSPATH=$(find /usr/local/lib/cypher-shell -name "*.jar" | tr "\\n" ":")\n\
     exec java -cp "$CLASSPATH" org.neo4j.shell.Main "$@"\n\
     ' > /usr/local/bin/cypher-shell && \
     chmod +x /usr/local/bin/cypher-shell && \
-    rm -rf cypher-shell-2026.10.0.zip cypher-shell-2026.10.0 && \
+    rm -rf cypher-shell-5.26.32.zip cypher-shell-5.26.32 && \
     rm -rf /var/lib/apt/lists/*
 
 # Set Java environment variables
