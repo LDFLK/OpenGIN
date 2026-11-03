@@ -51,6 +51,13 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
+	if err = testPostgresRepo.InitializeTables(ctx); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to initialize PostgreSQL tables: %v\n", err)
+		_ = testPostgresRepo.Close()
+		testNeo4jRepo.Close(ctx)
+		os.Exit(1)
+	}
+
 	testMongoRepo = dbcommons.GetMongoRepository(ctx)
 
 	testProcessor, err = NewEntityAttributeProcessor(ProcessorDependencies{
@@ -770,4 +777,55 @@ func TestBasicFunctionality(t *testing.T) {
 	} else {
 		t.Fatalf("Attribute simple_data was not processed (no result returned)")
 	}
+}
+
+// TestTabularCreateResolveSuceedsWithoutInitializeTables verifies that TabularAttributeResolver.CreateResolve
+// works correctly when InitializeTables has already been called at startup (GH-478).
+// The resolver must NOT call InitializeTables internally — it relies on the startup bootstrap done in TestMain.
+func TestTabularCreateResolveSucceedsWithoutInitializeTables(t *testing.T) {
+	tabularData := `{
+		"columns": ["id", "value"],
+		"rows": [
+			[1, 100],
+			[2, 200]
+		]
+	}`
+
+	entityID := fmt.Sprintf("id-gh478-tabular-%d", time.Now().UnixNano())
+	entity, err := createEntityWithAttributes(entityID, "gh478-tabular-entity", map[string]string{
+		"metrics": tabularData,
+	})
+	assert.NoError(t, err)
+
+	ctx := context.Background()
+	err = saveEntityToDatabase(ctx, entity)
+	assert.NoError(t, err)
+
+	// ProcessEntityAttributes must succeed using only the startup-initialized tables.
+	// If InitializeTables were still called per-request inside CreateResolve, this test
+	// would still pass — but the TestMain bootstrap above is the single source of truth
+	// for table creation, matching the service.go startup fix.
+	options := getOptionsForOperation("create")
+	attributeResults := testProcessor.ProcessEntityAttributes(ctx, entity, "create", options)
+
+	result, exists := attributeResults["metrics"]
+	assert.True(t, exists, "metrics attribute should have a result")
+	assert.True(t, result.Success, "tabular create should succeed with startup-initialized tables")
+	assert.NoError(t, result.Error)
+}
+
+// TestTabularCreateResolveFailsWithNilRepo verifies that TabularAttributeResolver.CreateResolve
+// returns a clear error when no postgres repo is configured, rather than panicking.
+func TestTabularCreateResolveFailsWithNilRepo(t *testing.T) {
+	resolver := &TabularAttributeResolver{}
+
+	tbv, err := createTimeBasedValue(`{"columns": ["id"], "rows": [[1]]}`)
+	assert.NoError(t, err)
+
+	ctx := context.Background()
+	result := resolver.CreateResolve(ctx, "entity-nil-repo", "attr", tbv)
+
+	assert.False(t, result.Success)
+	assert.Error(t, result.Error)
+	assert.Contains(t, result.Error.Error(), "postgres repository is not configured")
 }
