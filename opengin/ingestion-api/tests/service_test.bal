@@ -581,23 +581,8 @@ function testCreateMinimalGraphEntityViaRest() returns error? {
     string testId = "test-minimal-json-entity";
 
     // Minimal JSON payload with required fields matching the Entity structure
-    json minimalEntityJson = {
-        "id": testId,
-        "kind": {
-            "major": "test",
-            "minor": "minimal-json"
-        },
-        "created": "2023-01-01",
-        "terminated": "",
-        "name": {
-            "startTime": "2023-01-01",
-            "endTime": "",
-            "value": "minimal-json-test-entity"
-        },
-        "metadata": [],
-        "attributes": [],
-        "relationships": []
-    };
+    json minimalEntityJson = entityJson(testId, "minimal-json", created = "2023-01-01",
+        name = "minimal-json-test-entity");
 
     // Create entity via REST API
     http:Response|error response = restClient->post("/entities", minimalEntityJson);
@@ -669,42 +654,12 @@ function testEntityWithRelationship() returns error? {
     http:Client restClient = check new (testIngestionServiceUrl, httpConfig);
 
     // Create source entity
-    json sourceEntityJson = {
-        "id": sourceEntityId,
-        "kind": {
-            "major": "test",
-            "minor": "relationship-source"
-        },
-        "created": "2023-01-01",
-        "terminated": "",
-        "name": {
-            "startTime": "2023-01-01",
-            "endTime": "",
-            "value": "source-entity"
-        },
-        "metadata": [],
-        "attributes": [],
-        "relationships": []
-    };
+    json sourceEntityJson = entityJson(sourceEntityId, "relationship-source", created = "2023-01-01",
+        name = "source-entity");
 
     // Create target entity
-    json targetEntityJson = {
-        "id": targetEntityId,
-        "kind": {
-            "major": "test",
-            "minor": "relationship-target"
-        },
-        "created": "2023-01-01",
-        "terminated": "",
-        "name": {
-            "startTime": "2023-01-01",
-            "endTime": "",
-            "value": "target-entity"
-        },
-        "metadata": [],
-        "attributes": [],
-        "relationships": []
-    };
+    json targetEntityJson = entityJson(targetEntityId, "relationship-target", created = "2023-01-01",
+        name = "target-entity");
 
     // Create both entities via REST API
     http:Response|error sourceResponse = restClient->post("/entities", sourceEntityJson);
@@ -3048,5 +3003,121 @@ function testTabularAttributeUpdateInference() returns error? {
 
     // Clean up
     Empty _ = check ep->DeleteEntity({ id: testId });
+    return;
+}
+
+// Builds an entity payload for POST /entities. The name defaults to the id,
+// and the name's start time to the created date.
+function entityJson(string id, string minor, string major = "test",
+        string created = "2025-04-01T00:00:00Z", string? name = ()) returns json {
+    return {
+        "id": id,
+        "kind": {
+            "major": major,
+            "minor": minor
+        },
+        "created": created,
+        "terminated": "",
+        "name": {
+            "startTime": created,
+            "endTime": "",
+            "value": name ?: id
+        },
+        "metadata": [],
+        "attributes": [],
+        "relationships": []
+    };
+}
+
+// Minor kinds may carry subtypes separated by '+'. Each segment is stored as given.
+@test:Config {
+    groups: ["entity", "minor-kind"]
+}
+function testCreateEntityWithValidMinorKindSubtypeViaRest() returns error? {
+    http:Client restClient = check new (testIngestionServiceUrl, {httpVersion: "2.0"});
+    COREServiceClient ep = check new (testCoreServiceUrl);
+
+    map<string> validMinorKinds = {
+        "test-minor-kind-single": "country-level-2",
+        "test-minor-kind-subtype": "country-level-2+lk-electoral-district",
+        "test-minor-kind-nested": "country-level-2+lk-electoral-district+ward"
+    };
+
+    foreach var [id, minor] in validMinorKinds.entries() {
+        http:Response response = check restClient->post("/entities", entityJson(id, minor));
+        test:assertEquals(response.statusCode, 201, string `Expected 201 when creating with minor kind "${minor}"`);
+
+        ReadEntityRequest readEntityRequest = {
+            entity: {
+                id: id,
+                kind: {},
+                created: "",
+                terminated: "",
+                name: {
+                    startTime: "",
+                    endTime: "",
+                    value: check pbAny:pack("")
+                },
+                metadata: [],
+                attributes: [],
+                relationships: []
+            },
+            output: []
+        };
+        Entity readEntityResponse = check ep->ReadEntity(readEntityRequest);
+        test:assertEquals(readEntityResponse.kind.major, "test", "Entity kind.major doesn't match");
+        test:assertEquals(readEntityResponse.kind.minor, minor, "Entity kind.minor should be stored unchanged");
+
+        Empty _ = check ep->DeleteEntity({id: id});
+    }
+
+    return;
+}
+
+// An empty or whitespace-only minor kind, or a '+' that leaves an empty segment, is rejected and nothing is stored.
+@test:Config {
+    groups: ["entity", "minor-kind"]
+}
+function testCreateEntityWithInvalidMinorKindViaRest() returns error? {
+    http:Client restClient = check new (testIngestionServiceUrl, {httpVersion: "2.0"});
+    COREServiceClient ep = check new (testCoreServiceUrl);
+
+    // [id, minor kind, expected error message]
+    [string, string, string][] invalidMinorKinds = [
+        ["test-invalid-minor-kind-empty", "", "missing required fields for Neo4j entity creation"],
+        ["test-invalid-minor-kind-empty-spaces", "        ", "missing required fields for Neo4j entity creation"],
+        ["test-invalid-minor-kind-only-separator", "+", "invalid minor kind"],
+        ["test-invalid-minor-kind-leading", "+country-level-2", "invalid minor kind"],
+        ["test-invalid-minor-kind-trailing", "country-level-2+", "invalid minor kind"],
+        ["test-invalid-minor-kind-doubled", "country-level-2++lk-electoral-district", "invalid minor kind"]
+    ];
+
+    foreach var [id, minor, expectedError] in invalidMinorKinds {
+        http:Response response = check restClient->post("/entities", entityJson(id, minor));
+        test:assertEquals(response.statusCode, 500, string `Expected create to fail for minor kind "${minor}"`);
+        string body = check response.getTextPayload();
+        test:assertTrue(body.includes(expectedError), body);
+
+        ReadEntityRequest readEntityRequest = {
+            entity: {
+                id: id,
+                kind: {},
+                created: "",
+                terminated: "",
+                name: {
+                    startTime: "",
+                    endTime: "",
+                    value: check pbAny:pack("")
+                },
+                metadata: [],
+                attributes: [],
+                relationships: []
+            },
+            output: []
+        };
+        Entity|error readResult = ep->ReadEntity(readEntityRequest);
+        test:assertTrue(readResult is error, string `Entity with minor kind "${minor}" should not be stored`);
+    }
+
     return;
 }

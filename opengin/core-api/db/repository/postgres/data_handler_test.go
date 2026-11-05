@@ -1194,10 +1194,7 @@ func TestValidateRowsAgainstSchema(t *testing.T) {
 			data := makeStruct(tt.columns, tt.rows)
 			err := validateRowsAgainstSchema(data, numericSchema)
 			if tt.expectError {
-				assert.Error(t, err)
-				if tt.errorMsg != "" {
-					assert.Contains(t, err.Error(), tt.errorMsg)
-				}
+				assert.ErrorContains(t, err, tt.errorMsg)
 			} else {
 				assert.NoError(t, err)
 			}
@@ -1256,8 +1253,7 @@ func TestValidateRowsAgainstSchemaRejectsWrongTypeOnAppend(t *testing.T) {
 	}
 
 	err := validateRowsAgainstSchema(data, stringSchema)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "expected string")
+	assert.ErrorContains(t, err, "expected string")
 }
 
 func TestIsTypeCompatibleAllowsNullTypeOnIncomingSchema(t *testing.T) {
