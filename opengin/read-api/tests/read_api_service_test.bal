@@ -929,9 +929,9 @@ function testEntityRelationshipsRetrieval() returns error? {
     string relatedId3 = "test-entity-rel-child-3";
 
     // Create related entities
-    Entity child1 = {id: relatedId1, kind: {major: "test", minor: "child"}, created: "2024-01-01", terminated: "", name: {startTime: "2024-01-01", endTime: "", value: check pbAny:pack("Child 1")}, metadata: [], attributes: [], relationships: []};
-    Entity child2 = {id: relatedId2, kind: {major: "test", minor: "child"}, created: "2024-01-01", terminated: "", name: {startTime: "2024-01-01", endTime: "", value: check pbAny:pack("Child 2")}, metadata: [], attributes: [], relationships: []};
-    Entity child3 = {id: relatedId3, kind: {major: "test", minor: "child"}, created: "2024-01-01", terminated: "", name: {startTime: "2024-01-01", endTime: "", value: check pbAny:pack("Child 3")}, metadata: [], attributes: [], relationships: []};
+    Entity child1 = check newEntity(relatedId1, "test", "child", created = "2024-01-01", name = "Child 1");
+    Entity child2 = check newEntity(relatedId2, "test", "child", created = "2024-01-01", name = "Child 2");
+    Entity child3 = check newEntity(relatedId3, "test", "child", created = "2024-01-01", name = "Child 3");
     _ = check ep->CreateEntity(child1);
     _ = check ep->CreateEntity(child2);
     _ = check ep->CreateEntity(child3);
@@ -1255,25 +1255,28 @@ function testEntitySearch() returns error? {
     return;
 }
 
-function createMinorKindEntity(COREServiceClient ep, string major, string id, string minor) returns error? {
-    Entity entity = {
+// Builds an entity with no metadata, attributes or relationships. The name defaults
+// to the id, and the name's start time to the created date. Add other fields with a
+// record spread: {...check newEntity(id, major, minor), metadata: [...]}.
+function newEntity(string id, string major, string minor,
+        string created = "2025-04-01T00:00:00Z", string? name = ()) returns Entity|error {
+    return {
         id: id,
         kind: {
             major: major,
             minor: minor
         },
-        created: "2025-04-01T00:00:00Z",
+        created: created,
         terminated: "",
         name: {
-            startTime: "2025-04-01T00:00:00Z",
+            startTime: created,
             endTime: "",
-            value: check pbAny:pack(id)
+            value: check pbAny:pack(name ?: id)
         },
         metadata: [],
         attributes: [],
         relationships: []
     };
-    Entity _ = check ep->CreateEntity(entity);
 }
 
 function searchByMinorKind(COREServiceClient ep, string major, string minor) returns string[]|error {
@@ -1329,7 +1332,7 @@ function testFilterEntitiesByMinorKindSubtype() returns error? {
         "minor_kind_level21": "country-level-21"
     };
     foreach var [id, minor] in entities.entries() {
-        check createMinorKindEntity(ep, major, id, minor);
+        Entity _ = check ep->CreateEntity(check newEntity(id, major, minor));
     }
 
     string[] parentMatches = check searchByMinorKind(ep, major, "country-level-2");
@@ -1362,23 +1365,7 @@ function testFilterEntitiesByMinorKindSubtype() returns error? {
     string[] expectedLevel20 = ["country-level-20"];
     test:assertEquals(level20, expectedLevel20, "country-level-20 should match only itself");
 
-    Entity invalidCreate = {
-        id: "minor_kind_invalid",
-        kind: {
-            major: major,
-            minor: "country-level-2+"
-        },
-        created: "2025-04-01T00:00:00Z",
-        terminated: "",
-        name: {
-            startTime: "2025-04-01T00:00:00Z",
-            endTime: "",
-            value: check pbAny:pack("minor_kind_invalid")
-        },
-        metadata: [],
-        attributes: [],
-        relationships: []
-    };
+    Entity invalidCreate = check newEntity("minor_kind_invalid", major, "country-level-2+");
     Entity|error createResult = ep->CreateEntity(invalidCreate);
     if createResult is error {
         test:assertTrue(createResult.message().includes("invalid minor kind"), createResult.message());
