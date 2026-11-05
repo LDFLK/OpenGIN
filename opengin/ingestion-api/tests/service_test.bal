@@ -3075,7 +3075,7 @@ function minorKindEntityJson(string id, string minor) returns json {
 @test:Config {
     groups: ["entity", "minor-kind"]
 }
-function testCreateEntityWithMinorKindSubtypeViaRest() returns error? {
+function testCreateEntityWithValidMinorKindSubtypeViaRest() returns error? {
     http:Client restClient = check new (testIngestionServiceUrl, {httpVersion: "2.0"});
     COREServiceClient ep = check new (testCoreServiceUrl);
 
@@ -3116,7 +3116,7 @@ function testCreateEntityWithMinorKindSubtypeViaRest() returns error? {
     return;
 }
 
-// An empty minor kind, or a '+' that leaves an empty segment, is rejected and nothing is stored.
+// An empty or whitespace-only minor kind, or a '+' that leaves an empty segment, is rejected and nothing is stored.
 @test:Config {
     groups: ["entity", "minor-kind"]
 }
@@ -3127,6 +3127,7 @@ function testCreateEntityWithInvalidMinorKindViaRest() returns error? {
     // [id, minor kind, expected error message]
     [string, string, string][] invalidMinorKinds = [
         ["test-invalid-minor-kind-empty", "", "missing required fields for Neo4j entity creation"],
+        ["test-invalid-minor-kind-empty-spaces", "        ", "missing required fields for Neo4j entity creation"],
         ["test-invalid-minor-kind-only-separator", "+", "invalid minor kind"],
         ["test-invalid-minor-kind-leading", "+country-level-2", "invalid minor kind"],
         ["test-invalid-minor-kind-trailing", "country-level-2+", "invalid minor kind"],

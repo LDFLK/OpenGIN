@@ -1451,6 +1451,10 @@ func TestValidateMinorKind(t *testing.T) {
 		{"trailing separator", "country-level-2+", true},
 		{"doubled separator", "country-level-2++lk-electoral-district", true},
 		{"only separators", "++", true},
+		{"only spaces", "   ", true},
+		{"only a tab", "\t", true},
+		{"whitespace trailing segment", "country-level-2+ ", true},
+		{"whitespace middle segment", "country-level-2+  +ward", true},
 	}
 
 	for _, tc := range testCases {
@@ -1471,7 +1475,7 @@ func TestInvalidMinorKindIsRejected(t *testing.T) {
 	// A label unused by the other tests, so nothing created here leaks into their filters.
 	const major = "InvalidMinorKindRegion"
 
-	invalidMinorKinds := []string{"+", "+country-level-2", "country-level-2+", "country-level-2++lk"}
+	invalidMinorKinds := []string{"+", "+country-level-2", "country-level-2+", "country-level-2++lk", "   ", "country-level-2+ "}
 
 	for _, minor := range invalidMinorKinds {
 		t.Run("create rejects "+minor, func(t *testing.T) {

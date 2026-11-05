@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 
 	pb "lk/datafoundation/core-api/lk/datafoundation/core-api" // Replace with your actual protobuf package
 
@@ -184,9 +185,9 @@ func (repo *Neo4jRepository) GetFilteredRelationships(ctx context.Context, entit
 
 // validateGraphEntityCreation checks if an entity has all required fields for Neo4j storage
 func validateGraphEntityCreation(entity *pb.Entity) bool {
-	// Check if Kind is present and has a Major value
-	if entity.Kind == nil || entity.Kind.GetMajor() == "" || entity.Kind.GetMinor() == "" {
-		log.Printf("[neo4j_handler.validateGraphEntityCreation] Skipping Neo4j entity creation for %s: Missing or empty Kind.Major", entity.Id)
+	// Check if Kind is present and has non-blank Major and Minor values
+	if entity.Kind == nil || strings.TrimSpace(entity.Kind.GetMajor()) == "" || strings.TrimSpace(entity.Kind.GetMinor()) == "" {
+		log.Printf("[neo4j_handler.validateGraphEntityCreation] Skipping Neo4j entity creation for %s: Missing or blank Kind.Major or Kind.Minor", entity.Id)
 		return false
 	}
 

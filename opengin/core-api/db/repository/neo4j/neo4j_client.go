@@ -59,16 +59,17 @@ func (r *Neo4jRepository) getSession(ctx context.Context) neo4j.SessionWithConte
 	})
 }
 
-// validateMinorKind rejects a minor kind whose '+' segments are empty.
+// validateMinorKind rejects a minor kind whose '+' segments are empty or only whitespace.
 // An empty string is valid: create stores no subtype, and filter means any minor kind.
-// A leading, trailing, or doubled '+' leaves an empty segment. Those values are rejected
-// so a filter prefix cannot be widened by a malformed minor kind.
+// A leading, trailing, or doubled '+' leaves an empty segment, and a whitespace-only
+// value or segment is just as blank. Those values are rejected so a filter prefix
+// cannot be widened by a malformed minor kind.
 func validateMinorKind(minor string) error {
 	if minor == "" {
 		return nil
 	}
 	for _, segment := range strings.Split(minor, "+") {
-		if segment == "" {
+		if strings.TrimSpace(segment) == "" {
 			return fmt.Errorf("invalid minor kind %q: '+' segments must be non-empty", minor)
 		}
 	}
