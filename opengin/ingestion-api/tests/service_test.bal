@@ -581,23 +581,8 @@ function testCreateMinimalGraphEntityViaRest() returns error? {
     string testId = "test-minimal-json-entity";
 
     // Minimal JSON payload with required fields matching the Entity structure
-    json minimalEntityJson = {
-        "id": testId,
-        "kind": {
-            "major": "test",
-            "minor": "minimal-json"
-        },
-        "created": "2023-01-01",
-        "terminated": "",
-        "name": {
-            "startTime": "2023-01-01",
-            "endTime": "",
-            "value": "minimal-json-test-entity"
-        },
-        "metadata": [],
-        "attributes": [],
-        "relationships": []
-    };
+    json minimalEntityJson = entityJson(testId, "minimal-json", created = "2023-01-01",
+        name = "minimal-json-test-entity");
 
     // Create entity via REST API
     http:Response|error response = restClient->post("/entities", minimalEntityJson);
@@ -669,42 +654,12 @@ function testEntityWithRelationship() returns error? {
     http:Client restClient = check new (testIngestionServiceUrl, httpConfig);
 
     // Create source entity
-    json sourceEntityJson = {
-        "id": sourceEntityId,
-        "kind": {
-            "major": "test",
-            "minor": "relationship-source"
-        },
-        "created": "2023-01-01",
-        "terminated": "",
-        "name": {
-            "startTime": "2023-01-01",
-            "endTime": "",
-            "value": "source-entity"
-        },
-        "metadata": [],
-        "attributes": [],
-        "relationships": []
-    };
+    json sourceEntityJson = entityJson(sourceEntityId, "relationship-source", created = "2023-01-01",
+        name = "source-entity");
 
     // Create target entity
-    json targetEntityJson = {
-        "id": targetEntityId,
-        "kind": {
-            "major": "test",
-            "minor": "relationship-target"
-        },
-        "created": "2023-01-01",
-        "terminated": "",
-        "name": {
-            "startTime": "2023-01-01",
-            "endTime": "",
-            "value": "target-entity"
-        },
-        "metadata": [],
-        "attributes": [],
-        "relationships": []
-    };
+    json targetEntityJson = entityJson(targetEntityId, "relationship-target", created = "2023-01-01",
+        name = "target-entity");
 
     // Create both entities via REST API
     http:Response|error sourceResponse = restClient->post("/entities", sourceEntityJson);
