@@ -3051,19 +3051,22 @@ function testTabularAttributeUpdateInference() returns error? {
     return;
 }
 
-function minorKindEntityJson(string id, string minor) returns json {
+// Builds an entity payload for POST /entities. The name defaults to the id,
+// and the name's start time to the created date.
+function entityJson(string id, string minor, string major = "test",
+        string created = "2025-04-01T00:00:00Z", string? name = ()) returns json {
     return {
         "id": id,
         "kind": {
-            "major": "test",
+            "major": major,
             "minor": minor
         },
-        "created": "2025-04-01T00:00:00Z",
+        "created": created,
         "terminated": "",
         "name": {
-            "startTime": "2025-04-01T00:00:00Z",
+            "startTime": created,
             "endTime": "",
-            "value": id
+            "value": name ?: id
         },
         "metadata": [],
         "attributes": [],
@@ -3086,7 +3089,7 @@ function testCreateEntityWithValidMinorKindSubtypeViaRest() returns error? {
     };
 
     foreach var [id, minor] in validMinorKinds.entries() {
-        http:Response response = check restClient->post("/entities", minorKindEntityJson(id, minor));
+        http:Response response = check restClient->post("/entities", entityJson(id, minor));
         test:assertEquals(response.statusCode, 201, string `Expected 201 when creating with minor kind "${minor}"`);
 
         ReadEntityRequest readEntityRequest = {
@@ -3135,7 +3138,7 @@ function testCreateEntityWithInvalidMinorKindViaRest() returns error? {
     ];
 
     foreach var [id, minor, expectedError] in invalidMinorKinds {
-        http:Response response = check restClient->post("/entities", minorKindEntityJson(id, minor));
+        http:Response response = check restClient->post("/entities", entityJson(id, minor));
         test:assertEquals(response.statusCode, 500, string `Expected create to fail for minor kind "${minor}"`);
         string body = check response.getTextPayload();
         test:assertTrue(body.includes(expectedError), body);
