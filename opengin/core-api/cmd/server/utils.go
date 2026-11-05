@@ -5,9 +5,51 @@ package main
 
 import (
 	"fmt"
-	pb "lk/datafoundation/core-api/lk/datafoundation/core-api"
 	"log"
+
+	"lk/datafoundation/core-api/commons"
+	pb "lk/datafoundation/core-api/lk/datafoundation/core-api"
 )
+
+// entityFromGraphFilterResult maps a Neo4j filter row to a protobuf Entity.
+// Name is packed as google.protobuf.StringValue (same framing as ReadEntity).
+func entityFromGraphFilterResult(entity map[string]interface{}) *pb.Entity {
+	created := ""
+	if v, ok := entity["created"].(string); ok {
+		created = v
+	}
+	terminated := ""
+	if v, ok := entity["terminated"].(string); ok {
+		terminated = v
+	}
+	name := ""
+	if v, ok := entity["name"].(string); ok {
+		name = v
+	}
+	major := ""
+	if v, ok := entity["kind"].(string); ok {
+		major = v
+	}
+	minor := ""
+	if v, ok := entity["minorKind"].(string); ok {
+		minor = v
+	}
+	id := ""
+	if v, ok := entity["id"].(string); ok {
+		id = v
+	}
+
+	return &pb.Entity{
+		Id: id,
+		Kind: &pb.Kind{
+			Major: major,
+			Minor: minor,
+		},
+		Created:    created,
+		Terminated: terminated,
+		Name:       commons.CreateTimeBasedValue(created, terminated, name),
+	}
+}
 
 func debugMetadata(req *pb.Entity) {
 

@@ -758,24 +758,14 @@ def test_orgchart_query():
         assert kind["major"] == "Organization", f"Minister {i+1} has wrong major kind: {kind['major']}"
         assert kind["minor"] == "Minister", f"Minister {i+1} has wrong minor kind: {kind['minor']}"
         
-        # Decode and validate name structure
+        # Search returns a plain name string (not a protobuf Any blob)
         name = minister["name"]
-        if isinstance(name, str) and name.startswith('{"typeUrl"'):
-            # It's a protobuf encoded string
-            try:
-                name_data = json.loads(name)
-                decoded_name = decode_protobuf_any_value(name_data)
-                print(f"  📝 Decoded name: {decoded_name}")
-                assert isinstance(decoded_name, str), f"Minister {i+1} decoded name should be string"
-                assert len(decoded_name) > 0, f"Minister {i+1} decoded name should not be empty"
-            except Exception as e:
-                print(f"  ⚠️ Failed to decode name: {e}")
-                # Continue with validation even if name decoding fails
-        else:
-            # Regular name structure
-            assert "value" in name, f"Minister {i+1} name missing 'value' field"
-            assert isinstance(name["value"], str), f"Minister {i+1} name value should be string"
-            assert len(name["value"]) > 0, f"Minister {i+1} name should not be empty"
+        assert isinstance(name, str), f"Minister {i+1} name should be a string, got {type(name)}: {name}"
+        assert not (name.startswith("{") and "typeUrl" in name), (
+            f"Minister {i+1} name is still a serialized protobuf Any: {name}"
+        )
+        assert len(name) > 0, f"Minister {i+1} name should not be empty"
+        print(f"  📝 Name: {name}")
         
         minister_ids.append(minister["id"])
         print(f"  ✅ Minister {i+1} validation passed: {minister['id']}")
@@ -824,24 +814,14 @@ def test_orgchart_query():
         assert kind["major"] == "Organization", f"Department {i+1} has wrong major kind: {kind['major']}"
         assert kind["minor"] == "Department", f"Department {i+1} has wrong minor kind: {kind['minor']}"
         
-        # Decode and validate name structure
+        # Search returns a plain name string (not a protobuf Any blob)
         name = dept["name"]
-        if isinstance(name, str) and name.startswith('{"typeUrl"'):
-            # It's a protobuf encoded string
-            try:
-                name_data = json.loads(name)
-                decoded_name = decode_protobuf_any_value(name_data)
-                print(f"  📝 Decoded name: {decoded_name}")
-                assert isinstance(decoded_name, str), f"Department {i+1} decoded name should be string"
-                assert len(decoded_name) > 0, f"Department {i+1} decoded name should not be empty"
-            except Exception as e:
-                print(f"  ⚠️ Failed to decode name: {e}")
-                # Continue with validation even if name decoding fails
-        else:
-            # Regular name structure
-            assert "value" in name, f"Department {i+1} name missing 'value' field"
-            assert isinstance(name["value"], str), f"Department {i+1} name value should be string"
-            assert len(name["value"]) > 0, f"Department {i+1} name should not be empty"
+        assert isinstance(name, str), f"Department {i+1} name should be a string, got {type(name)}: {name}"
+        assert not (name.startswith("{") and "typeUrl" in name), (
+            f"Department {i+1} name is still a serialized protobuf Any: {name}"
+        )
+        assert len(name) > 0, f"Department {i+1} name should not be empty"
+        print(f"  📝 Name: {name}")
         
         dept_ids.append(dept["id"])
         print(f"  ✅ Department {i+1} validation passed: {dept['id']}")
@@ -901,7 +881,8 @@ def test_get_attributes_of_one_minister():
                 # Just print what's in the object
                 print(f"  📊 Attribute entity data: {json.dumps(attr_body, indent=2)}")
                 name = attr_body[0]["name"]
-                print(f"  ✅ Attribute Name: {decode_attribute_any_value(name)}")
+                assert isinstance(name, str), f"Attribute name should be a string, got {type(name)}: {name}"
+                print(f"  ✅ Attribute Name: {name}")
 
             else:
                 print(f"  ❌ Failed to query attribute entity {attr_entity_id}: {search_res.status_code}")

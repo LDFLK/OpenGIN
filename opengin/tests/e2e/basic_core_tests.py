@@ -708,17 +708,8 @@ class AttributeValidationTests(BasicCORETests):
             f"Expected created date {self.START_DATE}, got {response_data['created']}"
         )
 
-        print("im here befire you bitchhhhh....")
-
-        # The name value is a protobuf Any that needs to be decoded
-        print("i am here..............")
-        name_obj = json.loads(response_data["name"])
-        print(name_obj)
-        hex_value = name_obj["value"]
-        print(hex_value)
-        decoded_name = bytes.fromhex(hex_value).decode('utf-8')
-        assert decoded_name == "Minister of Finance and Economy", (
-            f"Expected name 'Minister of Finance and Economy', got {decoded_name}"
+        assert response_data["name"] == "Minister of Finance and Economy", (
+            f"Expected name 'Minister of Finance and Economy', got {response_data['name']}"
         )
 
     def update_attributes_stage_1(self):
