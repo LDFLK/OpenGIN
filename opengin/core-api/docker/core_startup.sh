@@ -59,20 +59,24 @@ until PGPASSWORD=$POSTGRES_PASSWORD psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U 
 done
 echo "PostgreSQL connection successful!"
 
-# Clean databases before running tests
-clean_databases "Before Tests"
+if [ "$RUN_TESTS" = "true" ]; then
+  # Clean databases before running tests
+  clean_databases "Before Tests"
 
-# Run Go tests
-echo "=== Running Go Tests ==="
-cd /app/opengin/core-api
-if ! go test -v ./...; then
-  echo "❌ Tests failed!"
-  exit 1
+  # Run Go tests
+  echo "=== Running Go Tests ==="
+  cd /app/opengin/core-api
+  if ! go test -v ./...; then
+    echo "❌ Tests failed!"
+    exit 1
+  fi
+  echo "✅ All tests passed!"
+
+  # Clean databases after tests complete
+  clean_databases "After Tests"
+else
+  echo "=== Skipping Go tests and database cleanup (RUN_TESTS is not set to true) ==="
 fi
-echo "✅ All tests passed!"
-
-# Clean databases after tests complete
-clean_databases "After Tests"
 
 echo "=== Starting CORE Service ==="
 exec core-service 2>&1 | tee /app/core-service.log

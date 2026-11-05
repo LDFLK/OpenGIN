@@ -117,6 +117,7 @@ services:
       - POSTGRES_SSL_MODE=disable
       - CORE_SERVICE_HOST=0.0.0.0
       - CORE_SERVICE_PORT=50051
+      - RUN_TESTS=${RUN_TESTS:-false}
     depends_on:
       mongodb:
         condition: service_healthy
