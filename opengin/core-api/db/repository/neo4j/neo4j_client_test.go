@@ -497,8 +497,7 @@ func TestDeleteRelationship(t *testing.T) {
 
 	// Fetch the relationship to ensure it was deleted
 	deletedRelationship, err := repository.ReadRelationship(ctx, "delete_rel_test")
-	assert.NotNil(t, err, "Expected error when fetching deleted relationship")
-	assert.Contains(t, err.Error(), "not found", "Expected error message to indicate relationship not found")
+	assert.ErrorContains(t, err, "not found", "Expected error when fetching deleted relationship")
 	assert.Nil(t, deletedRelationship, "Expected relationship to be nil after deletion")
 }
 
@@ -525,8 +524,7 @@ func TestDeleteEntity(t *testing.T) {
 
 	// Verify the entity was deleted
 	_, err = repository.ReadGraphEntity(ctx, "delete_entity_1")
-	assert.NotNil(t, err, "Expected error when fetching deleted entity")
-	assert.Contains(t, err.Error(), "not found", "Expected error message to indicate entity not found")
+	assert.ErrorContains(t, err, "not found", "Expected error when fetching deleted entity")
 
 	// Test deleting an entity with relationships (should fail)
 	// Create two entities
@@ -559,8 +557,7 @@ func TestDeleteEntity(t *testing.T) {
 
 	// Try to delete entity with relationships (should fail)
 	err = repository.DeleteGraphEntity(ctx, "delete_entity_2")
-	assert.NotNil(t, err, "Expected error when deleting entity with relationships")
-	assert.Contains(t, err.Error(), "entity has relationships and cannot be deleted", "Expected error message to indicate relationships prevent deletion")
+	assert.ErrorContains(t, err, "entity has relationships and cannot be deleted", "Expected error when deleting entity with relationships")
 }
 
 func TestAddMinistriesAndDepartments(t *testing.T) {
@@ -717,8 +714,7 @@ func TestCreateRelationshipWithDuplicateId(t *testing.T) {
 	createdDup, err := repository.CreateRelationship(ctx, "dup_entity_1", duplicateRelationship)
 
 	// Verify that the creation failed
-	assert.NotNil(t, err, "Expected error when creating relationship with duplicate ID")
-	assert.Contains(t, err.Error(), "already exists", "Expected error message to indicate relationship already exists")
+	assert.ErrorContains(t, err, "already exists", "Expected error when creating relationship with duplicate ID")
 	assert.Nil(t, createdDup, "Expected no relationship to be returned when creation fails")
 	log.Printf("Duplicate creation error (expected): %v", err)
 
@@ -754,8 +750,7 @@ func TestUpdateRelationshipWithNonExistentId(t *testing.T) {
 	updatedRel, err := repository.UpdateRelationship(ctx, "non_existent_rel_id", updateData)
 
 	// Verify that the update failed
-	assert.NotNil(t, err, "Expected error when updating non-existent relationship")
-	assert.Contains(t, err.Error(), "does not exist", "Expected error message to indicate relationship does not exist")
+	assert.ErrorContains(t, err, "does not exist", "Expected error when updating non-existent relationship")
 	assert.Nil(t, updatedRel, "Expected no relationship to be returned when update fails")
 	log.Printf("Update non-existent relationship error (expected): %v", err)
 }
@@ -853,8 +848,7 @@ func TestUpdateRelationshipFields(t *testing.T) {
 		"Name": "UpdatedName",
 	}
 	updatedRel, err = repository.UpdateRelationship(ctx, "update_test_rel", updateName)
-	assert.NotNil(t, err, "Expected error when trying to update Name field")
-	assert.Contains(t, err.Error(), "unsupported field", "Expected error message about unsupported field")
+	assert.ErrorContains(t, err, "unsupported field", "Expected error when trying to update Name field")
 	assert.Nil(t, updatedRel, "Expected no relationship to be returned when updating unsupported field")
 	log.Printf("Update Name error (expected): %v", err)
 
@@ -869,8 +863,7 @@ func TestUpdateRelationshipFields(t *testing.T) {
 	// Test 6: Try updating with no valid fields (should fail)
 	updateEmpty := map[string]interface{}{}
 	updatedRel, err = repository.UpdateRelationship(ctx, "update_test_rel", updateEmpty)
-	assert.NotNil(t, err, "Expected error when updating with no valid fields")
-	assert.Contains(t, err.Error(), "no valid fields", "Expected error message about no valid fields")
+	assert.ErrorContains(t, err, "no valid fields", "Expected error when updating with no valid fields")
 	assert.Nil(t, updatedRel, "Expected no relationship to be returned when no fields provided")
 
 	// Test 7: Try to update other unsupported fields (should fail)
@@ -878,8 +871,7 @@ func TestUpdateRelationshipFields(t *testing.T) {
 		"RelatedEntityId": "some_other_entity",
 	}
 	updatedRel, err = repository.UpdateRelationship(ctx, "update_test_rel", updateUnsupported)
-	assert.NotNil(t, err, "Expected error when trying to update RelatedEntityId field")
-	assert.Contains(t, err.Error(), "unsupported field", "Expected error message about unsupported field")
+	assert.ErrorContains(t, err, "unsupported field", "Expected error when trying to update RelatedEntityId field")
 	assert.Nil(t, updatedRel, "Expected no relationship to be returned when updating unsupported field")
 	log.Printf("Update unsupported field error (expected): %v", err)
 
@@ -1465,8 +1457,7 @@ func TestValidateMinorKind(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			err := validateMinorKind(tc.minor)
 			if tc.wantErr {
-				assert.Error(t, err, "Expected error for minor kind %q", tc.minor)
-				assert.Contains(t, err.Error(), "'+' segments must be non-empty")
+				assert.ErrorContains(t, err, "'+' segments must be non-empty", "Expected error for minor kind %q", tc.minor)
 			} else {
 				assert.NoError(t, err, "Expected no error for minor kind %q", tc.minor)
 			}
@@ -1490,16 +1481,16 @@ func TestInvalidMinorKindIsRejected(t *testing.T) {
 				"Name":    "Invalid",
 				"Created": "2025-04-01T00:00:00Z",
 			})
-			assert.Error(t, err, "Expected error when creating with minor kind %q", minor)
+			assert.ErrorContains(t, err, "'+' segments must be non-empty", "Expected error when creating with minor kind %q", minor)
 
 			// The entity must not have been stored.
 			_, readErr := repository.ReadGraphEntity(ctx, id)
-			assert.Error(t, readErr, "Expected entity with minor kind %q not to exist", minor)
+			assert.ErrorContains(t, readErr, "not found", "Expected entity with minor kind %q not to exist", minor)
 		})
 
 		t.Run("filter rejects "+minor, func(t *testing.T) {
 			entities, err := repository.FilterEntities(ctx, &pb.Kind{Major: major, Minor: minor}, map[string]interface{}{})
-			assert.Error(t, err, "Expected error when filtering by minor kind %q", minor)
+			assert.ErrorContains(t, err, "'+' segments must be non-empty", "Expected error when filtering by minor kind %q", minor)
 			assert.Nil(t, entities)
 		})
 	}

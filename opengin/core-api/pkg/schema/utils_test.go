@@ -225,8 +225,7 @@ func TestValidateSchema(t *testing.T) {
 				},
 			},
 			validate: func(t *testing.T, err error) {
-				assert.Error(t, err)
-				assert.Contains(t, err.Error(), "expected string")
+				assert.ErrorContains(t, err, "expected string")
 			},
 		},
 		{
@@ -254,8 +253,7 @@ func TestValidateSchema(t *testing.T) {
 				},
 			},
 			validate: func(t *testing.T, err error) {
-				assert.Error(t, err)
-				assert.Contains(t, err.Error(), "cannot be null")
+				assert.ErrorContains(t, err, "cannot be null")
 			},
 		},
 		{
@@ -287,8 +285,7 @@ func TestValidateSchema(t *testing.T) {
 				},
 			},
 			validate: func(t *testing.T, err error) {
-				assert.Error(t, err)
-				assert.Contains(t, err.Error(), "invalid item at index 1")
+				assert.ErrorContains(t, err, "invalid item at index 1")
 			},
 		},
 		{
@@ -341,8 +338,7 @@ func TestValidateSchema(t *testing.T) {
 				},
 			},
 			validate: func(t *testing.T, err error) {
-				assert.Error(t, err)
-				assert.Contains(t, err.Error(), "required key age is missing")
+				assert.ErrorContains(t, err, "required key age is missing")
 			},
 		},
 		{
@@ -575,10 +571,7 @@ func TestValidateTabularData(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			err := ValidateSchema(tc.input, schema)
 			if tc.expectError {
-				assert.Error(t, err)
-				if tc.errorMsg != "" {
-					assert.Contains(t, err.Error(), tc.errorMsg)
-				}
+				assert.ErrorContains(t, err, tc.errorMsg)
 			} else {
 				assert.NoError(t, err)
 			}
