@@ -131,6 +131,14 @@ func TestParseMalformedInput(t *testing.T) {
 			input:         "",
 			errorContains: "document is empty",
 		},
+		"null document": {
+			input:         "null",
+			errorContains: "document must be a JSON object, not null",
+		},
+		"null document with whitespace": {
+			input:         " null \n",
+			errorContains: "document must be a JSON object, not null",
+		},
 		"whitespace only": {
 			input:         "  \n\t ",
 			errorContains: "document is empty",
