@@ -48,9 +48,13 @@ type EndpointRef struct {
 // never modified.
 //
 // Removals are applied first (endpoint pairs, then relationships, then kinds), followed by
-// additions, and the result is checked with Validate. If anything is wrong, Apply returns a nil
-// schema and every violation found: patch violations have paths into the patch (e.g.
-// "remove.kinds[0]"), and violations from Validate have paths into the resulting schema.
+// additions, and the result is checked with Validate. Rules that a later step of the same patch
+// can satisfy (a relationship's last pair, or a Major used through "Major/*" losing its last
+// minor) are checked after the additions, so a patch can replace them in one go.
+//
+// If anything is wrong, Apply returns a nil schema and every violation found: patch violations
+// have paths into the patch (e.g. "remove.kinds[0]"), and violations from Validate have paths
+// into the resulting schema.
 func Apply(base *Schema, patch *Patch) (*Schema, []Violation) {
 	if base == nil {
 		return nil, []Violation{{Path: "", Message: "there is no schema to patch"}}
@@ -59,13 +63,18 @@ func Apply(base *Schema, patch *Patch) (*Schema, []Violation) {
 		return nil, []Violation{{Path: "", Message: "patch is required"}}
 	}
 
-	p := &patcher{schema: cloneSchema(base), emptiedBy: map[string]int{}}
+	p := &patcher{
+		schema:        cloneSchema(base),
+		emptiedBy:     map[string]int{},
+		droppedMajors: map[string]droppedMajor{},
+	}
 
 	p.removeEndpoints(patch.Remove.Endpoints)
 	p.removeRelationships(patch.Remove.Relationships)
 	p.removeKinds(patch.Remove.Kinds)
 	p.addKindDefs(patch.Add.KindDefs)
 	p.addRelationshipDefs(patch.Add.RelationshipDefs)
+	p.checkDroppedMajors()
 	p.checkEmptiedRelationships()
 
 	if patch.Description != "" {
@@ -86,6 +95,14 @@ type patcher struct {
 	// emptiedBy records, for each relationship whose endpoint pairs were all removed, the index
 	// of the last remove.endpoints entry that removed one of them.
 	emptiedBy map[string]int
+	// droppedMajors records each Major whose last minor was removed, keyed by Major name.
+	droppedMajors map[string]droppedMajor
+}
+
+// droppedMajor is a Major that a patch removed by removing its last minor.
+type droppedMajor struct {
+	removeIndex int    // index of the remove.kinds entry that removed the last minor
+	ref         string // that entry, e.g. "Organization/Minister"
 }
 
 func (p *patcher) addViolation(path string, format string, args ...interface{}) {
@@ -146,8 +163,8 @@ func (p *patcher) removeRelationships(names []string) {
 	}
 }
 
-// removeKinds removes kinds that no remaining endpoint uses. A kind that is still used is kept,
-// so the only violation reported for it is the one that says why.
+// removeKinds removes kinds that no remaining endpoint references exactly. A kind that is still
+// used is kept, so the only violation reported for it is the one that says why.
 func (p *patcher) removeKinds(refs []string) {
 	for k, ref := range refs {
 		path := fmt.Sprintf("remove.kinds[%d]", k)
@@ -164,8 +181,9 @@ func (p *patcher) removeKinds(refs []string) {
 			continue
 		}
 
-		dropsMajor := len(p.schema.KindDefs[i].Minors) == 1
-		if user, found := p.findEndpointUsing(ref, major, dropsMajor); found {
+		// An exact reference can't be satisfied by anything added later, so it is checked now.
+		// "Major/*" references are checked in checkDroppedMajors, after additions.
+		if user, found := p.findEndpointUsing(ref); found {
 			p.addViolation(path, "kind %s is still used by %s; remove that pair or relationship in the same patch", ref, user)
 			continue
 		}
@@ -175,18 +193,17 @@ func (p *patcher) removeKinds(refs []string) {
 		kindDef.Minors = append(kindDef.Minors[:j], kindDef.Minors[j+1:]...)
 		if len(kindDef.Minors) == 0 {
 			p.schema.KindDefs = append(p.schema.KindDefs[:i], p.schema.KindDefs[i+1:]...)
+			p.droppedMajors[major] = droppedMajor{removeIndex: k, ref: ref}
 		}
 	}
 }
 
-// findEndpointUsing describes the first endpoint that references ref. When removing ref would
-// drop its whole Major, a "Major/*" reference also counts as a use.
-func (p *patcher) findEndpointUsing(ref string, major string, dropsMajor bool) (string, bool) {
-	wildcard := FormatKindRef(major, AnyMinor)
+// findEndpointUsing describes the first endpoint with a side exactly equal to ref.
+func (p *patcher) findEndpointUsing(ref string) (string, bool) {
 	for _, relationshipDef := range p.schema.RelationshipDefs {
 		for _, endpoint := range relationshipDef.Endpoints {
 			for _, side := range []string{endpoint.From, endpoint.To} {
-				if side == ref || (dropsMajor && side == wildcard) {
+				if side == ref {
 					return fmt.Sprintf("relationship %q pair %s -> %s", relationshipDef.Name, endpoint.From, endpoint.To), true
 				}
 			}
@@ -240,6 +257,38 @@ func (p *patcher) addRelationshipDefs(relationshipDefs []RelationshipDef) {
 			}
 			existing.Endpoints = append(existing.Endpoints, endpoint)
 		}
+	}
+}
+
+// checkDroppedMajors reports Majors that the patch removed (by removing their last minor) while
+// an endpoint still uses them through "Major/*", unless an addition in the same patch declared
+// the Major again. The Major is put back in the result so Validate does not report the wildcard
+// endpoint a second time.
+func (p *patcher) checkDroppedMajors() {
+	majors := make([]string, 0, len(p.droppedMajors))
+	for major := range p.droppedMajors {
+		majors = append(majors, major)
+	}
+	// report in patch order
+	sort.Slice(majors, func(a, b int) bool {
+		return p.droppedMajors[majors[a]].removeIndex < p.droppedMajors[majors[b]].removeIndex
+	})
+
+	for _, major := range majors {
+		if p.findKindDef(major) >= 0 {
+			continue
+		}
+		dropped := p.droppedMajors[major]
+		user, found := p.findEndpointUsing(FormatKindRef(major, AnyMinor))
+		if !found {
+			continue
+		}
+		p.addViolation(fmt.Sprintf("remove.kinds[%d]", dropped.removeIndex),
+			"kind %s is still used by %s, as it is the last minor of %s; "+
+				"add a replacement minor or remove that pair or relationship in the same patch",
+			dropped.ref, user, major)
+		_, minor, _ := ParseKindRef(dropped.ref)
+		p.schema.KindDefs = append(p.schema.KindDefs, KindDef{Major: major, Minors: []string{minor}})
 	}
 }
 

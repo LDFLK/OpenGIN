@@ -319,6 +319,74 @@ func TestApplyKindRemovalWithWildcardReference(t *testing.T) {
 	}
 }
 
+func TestApplyReplacingLastMinorUsedByWildcard(t *testing.T) {
+	newBase := func() *Schema {
+		return &Schema{
+			KindDefs: []KindDef{
+				{Major: "Organization", Minors: []string{"Minister"}},
+				{Major: "region", Minors: []string{"country"}},
+			},
+			RelationshipDefs: []RelationshipDef{
+				{Name: "located_in", Endpoints: []Endpoint{{From: "Organization/*", To: "region/country"}}},
+			},
+		}
+	}
+
+	t.Run("replacement minor added in the same patch", func(t *testing.T) {
+		result, violations := Apply(newBase(), &Patch{
+			Remove: PatchRemovals{Kinds: []string{"Organization/Minister"}},
+			Add:    PatchAdditions{KindDefs: []KindDef{{Major: "Organization", Minors: []string{"Ministry"}}}},
+		})
+		if assert.Empty(t, violations) {
+			assert.Equal(t, []string{"Ministry"}, findKindDef(result, "Organization").Minors)
+			assert.Equal(t, []Endpoint{{From: "Organization/*", To: "region/country"}}, result.AllowedPairs("located_in"))
+		}
+	})
+
+	t.Run("no replacement minor", func(t *testing.T) {
+		result, violations := Apply(newBase(), &Patch{
+			Remove: PatchRemovals{Kinds: []string{"Organization/Minister"}},
+		})
+		assert.Nil(t, result)
+		// Only the patch violation: Validate must not also report Organization/* as unknown.
+		if assert.Len(t, violations, 1, "got %v", violations) {
+			assert.Equal(t, "remove.kinds[0]", violations[0].Path)
+			assert.Contains(t, violations[0].Message,
+				`kind Organization/Minister is still used by relationship "located_in" pair Organization/* -> region/country, as it is the last minor of Organization`)
+		}
+	})
+
+	t.Run("wildcard pair removed in the same patch", func(t *testing.T) {
+		result, violations := Apply(newBase(), &Patch{
+			Remove: PatchRemovals{
+				Kinds:         []string{"Organization/Minister"},
+				Relationships: []string{"located_in"},
+			},
+		})
+		if assert.Empty(t, violations) {
+			assert.Nil(t, findKindDef(result, "Organization"))
+		}
+	})
+
+	t.Run("exact reference is still rejected even with a replacement", func(t *testing.T) {
+		base := newBase()
+		base.RelationshipDefs = append(base.RelationshipDefs, RelationshipDef{
+			Name: "reports_to", Endpoints: []Endpoint{{From: "Organization/Minister", To: "region/country"}},
+		})
+
+		result, violations := Apply(base, &Patch{
+			Remove: PatchRemovals{Kinds: []string{"Organization/Minister"}},
+			Add:    PatchAdditions{KindDefs: []KindDef{{Major: "Organization", Minors: []string{"Ministry"}}}},
+		})
+		assert.Nil(t, result)
+		if assert.Len(t, violations, 1, "got %v", violations) {
+			assert.Equal(t, "remove.kinds[0]", violations[0].Path)
+			assert.Contains(t, violations[0].Message,
+				`kind Organization/Minister is still used by relationship "reports_to" pair Organization/Minister -> region/country; remove that pair`)
+		}
+	})
+}
+
 func TestApplyNilInputs(t *testing.T) {
 	result, violations := Apply(nil, &Patch{})
 	assert.Nil(t, result)
