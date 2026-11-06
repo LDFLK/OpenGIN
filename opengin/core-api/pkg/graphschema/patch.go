@@ -318,6 +318,16 @@ func (p *patcher) checkEmptiedRelationships() {
 // cloneSchema returns a deep copy of s, so patching never changes the caller's schema.
 func cloneSchema(s *Schema) *Schema {
 	clone := &Schema{Description: s.Description}
+
+	// Keep nil and empty slices distinct, so the clone serializes exactly like the original
+	// (null vs []). The inner slices keep it through slices.Clone.
+	if s.KindDefs != nil {
+		clone.KindDefs = make([]KindDef, 0, len(s.KindDefs))
+	}
+	if s.RelationshipDefs != nil {
+		clone.RelationshipDefs = make([]RelationshipDef, 0, len(s.RelationshipDefs))
+	}
+
 	for _, kindDef := range s.KindDefs {
 		clone.KindDefs = append(clone.KindDefs, KindDef{
 			Major:  kindDef.Major,

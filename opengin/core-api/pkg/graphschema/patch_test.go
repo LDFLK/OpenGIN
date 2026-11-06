@@ -477,3 +477,40 @@ func TestPatchJSON(t *testing.T) {
 	assert.Equal(t, []string{"local_government"}, patch.Remove.Relationships)
 	assert.Equal(t, EndpointRef{Name: "located_in", From: "Organization/Government", To: "region/country"}, patch.Remove.Endpoints[0])
 }
+
+func TestCloneSchemaPreservesNilAndEmptySlices(t *testing.T) {
+	empty := &Schema{
+		KindDefs:         []KindDef{{Major: "region", Minors: []string{}}},
+		RelationshipDefs: []RelationshipDef{},
+	}
+	clone := cloneSchema(empty)
+	assert.NotNil(t, clone.RelationshipDefs)
+	assert.Empty(t, clone.RelationshipDefs)
+	assert.NotNil(t, clone.KindDefs[0].Minors)
+	assert.Equal(t, empty, clone)
+
+	missing := &Schema{KindDefs: []KindDef{{Major: "region"}}}
+	clone = cloneSchema(missing)
+	assert.Nil(t, clone.RelationshipDefs)
+	assert.Nil(t, clone.KindDefs[0].Minors)
+	assert.Equal(t, missing, clone)
+
+	assert.Nil(t, cloneSchema(&Schema{}).KindDefs)
+}
+
+func TestApplyEmptyPatchKeepsEmptyRelationshipDefsAsArray(t *testing.T) {
+	base := &Schema{
+		KindDefs:         []KindDef{{Major: "region", Minors: []string{"country"}}},
+		RelationshipDefs: []RelationshipDef{},
+	}
+
+	result, violations := Apply(base, &Patch{})
+	if !assert.Empty(t, violations) {
+		return
+	}
+
+	encoded, err := json.Marshal(result)
+	if assert.NoError(t, err) {
+		assert.Contains(t, string(encoded), `"relationshipDefs":[]`)
+	}
+}
