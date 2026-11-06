@@ -69,3 +69,18 @@ func ParseKindRef(ref string) (major string, minor string, err error) {
 func FormatKindRef(major string, minor string) string {
 	return major + KindSeparator + minor
 }
+
+// AllowedPairs returns the (from, to) pairs declared for the relationship name, or nil if the
+// schema does not declare it. The result is a copy, so callers cannot modify the schema
+// through it.
+func (s *Schema) AllowedPairs(name string) []Endpoint {
+	if s == nil {
+		return nil
+	}
+	for _, relationshipDef := range s.RelationshipDefs {
+		if relationshipDef.Name == name {
+			return append([]Endpoint(nil), relationshipDef.Endpoints...)
+		}
+	}
+	return nil
+}

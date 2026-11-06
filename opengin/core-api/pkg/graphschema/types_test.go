@@ -85,3 +85,54 @@ func TestKindRefRoundTrip(t *testing.T) {
 		assert.Equal(t, ref, FormatKindRef(major, minor))
 	}
 }
+
+func TestAllowedPairs(t *testing.T) {
+	schema := parseFixture(t, "lk_regions_government.json")
+
+	tests := map[string]struct {
+		name     string
+		expected []Endpoint
+	}{
+		"single pair": {
+			name: "province",
+			expected: []Endpoint{
+				{From: "region/country", To: "region/country-level-1+lk-province"},
+			},
+		},
+		"several pairs for one name": {
+			name: "located_in",
+			expected: []Endpoint{
+				{From: "Organization/Department", To: "region/country-level-2+lk-administrative-district"},
+				{From: "Organization/Government", To: "region/country"},
+			},
+		},
+		"undeclared name": {
+			name:     "not_declared",
+			expected: nil,
+		},
+		"names are case-sensitive": {
+			name:     "Located_In",
+			expected: nil,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			assert.Equal(t, tc.expected, schema.AllowedPairs(tc.name))
+		})
+	}
+}
+
+func TestAllowedPairsReturnsCopy(t *testing.T) {
+	schema := parseFixture(t, "lk_regions_government.json")
+
+	pairs := schema.AllowedPairs("located_in")
+	pairs[0] = Endpoint{From: "changed", To: "changed"}
+
+	assert.Equal(t, "Organization/Department", schema.AllowedPairs("located_in")[0].From)
+}
+
+func TestAllowedPairsNilSchema(t *testing.T) {
+	var schema *Schema
+	assert.Nil(t, schema.AllowedPairs("province"))
+}
