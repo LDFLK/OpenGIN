@@ -162,6 +162,14 @@ func TestValidateKindReferences(t *testing.T) {
 			from: "Organization/Minister", to: "Place/City",
 			expectedPath: "relationshipDefs[0].endpoints[0].to", expected: `Major "Place" is not declared`,
 		},
+		"minor with slash under a wildcard Major": {
+			from: "Person/a/b", to: "Organization/Minister",
+			expectedPath: "relationshipDefs[0].endpoints[0].from", expected: `minor kind "a/b" must not contain "/"`,
+		},
+		"minor with slash under a Major with explicit minors": {
+			from: "Organization/Minister", to: "Organization/Minister/East",
+			expectedPath: "relationshipDefs[0].endpoints[0].to", expected: `minor kind "Minister/East" must not contain "/"`,
+		},
 		"empty from": {
 			from: "", to: "Organization/Minister",
 			expectedPath: "relationshipDefs[0].endpoints[0].from", expected: "kind is required",

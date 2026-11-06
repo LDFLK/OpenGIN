@@ -185,7 +185,17 @@ func validateKindRef(path string, ref string, declared declaredKinds, addViolati
 		return
 	}
 
-	if minor == AnyMinor || minors[AnyMinor] || minors[minor] {
+	// An explicitly declared minor is accepted even if it breaks a rule: kindDefs already reported
+	// it, and reporting it again for every endpoint would only repeat the same mistake.
+	if minors[minor] {
+		return
+	}
+	// A "*" declaration accepts any minor, but never one that could not be declared.
+	if strings.Contains(minor, KindSeparator) {
+		addViolation(path, "minor kind %q must not contain %q", minor, KindSeparator)
+		return
+	}
+	if minor == AnyMinor || minors[AnyMinor] {
 		return
 	}
 	addViolation(path, "unknown kind %s", ref)
