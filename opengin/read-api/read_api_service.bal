@@ -55,6 +55,107 @@ type AttributeNameParam string;
 }
 type DateTimeParam string;
 
+// The constraint pattern only checks the lexical shape, so reject impossible
+// calendar dates, clock values and offsets explicitly before any gRPC call.
+function isValidDateTime(string s) returns boolean {
+    int len = s.length();
+    if len < 10 || s.substring(4, 5) != "-" || s.substring(7, 8) != "-" {
+        return false;
+    }
+    int|error year = intSlot(s, 0, 4);
+    int|error month = intSlot(s, 5, 7);
+    int|error day = intSlot(s, 8, 10);
+    if year is error || month is error || day is error || month < 1 || month > 12 {
+        return false;
+    }
+    int maxDay = 31;
+    if month == 4 || month == 6 || month == 9 || month == 11 {
+        maxDay = 30;
+    } else if month == 2 {
+        boolean leap = (year % 4 == 0 && year % 100 != 0) || year % 400 == 0;
+        maxDay = leap ? 29 : 28;
+    }
+    if day < 1 || day > maxDay {
+        return false;
+    }
+    if len == 10 {
+        return true;
+    }
+    if len < 16 || s.substring(10, 11) != "T" || s.substring(13, 14) != ":" {
+        return false;
+    }
+    int|error hour = intSlot(s, 11, 13);
+    int|error minute = intSlot(s, 14, 16);
+    if hour is error || minute is error || hour < 0 || hour > 23 || minute < 0 || minute > 59 {
+        return false;
+    }
+    int pos = 16;
+    if len > pos && s.substring(pos, pos + 1) == ":" {
+        if len < pos + 3 {
+            return false;
+        }
+        int|error second = intSlot(s, pos + 1, pos + 3);
+        if second is error || second < 0 || second > 59 {
+            return false;
+        }
+        pos += 3;
+    }
+    if len > pos && s.substring(pos, pos + 1) == "." {
+        pos += 1;
+        int fracStart = pos;
+        while pos < len && "0123456789".includes(s.substring(pos, pos + 1)) {
+            pos += 1;
+        }
+        if pos == fracStart {
+            return false;
+        }
+    }
+    if pos == len {
+        return true;
+    }
+    string tz = s.substring(pos, pos + 1);
+    if tz == "Z" {
+        return pos + 1 == len;
+    }
+    if tz != "+" && tz != "-" || pos + 1 == len {
+        return false;
+    }
+    string off = s.substring(pos + 1, len);
+    string digits = off.length() == 5 && off.substring(2, 3) == ":" ? off.substring(0, 2) + off.substring(3, 5) : off;
+    if digits.length() != 4 {
+        return false;
+    }
+    int|error offHour = intSlot(digits, 0, 2);
+    int|error offMinute = intSlot(digits, 2, 4);
+    if offHour is error || offMinute is error || offHour < 0 || offHour > 23 || offMinute < 0 || offMinute > 59 {
+        return false;
+    }
+    return true;
+}
+
+function intSlot(string s, int beginIndex, int endIndex) returns int|error {
+    string part = s.substring(beginIndex, endIndex);
+    int i = 0;
+    while i < part.length() {
+        if !"0123456789".includes(part.substring(i, i + 1)) {
+            return error("not digits");
+        }
+        i += 1;
+    }
+    return langint:fromString(part);
+}
+
+function badDateField(string name, string? value) returns string? {
+    if value is string && value != "" && !isValidDateTime(value) {
+        return "invalid " + name + " date-time";
+    }
+    return;
+}
+
+function badRequest(string details) returns http:BadRequest {
+    return <http:BadRequest>{body: {"error": "Invalid request parameters", "details": details}};
+}
+
 // Helper function to extract string representation based on typeUrl
 function extractValueAsString('any:Any anyValue) returns string {
     string typeUrl = anyValue.typeUrl;
@@ -159,7 +260,21 @@ service /v1 on ep0 {
     #
     # + fields - List of field names to return. Defaults to ['*'] (all fields).
     # + return - Attribute value(s)
-    resource function post entities/[EntityIdParam entityId]/attributes/[AttributeNameParam attributeName](DateTimeParam? startTime, DateTimeParam? endTime, @http:Payload attributes_attributeName_body payload, string[]? fields) returns RecordStringStartStringendStringvalueRecordStringStartStringendStringvalueArrayOk|http:NotFound|error {
+    resource function post entities/[EntityIdParam entityId]/attributes/[AttributeNameParam attributeName](DateTimeParam? startTime, DateTimeParam? endTime, @http:Payload attributes_attributeName_body payload, string[]? fields) returns RecordStringStartStringendStringvalueRecordStringStartStringendStringvalueArrayOk|http:NotFound|http:BadRequest|error {
+        if entityId.trim().length() == 0 {
+            return badRequest("entityId is required");
+        }
+        if attributeName.trim().length() == 0 {
+            return badRequest("attributeName is required");
+        }
+        string? dateError = badDateField("startTime", startTime);
+        if dateError is string {
+            return badRequest(dateError);
+        }
+        dateError = badDateField("endTime", endTime);
+        if dateError is string {
+            return badRequest(dateError);
+        }
         // Defaults to empty array when fields is omitted or empty
         string[] fieldsToUse = (fields == () || fields.length() == 0) ? [] : fields;
         json recordsToUse = (payload.records ?: []).toJson();
@@ -266,7 +381,10 @@ service /v1 on ep0 {
     # Get metadata of an entity
     #
     # + return - Entity metadata 
-    resource function get entities/[EntityIdParam entityId]/metadata() returns EntitiesEntityIdMetadataResponse|error {
+    resource function get entities/[EntityIdParam entityId]/metadata() returns EntitiesEntityIdMetadataResponse|http:BadRequest|error {
+        if entityId.trim().length() == 0 {
+            return badRequest("entityId is required");
+        }
         // Create entity filter with empty fields
         Entity entityFilter = {
             id: entityId,
@@ -312,15 +430,36 @@ service /v1 on ep0 {
     # Get root entity IDs of a given kind
     #
     # + return - List of root entity IDs 
-    resource function get entities/root(string kind) returns inline_response_200 {
+    resource function get entities/root(string kind) returns inline_response_200|http:BadRequest {
+        if kind.trim().length() == 0 {
+            return badRequest("kind is required");
+        }
         // TODO: implement this once the root entity IDs are identified
-        return {};
+        return <inline_response_200>{};
     }
 
     # Get related entity IDs
     #
     # + return - List of related entities 
     resource function post entities/[EntityIdParam entityId]/relations(@http:Payload entityId_relations_body payload) returns RecordStringidStringrelatedEntityIdStringnameStringstartTimeStringendTimeStringdirectionArrayOk|http:BadRequest|error {
+        if entityId.trim().length() == 0 {
+            return badRequest("entityId is required");
+        }
+        string? dateError = badDateField("activeAt", payload.activeAt);
+        if dateError is string {
+            return badRequest(dateError);
+        }
+        dateError = badDateField("startTime", payload.startTime);
+        if dateError is string {
+            return badRequest(dateError);
+        }
+        dateError = badDateField("endTime", payload.endTime);
+        if dateError is string {
+            return badRequest(dateError);
+        }
+        if payload.direction is string && payload.direction != "" && payload.direction != "OUTGOING" && payload.direction != "INCOMING" {
+            return badRequest("direction must be either OUTGOING or INCOMING");
+        }
         // Validate that startTime/endTime and activeAt are not used together
         boolean hasTimeRange = (payload.startTime is string && payload.startTime != "") || (payload.endTime is string && payload.endTime != "");
         boolean hasActiveAt = payload.activeAt is string && payload.activeAt != "";
@@ -407,6 +546,15 @@ service /v1 on ep0 {
                     "details": "Either id or Kind.Major is required for filtering entities"
                 }
             };
+        }
+
+        string? dateError = badDateField("created", payload.created);
+        if dateError is string {
+            return badRequest(dateError);
+        }
+        dateError = badDateField("terminated", payload.terminated);
+        if dateError is string {
+            return badRequest(dateError);
         }
 
         // Extract kind fields if they exist

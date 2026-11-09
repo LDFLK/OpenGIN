@@ -3050,3 +3050,67 @@ function testTabularAttributeUpdateInference() returns error? {
     Empty _ = check ep->DeleteEntity({ id: testId });
     return;
 }
+
+// Verify invalid payloads are rejected at the HTTP edge, before any gRPC call.
+@test:Config {
+    groups: ["validation"]
+}
+function testRestRejectsInvalidFieldsBeforeGrpc() returns error? {
+    http:Client restClient = check new (testIngestionServiceUrl, {httpVersion: "2.0"});
+
+    json invalidCreated = {
+        "id": "test-invalid-created-entity",
+        "kind": {"major": "test", "minor": "invalid-created"},
+        "created": "2023-02-30",
+        "name": {"value": "invalid-created"}
+    };
+    http:Response createdResponse = check restClient->post("/entities", invalidCreated);
+    test:assertEquals(createdResponse.statusCode, 400, "Impossible created date should be rejected");
+
+    json invalidRelationship = {
+        "id": "test-invalid-relationship-entity",
+        "kind": {"major": "test", "minor": "invalid-relationship"},
+        "created": "2023-01-01",
+        "name": {"value": "invalid-relationship"},
+        "relationships": {
+            "   ": {
+                "id": "rel-invalid",
+                "relatedEntityId": "target",
+                "name": "rel",
+                "startTime": "2023-01-01"
+            }
+        }
+    };
+    http:Response relationshipResponse = check restClient->post("/entities", invalidRelationship);
+    test:assertEquals(relationshipResponse.statusCode, 400, "Blank relationship key should be rejected");
+
+    json invalidAttribute = {
+        "id": "test-invalid-attribute-entity",
+        "kind": {"major": "test", "minor": "invalid-attribute"},
+        "created": "2023-01-01",
+        "name": {"value": "invalid-attribute"},
+        "attributes": {
+            "   ": {
+                "startTime": "2023-01-01",
+                "value": "invalid-attribute"
+            }
+        }
+    };
+    http:Response attributeResponse = check restClient->post("/entities", invalidAttribute);
+    test:assertEquals(attributeResponse.statusCode, 400, "Blank attribute key should be rejected");
+
+    json invalidAttributeDate = {
+        "id": "test-invalid-attribute-date-entity",
+        "kind": {"major": "test", "minor": "invalid-attribute-date"},
+        "created": "2023-01-01",
+        "name": {"value": "invalid-attribute-date"},
+        "attributes": {
+            "attr": {
+                "startTime": "2023-02-30",
+                "value": "invalid-attribute-date"
+            }
+        }
+    };
+    http:Response attributeDateResponse = check restClient->post("/entities", invalidAttributeDate);
+    test:assertEquals(attributeDateResponse.statusCode, 400, "Impossible attribute startTime should be rejected");
+}

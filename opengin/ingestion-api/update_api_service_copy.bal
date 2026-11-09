@@ -46,7 +46,7 @@ type EntityIdParam string;
 
 @constraint:String {
     pattern: {
-        value: re `\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?(\.\d+)?(Z|[+-]\d{2}:?\d{2})?)?`,
+        value: re `(\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?(\.\d+)?(Z|[+-]\d{2}:?\d{2})?)?)?`,
         message: "Invalid date-time format, expected YYYY-MM-DD or RFC3339"
     }
 }
@@ -138,6 +138,152 @@ type EntityUpdatePayload record {
     json relationships?;
 };
 
+// Constraint patterns accept impossible dates like 2025-02-30, so check ranges explicitly.
+function isValidDateTime(string s) returns boolean {
+    int len = s.length();
+    if len < 10 || s.substring(4, 5) != "-" || s.substring(7, 8) != "-" {
+        return false;
+    }
+    int|error year = intSlot(s, 0, 4);
+    int|error month = intSlot(s, 5, 7);
+    int|error day = intSlot(s, 8, 10);
+    if year is error || month is error || day is error || month < 1 || month > 12 {
+        return false;
+    }
+    int maxDay = 31;
+    if month == 4 || month == 6 || month == 9 || month == 11 {
+        maxDay = 30;
+    } else if month == 2 {
+        boolean leap = (year % 4 == 0 && year % 100 != 0) || year % 400 == 0;
+        maxDay = leap ? 29 : 28;
+    }
+    if day < 1 || day > maxDay {
+        return false;
+    }
+    if len == 10 {
+        return true;
+    }
+    if len < 16 || s.substring(10, 11) != "T" || s.substring(13, 14) != ":" {
+        return false;
+    }
+    int|error hour = intSlot(s, 11, 13);
+    int|error minute = intSlot(s, 14, 16);
+    if hour is error || minute is error || hour < 0 || hour > 23 || minute < 0 || minute > 59 {
+        return false;
+    }
+    int pos = 16;
+    if len > pos && s.substring(pos, pos + 1) == ":" {
+        if len < pos + 3 {
+            return false;
+        }
+        int|error second = intSlot(s, pos + 1, pos + 3);
+        if second is error || second < 0 || second > 59 {
+            return false;
+        }
+        pos += 3;
+    }
+    if len > pos && s.substring(pos, pos + 1) == "." {
+        pos += 1;
+        int fracStart = pos;
+        while pos < len && "0123456789".includes(s.substring(pos, pos + 1)) {
+            pos += 1;
+        }
+        if pos == fracStart {
+            return false;
+        }
+    }
+    if pos == len {
+        return true;
+    }
+    string tz = s.substring(pos, pos + 1);
+    if tz == "Z" {
+        return pos + 1 == len;
+    }
+    if tz != "+" && tz != "-" || pos + 1 == len {
+        return false;
+    }
+    string off = s.substring(pos + 1, len);
+    string digits = off.length() == 5 && off.substring(2, 3) == ":" ? off.substring(0, 2) + off.substring(3, 5) : off;
+    if digits.length() != 4 {
+        return false;
+    }
+    int|error offHour = intSlot(digits, 0, 2);
+    int|error offMinute = intSlot(digits, 2, 4);
+    if offHour is error || offMinute is error || offHour < 0 || offHour > 23 || offMinute < 0 || offMinute > 59 {
+        return false;
+    }
+    return true;
+}
+
+function intSlot(string s, int beginIndex, int endIndex) returns int|error {
+    string part = s.substring(beginIndex, endIndex);
+    int i = 0;
+    while i < part.length() {
+        if !"0123456789".includes(part.substring(i, i + 1)) {
+            return error("not digits");
+        }
+        i += 1;
+    }
+    return langint:fromString(part);
+}
+
+function badDateField(string name, string? v) returns string? {
+    if v is string && v != "" && !isValidDateTime(v) {
+        return "invalid " + name + " date-time";
+    }
+    return;
+}
+
+function badRelationshipDates(string? startTime, string? endTime) returns string? {
+    string? err = badDateField("relationship startTime", startTime);
+    return err is string ? err : badDateField("relationship endTime", endTime);
+}
+
+function badAttributeDates(string startTime, string? endTime) returns string? {
+    string? err = badDateField("attribute startTime", startTime);
+    return err is string ? err : badDateField("attribute endTime", endTime);
+}
+
+function badEntityCreateDates(EntityCreatePayload payload) returns string? {
+    string? err = badDateField("created", payload.created);
+    if err is string {
+        return err;
+    }
+    err = badDateField("terminated", payload.terminated);
+    if err is string {
+        return err;
+    }
+    err = badDateField("name.startTime", payload.name.startTime);
+    return err is string ? err : badDateField("name.endTime", payload.name.endTime);
+}
+
+function badEntityUpdateDates(EntityUpdatePayload payload) returns string? {
+    string? err = badDateField("created", payload.created);
+    if err is string {
+        return err;
+    }
+    err = badDateField("terminated", payload.terminated);
+    if err is string {
+        return err;
+    }
+    record {json value?; string startTime?; string endTime?;}? name = payload.name;
+    if name is record {json value?; string startTime?; string endTime?;} {
+        err = badDateField("name.startTime", name.startTime);
+        if err is string {
+            return err;
+        }
+        err = badDateField("name.endTime", name.endTime);
+        if err is string {
+            return err;
+        }
+    }
+    return;
+}
+
+function badRequest(string details) returns http:BadRequest {
+    return <http:BadRequest>{body: {"error": "Invalid request parameters", "details": details}};
+}
+
 function validateNewRelationships(json rels) returns string? {
     if rels is json[] {
         foreach json item in rels {
@@ -150,6 +296,10 @@ function validateNewRelationships(json rels) returns string? {
                 if rel is error {
                     return "invalid relationship: " + rel.message();
                 }
+                string? dateErr = badRelationshipDates(rel.startTime, rel.endTime);
+                if dateErr is string {
+                    return dateErr;
+                }
             } else {
                 return "relationship entry must be a JSON object";
             }
@@ -158,10 +308,17 @@ function validateNewRelationships(json rels) returns string? {
     }
     if rels is map<json> {
         foreach var [key, val] in rels.entries() {
+            if key.trim().length() == 0 {
+                return "relationship key is required";
+            }
             if val is map<json> {
                 RelationshipPayload|error rel = constraint:validate(val);
                 if rel is error {
                     return "invalid relationship '" + key + "': " + rel.message();
+                }
+                string? dateErr = badRelationshipDates(rel.startTime, rel.endTime);
+                if dateErr is string {
+                    return "invalid relationship '" + key + "': " + dateErr;
                 }
             } else {
                 return "relationship '" + key + "' must be a JSON object";
@@ -184,6 +341,10 @@ function validateUpdateRelationships(json rels) returns string? {
                 if rel is error {
                     return "invalid relationship: " + rel.message();
                 }
+                string? dateErr = badRelationshipDates(rel.startTime, rel.endTime);
+                if dateErr is string {
+                    return dateErr;
+                }
             } else {
                 return "relationship entry must be a JSON object";
             }
@@ -192,10 +353,17 @@ function validateUpdateRelationships(json rels) returns string? {
     }
     if rels is map<json> {
         foreach var [key, val] in rels.entries() {
+            if key.trim().length() == 0 {
+                return "relationship key is required";
+            }
             if val is map<json> {
                 RelationshipUpdatePayload|error rel = constraint:validate(val);
                 if rel is error {
                     return "invalid relationship '" + key + "': " + rel.message();
+                }
+                string? dateErr = badRelationshipDates(rel.startTime, rel.endTime);
+                if dateErr is string {
+                    return "invalid relationship '" + key + "': " + dateErr;
                 }
             } else {
                 return "relationship '" + key + "' must be a JSON object";
@@ -209,9 +377,9 @@ function validateUpdateRelationships(json rels) returns string? {
 function validateAttributeValue(json val) returns string? {
     if val is json[] {
         foreach json valueItem in val {
-            AttributeValuePayload|error tbv = constraint:validate(valueItem);
-            if tbv is error {
-                return tbv.message();
+            string? err = validateAttributeEntry(valueItem);
+            if err is string {
+                return err;
             }
         }
         return;
@@ -220,13 +388,17 @@ function validateAttributeValue(json val) returns string? {
         if !(val["values"] is ()) {
             return validateAttributeValue(val["values"]);
         }
-        AttributeValuePayload|error tbv = constraint:validate(val);
-        if tbv is error {
-            return tbv.message();
-        }
-        return;
+        return validateAttributeEntry(val);
     }
     return "attribute value must be an array or an object";
+}
+
+function validateAttributeEntry(json entry) returns string? {
+    AttributeValuePayload|error tbv = constraint:validate(entry);
+    if tbv is error {
+        return tbv.message();
+    }
+    return badAttributeDates(tbv.startTime, tbv.endTime);
 }
 
 function validateAttributeValues(json attrs) returns string? {
@@ -249,6 +421,9 @@ function validateAttributeValues(json attrs) returns string? {
     }
     if attrs is map<json> {
         foreach var [key, val] in attrs.entries() {
+            if key.trim().length() == 0 {
+                return "attribute key is required";
+            }
             string? err = validateAttributeValue(val);
             if err is string {
                 return "invalid attribute '" + key + "': " + err;
@@ -361,6 +536,9 @@ service / on ep0 {
     #
     # + return - Entity deleted 
     resource function delete entities/[EntityIdParam id]() returns http:NoContent|http:BadRequest|error {
+        if id.trim().length() == 0 {
+            return badRequest("Entity id is required");
+        }
         var result = ep->DeleteEntity({id: id});
         if result is error {
             io:println("gRPC DeleteEntity failed: ", result.message());
@@ -381,6 +559,10 @@ service / on ep0 {
                     "details": validated.message()
                 }
             };
+        }
+        string? dateError = badEntityCreateDates(validated);
+        if dateError is string {
+            return badRequest(dateError);
         }
         string? relError = validateNewRelationships(validated?.relationships ?: []);
         if relError is string {
@@ -417,6 +599,9 @@ service / on ep0 {
     #
     # + return - Entity updated 
     resource function put entities/[EntityIdParam id](@http:Payload json jsonPayload) returns Entity|http:BadRequest|error {
+        if id.trim().length() == 0 {
+            return badRequest("Entity id is required");
+        }
         EntityUpdatePayload|error validated = constraint:validate(jsonPayload);
         if validated is error {
             return <http:BadRequest>{
@@ -434,6 +619,10 @@ service / on ep0 {
                     "details": semanticError
                 }
             };
+        }
+        string? dateError = badEntityUpdateDates(validated);
+        if dateError is string {
+            return badRequest(dateError);
         }
         string? relError = validateUpdateRelationships(validated?.relationships ?: []);
         if relError is string {
@@ -476,6 +665,9 @@ service / on ep0 {
     # + id - The ID of the entity to retrieve
     # + return - The entity or an error
     resource function get entities/[EntityIdParam id]() returns Entity|http:BadRequest|error {
+        if id.trim().length() == 0 {
+            return badRequest("Entity id is required");
+        }
         // Call the ReadEntity function with the ID
         ReadEntityRequest readEntityRequest = {
             entity: {
@@ -557,9 +749,15 @@ function convertJsonToEntity(json jsonPayload) returns Entity|error {
                         timeBasedValues.push(tbv);
                     }
                 } else {
-                    // Handle the case when value is not an array (could be a single object)
-                    // Create a single TimeBasedValue object
-                    json[] valuesJson = <json[]>check valueJson.values;
+                    // Handle both the {values: [...]} wrapper and a single TimeBasedValue object.
+                    json[] valuesJson;
+                    if valueJson is map<json> && valueJson["values"] is json[] {
+                        valuesJson = <json[]>valueJson["values"];
+                    } else if valueJson is map<json> {
+                        valuesJson = [valueJson];
+                    } else {
+                        return error("attribute value must be an array or an object");
+                    }
 
                     foreach json valueItem in valuesJson {
                         string startTime = valueItem?.startTime is () ? "" : (check valueItem.startTime).toString();
