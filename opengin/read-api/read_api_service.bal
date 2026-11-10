@@ -11,6 +11,7 @@ import ballerina/lang.'int as langint;
 import ballerina/protobuf.types.'any;
 import ballerina/protobuf.types.'any as pbAny;
 import ballerina/constraint;
+import ballerina/time;
 
 // BAL_CONFIG_VAR_CORESERVICEURL
 configurable string coreServiceUrl = "http://localhost:50051";
@@ -55,94 +56,41 @@ type AttributeNameParam string;
 }
 type DateTimeParam string;
 
-// The constraint pattern only checks the lexical shape, so reject impossible
-// calendar dates, clock values and offsets explicitly before any gRPC call.
+// The API accepts both date-only and RFC3339 timestamps, so normalize to
+// RFC3339 and let `ballerina/time` validate the calendar, clock and offset.
 function isValidDateTime(string s) returns boolean {
-    int len = s.length();
-    if len < 10 || s.substring(4, 5) != "-" || s.substring(7, 8) != "-" {
-        return false;
-    }
-    int|error year = intSlot(s, 0, 4);
-    int|error month = intSlot(s, 5, 7);
-    int|error day = intSlot(s, 8, 10);
-    if year is error || month is error || day is error || month < 1 || month > 12 {
-        return false;
-    }
-    int maxDay = 31;
-    if month == 4 || month == 6 || month == 9 || month == 11 {
-        maxDay = 30;
-    } else if month == 2 {
-        boolean leap = (year % 4 == 0 && year % 100 != 0) || year % 400 == 0;
-        maxDay = leap ? 29 : 28;
-    }
-    if day < 1 || day > maxDay {
-        return false;
-    }
-    if len == 10 {
-        return true;
-    }
-    if len < 16 || s.substring(10, 11) != "T" || s.substring(13, 14) != ":" {
-        return false;
-    }
-    int|error hour = intSlot(s, 11, 13);
-    int|error minute = intSlot(s, 14, 16);
-    if hour is error || minute is error || hour < 0 || hour > 23 || minute < 0 || minute > 59 {
-        return false;
-    }
-    int pos = 16;
-    if len > pos && s.substring(pos, pos + 1) == ":" {
-        if len < pos + 3 {
-            return false;
-        }
-        int|error second = intSlot(s, pos + 1, pos + 3);
-        if second is error || second < 0 || second > 59 {
-            return false;
-        }
-        pos += 3;
-    }
-    if len > pos && s.substring(pos, pos + 1) == "." {
-        pos += 1;
-        int fracStart = pos;
-        while pos < len && "0123456789".includes(s.substring(pos, pos + 1)) {
-            pos += 1;
-        }
-        if pos == fracStart {
-            return false;
-        }
-    }
-    if pos == len {
-        return true;
-    }
-    string tz = s.substring(pos, pos + 1);
-    if tz == "Z" {
-        return pos + 1 == len;
-    }
-    if tz != "+" && tz != "-" || pos + 1 == len {
-        return false;
-    }
-    string off = s.substring(pos + 1, len);
-    string digits = off.length() == 5 && off.substring(2, 3) == ":" ? off.substring(0, 2) + off.substring(3, 5) : off;
-    if digits.length() != 4 {
-        return false;
-    }
-    int|error offHour = intSlot(digits, 0, 2);
-    int|error offMinute = intSlot(digits, 2, 4);
-    if offHour is error || offMinute is error || offHour < 0 || offHour > 23 || offMinute < 0 || offMinute > 59 {
-        return false;
-    }
-    return true;
+    time:Civil|time:Error civil = time:civilFromString(toRfc3339(s));
+    return civil is time:Civil;
 }
 
-function intSlot(string s, int beginIndex, int endIndex) returns int|error {
-    string part = s.substring(beginIndex, endIndex);
+function toRfc3339(string s) returns string {
+    if s.length() == 10 {
+        return s + "T00:00:00Z";
+    }
+    int sep = s.indexOf("T") ?: -1;
+    string datePart = s.substring(0, sep + 1);
+    string timePart = s.substring(sep + 1);
+    int zoneStart = timePart.length();
     int i = 0;
-    while i < part.length() {
-        if !"0123456789".includes(part.substring(i, i + 1)) {
-            return error("not digits");
+    while i < timePart.length() {
+        string c = timePart.substring(i, i + 1);
+        if c == "Z" || c == "+" || c == "-" {
+            zoneStart = i;
+            break;
         }
         i += 1;
     }
-    return langint:fromString(part);
+    string clock = timePart.substring(0, zoneStart);
+    string zone = timePart.substring(zoneStart);
+    if clock.length() == 5 {
+        clock += ":00";
+    }
+    if zone == "" {
+        zone = "Z";
+    } else if zone != "Z" && zone.length() == 5 && (zone.indexOf(":") ?: -1) == -1 {
+        zone = zone.substring(0, 3) + ":" + zone.substring(3);
+    }
+    return datePart + clock + zone;
 }
 
 function badDateField(string name, string? value) returns string? {
