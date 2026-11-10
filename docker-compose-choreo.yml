@@ -70,6 +70,8 @@ services:
     build:
       context: ./deployment/choreo/development/docker/postgres
       dockerfile: Dockerfile
+      args:
+        POSTGRES_PASSWORD: ${OPENGIN_POSTGRES_PASSWORD:-postgres}
     container_name: postgres-choreo
     ports:
       - "5432:5432"
@@ -80,7 +82,7 @@ services:
       - choreo-network
     environment:
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_PASSWORD=${OPENGIN_POSTGRES_PASSWORD:-postgres}
       - POSTGRES_DB=opengin
       # GitHub backup restore configuration (disabled for development)
       - GITHUB_BACKUP_REPO=${OPENGIN_GITHUB_BACKUP_REPO:-LDFLK/data-backups}
@@ -109,7 +111,7 @@ services:
       - POSTGRES_HOST=postgres-choreo
       - POSTGRES_PORT=5432
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_PASSWORD=${OPENGIN_POSTGRES_PASSWORD:-postgres}
       - POSTGRES_DB=opengin
       - MONGODB_HOST=mongodb-choreo
       - MONGODB_PORT=27017
@@ -134,7 +136,7 @@ services:
       - POSTGRES_HOST=postgres-choreo
       - POSTGRES_PORT=5432
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_PASSWORD=${OPENGIN_POSTGRES_PASSWORD:-postgres}
       - POSTGRES_DB=opengin
       - MONGO_URI=mongodb://admin:admin123@mongodb-choreo:27017/admin?authSource=admin
       - MONGO_DB_NAME=opengin
@@ -170,7 +172,7 @@ services:
       - POSTGRES_HOST=postgres-choreo
       - POSTGRES_PORT=5432
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_PASSWORD=${OPENGIN_POSTGRES_PASSWORD:-postgres}
       - POSTGRES_DB=opengin
       - POSTGRES_SSL_MODE=disable
       # CORE Service Configuration

@@ -27,6 +27,8 @@ ARG BACKUP_ENVIRONMENT=development
 # but it is NOT a real secret: build args are visible in `docker history` and
 # CI logs. BuildKit `--secret` is the stronger option if this ever matters.
 # Override at build time: docker build --build-arg POSTGRES_PASSWORD=... .
+# docker-compose-choreo.yml wires this to runtime clients via
+# OPENGIN_POSTGRES_PASSWORD; a direct build must update those clients too.
 ARG POSTGRES_PASSWORD=postgres
 
 # Place data outside /var/lib/postgresql/ entirely so that the base image's
