@@ -50,47 +50,17 @@ type AttributeNameParam string;
 
 @constraint:String {
     pattern: {
-        value: re `\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?(\.\d+)?(Z|[+-]\d{2}:?\d{2})?)?`,
+        value: re `\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2}))?`,
         message: "Invalid date-time format, expected YYYY-MM-DD or RFC3339"
     }
 }
 type DateTimeParam string;
 
-// The API accepts both date-only and RFC3339 timestamps, so normalize to
-// RFC3339 and let `ballerina/time` validate the calendar, clock and offset.
+// Accept a calendar date or a strict RFC3339 timestamp and let `ballerina/time`
+// validate the calendar, clock and offset before any gRPC call.
 function isValidDateTime(string s) returns boolean {
-    time:Civil|time:Error civil = time:civilFromString(toRfc3339(s));
-    return civil is time:Civil;
-}
-
-function toRfc3339(string s) returns string {
-    if s.length() == 10 {
-        return s + "T00:00:00Z";
-    }
-    int sep = s.indexOf("T") ?: -1;
-    string datePart = s.substring(0, sep + 1);
-    string timePart = s.substring(sep + 1);
-    int zoneStart = timePart.length();
-    int i = 0;
-    while i < timePart.length() {
-        string c = timePart.substring(i, i + 1);
-        if c == "Z" || c == "+" || c == "-" {
-            zoneStart = i;
-            break;
-        }
-        i += 1;
-    }
-    string clock = timePart.substring(0, zoneStart);
-    string zone = timePart.substring(zoneStart);
-    if clock.length() == 5 {
-        clock += ":00";
-    }
-    if zone == "" {
-        zone = "Z";
-    } else if zone != "Z" && zone.length() == 5 && (zone.indexOf(":") ?: -1) == -1 {
-        zone = zone.substring(0, 3) + ":" + zone.substring(3);
-    }
-    return datePart + clock + zone;
+    string rfc3339 = s.length() == 10 ? s + "T00:00:00Z" : s;
+    return time:civilFromString(rfc3339) is time:Civil;
 }
 
 function badDateField(string name, string? value) returns string? {
