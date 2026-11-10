@@ -1,6 +1,7 @@
 // Copyright 2025 Lanka Data Foundation
 // SPDX-License-Identifier: Apache-2.0
 
+import ballerina/http;
 import ballerina/io;
 import ballerina/os;
 import ballerina/protobuf.types.'any as pbAny;
@@ -1253,6 +1254,29 @@ function testEntitySearch() returns error? {
     io:println("Test entities deleted");
 
     return;
+}
+
+// Verify impossible date values are rejected at the HTTP edge, before any gRPC call.
+@test:Config {
+    groups: ["validation"]
+}
+function testInvalidDateTimeRejectedBeforeGrpc() returns error? {
+    string host = os:getEnv("READ_SERVICE_HOST");
+    string port = os:getEnv("READ_SERVICE_PORT");
+    string serviceUrl = "http://" + (host == "" ? "0.0.0.0" : host) + ":" + (port == "" ? "8081" : port);
+    http:Client restClient = check new (serviceUrl, {httpVersion: "2.0"});
+
+    json invalidActiveAt = {"activeAt": "2024-99-99"};
+    http:Response activeAtResponse = check restClient->post("/v1/entities/some-entity/relations", invalidActiveAt);
+    test:assertEquals(activeAtResponse.statusCode, 400, "Impossible activeAt should be rejected");
+
+    json invalidSearch = {"id": "some-entity", "created": "2024-02-31"};
+    http:Response searchResponse = check restClient->post("/v1/entities/search", invalidSearch);
+    test:assertEquals(searchResponse.statusCode, 400, "Impossible created date should be rejected");
+
+    json invalidDirection = {"id": "some-entity", "direction": "SIDEWAYS"};
+    http:Response directionResponse = check restClient->post("/v1/entities/some-entity/relations", invalidDirection);
+    test:assertEquals(directionResponse.statusCode, 400, "Invalid direction should be rejected");
 }
 
 // After Suite Function

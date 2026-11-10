@@ -10,6 +10,8 @@ import ballerina/io;
 import ballerina/lang.'int as langint;
 import ballerina/grpc;
 import ballerina/log;
+import ballerina/constraint;
+import ballerina/time;
 
 // BAL_CONFIG_VAR_CORESERVICEURL
 configurable string coreServiceUrl = "http://localhost:50051";
@@ -33,6 +35,342 @@ grpc:ClientConfiguration grpcConfig = {
 };
 
 COREServiceClient ep = check new (coreServiceUrl, grpcConfig);
+
+// Request validation uses the `ballerina/constraint` standard library.
+// `constraint:validate` clones the untyped JSON payload into the constrained
+// record types below and rejects missing fields, wrong types and format
+// violations with an error before any gRPC call is made.
+@constraint:String {
+    pattern: {value: re `.*\S.*`, message: "Entity id is required"}
+}
+type EntityIdParam string;
+
+@constraint:String {
+    pattern: {
+        value: re `(\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2}))?)?`,
+        message: "Invalid date-time format, expected YYYY-MM-DD or RFC3339"
+    }
+}
+type OptionalDateTimeString string;
+
+type EntityKindPayload record {
+    @constraint:String {minLength: {value: 1, message: "Kind.major is required"}}
+    string major;
+    @constraint:String {minLength: {value: 1, message: "Kind.minor is required"}}
+    string minor;
+};
+
+type EntityNamePayload record {
+    json value;
+    OptionalDateTimeString startTime?;
+    OptionalDateTimeString endTime?;
+};
+
+type EntityCreatePayload record {
+    @constraint:String {
+        minLength: {value: 1, message: "Entity id is required"},
+        pattern: {value: re `.*\S.*`, message: "Entity id is required"}
+    }
+    string id;
+    EntityKindPayload kind;
+    @constraint:String {
+        minLength: {value: 1, message: "Created is required"},
+        pattern: {
+            value: re `\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2}))?`,
+            message: "Created has an invalid format, expected YYYY-MM-DD or RFC3339"
+        }
+    }
+    string created;
+    OptionalDateTimeString terminated?;
+    EntityNamePayload name;
+    json metadata?;
+    json attributes?;
+    json relationships?;
+};
+
+type RelationshipPayload record {
+    @constraint:String {minLength: {value: 1, message: "relationship id is required"}}
+    string id;
+    @constraint:String {minLength: {value: 1, message: "relationship relatedEntityId is required"}}
+    string relatedEntityId;
+    @constraint:String {minLength: {value: 1, message: "relationship name is required"}}
+    string name;
+    @constraint:String {
+        minLength: {value: 1, message: "relationship startTime is required"},
+        pattern: {
+            value: re `\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2}))?`,
+            message: "relationship startTime has an invalid format, expected YYYY-MM-DD or RFC3339"
+        }
+    }
+    string startTime;
+    OptionalDateTimeString endTime?;
+};
+
+type RelationshipUpdatePayload record {
+    @constraint:String {minLength: {value: 1, message: "relationship id is required"}}
+    string id;
+    string relatedEntityId?;
+    string name?;
+    OptionalDateTimeString startTime?;
+    OptionalDateTimeString endTime?;
+};
+
+type AttributeValuePayload record {
+    @constraint:String {
+        minLength: {value: 1, message: "attribute startTime is required"},
+        pattern: {
+            value: re `\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2}))?`,
+            message: "attribute startTime has an invalid format, expected YYYY-MM-DD or RFC3339"
+        }
+    }
+    string startTime;
+    OptionalDateTimeString endTime?;
+    json value;
+};
+
+type EntityUpdatePayload record {
+    string id?;
+    record {string major?; string minor?;} kind?;
+    string created?;
+    string terminated?;
+    record {json value?; string startTime?; string endTime?;} name?;
+    json metadata?;
+    json attributes?;
+    json relationships?;
+};
+
+// Accept a calendar date or a strict RFC3339 timestamp and let `ballerina/time`
+// validate the calendar, clock and offset before any gRPC call.
+function isValidDateTime(string s) returns boolean {
+    string rfc3339 = s.length() == 10 ? s + "T00:00:00Z" : s;
+    return time:civilFromString(rfc3339) is time:Civil;
+}
+
+function badDateField(string name, string? v) returns string? {
+    if v is string && v != "" && !isValidDateTime(v) {
+        return "invalid " + name + " date-time";
+    }
+    return;
+}
+
+function badRelationshipDates(string? startTime, string? endTime) returns string? {
+    string? err = badDateField("relationship startTime", startTime);
+    return err is string ? err : badDateField("relationship endTime", endTime);
+}
+
+function badAttributeDates(string startTime, string? endTime) returns string? {
+    string? err = badDateField("attribute startTime", startTime);
+    return err is string ? err : badDateField("attribute endTime", endTime);
+}
+
+function badEntityCreateDates(EntityCreatePayload payload) returns string? {
+    string? err = badDateField("created", payload.created);
+    if err is string {
+        return err;
+    }
+    err = badDateField("terminated", payload.terminated);
+    if err is string {
+        return err;
+    }
+    err = badDateField("name.startTime", payload.name.startTime);
+    return err is string ? err : badDateField("name.endTime", payload.name.endTime);
+}
+
+function badEntityUpdateDates(EntityUpdatePayload payload) returns string? {
+    string? err = badDateField("created", payload.created);
+    if err is string {
+        return err;
+    }
+    err = badDateField("terminated", payload.terminated);
+    if err is string {
+        return err;
+    }
+    record {json value?; string startTime?; string endTime?;}? name = payload.name;
+    if name is record {json value?; string startTime?; string endTime?;} {
+        err = badDateField("name.startTime", name.startTime);
+        if err is string {
+            return err;
+        }
+        err = badDateField("name.endTime", name.endTime);
+        if err is string {
+            return err;
+        }
+    }
+    return;
+}
+
+function badRequest(string details) returns http:BadRequest {
+    return <http:BadRequest>{body: {"error": "Invalid request parameters", "details": details}};
+}
+
+function validateNewRelationships(json rels) returns string? {
+    if rels is json[] {
+        foreach json item in rels {
+            if item is map<json> {
+                json|error rawKey = item.key;
+                if rawKey is error || rawKey.toString().trim().length() == 0 {
+                    return "relationship entry key is required";
+                }
+                RelationshipPayload|error rel = constraint:validate(item["value"]);
+                if rel is error {
+                    return "invalid relationship: " + rel.message();
+                }
+                string? dateErr = badRelationshipDates(rel.startTime, rel.endTime);
+                if dateErr is string {
+                    return dateErr;
+                }
+            } else {
+                return "relationship entry must be a JSON object";
+            }
+        }
+        return;
+    }
+    if rels is map<json> {
+        foreach var [key, val] in rels.entries() {
+            if key.trim().length() == 0 {
+                return "relationship key is required";
+            }
+            if val is map<json> {
+                RelationshipPayload|error rel = constraint:validate(val);
+                if rel is error {
+                    return "invalid relationship '" + key + "': " + rel.message();
+                }
+                string? dateErr = badRelationshipDates(rel.startTime, rel.endTime);
+                if dateErr is string {
+                    return "invalid relationship '" + key + "': " + dateErr;
+                }
+            } else {
+                return "relationship '" + key + "' must be a JSON object";
+            }
+        }
+        return;
+    }
+    return "relationships must be an array or an object";
+}
+
+function validateUpdateRelationships(json rels) returns string? {
+    if rels is json[] {
+        foreach json item in rels {
+            if item is map<json> {
+                json|error rawKey = item.key;
+                if rawKey is error || rawKey.toString().trim().length() == 0 {
+                    return "relationship entry key is required";
+                }
+                RelationshipUpdatePayload|error rel = constraint:validate(item["value"]);
+                if rel is error {
+                    return "invalid relationship: " + rel.message();
+                }
+                string? dateErr = badRelationshipDates(rel.startTime, rel.endTime);
+                if dateErr is string {
+                    return dateErr;
+                }
+            } else {
+                return "relationship entry must be a JSON object";
+            }
+        }
+        return;
+    }
+    if rels is map<json> {
+        foreach var [key, val] in rels.entries() {
+            if key.trim().length() == 0 {
+                return "relationship key is required";
+            }
+            if val is map<json> {
+                RelationshipUpdatePayload|error rel = constraint:validate(val);
+                if rel is error {
+                    return "invalid relationship '" + key + "': " + rel.message();
+                }
+                string? dateErr = badRelationshipDates(rel.startTime, rel.endTime);
+                if dateErr is string {
+                    return "invalid relationship '" + key + "': " + dateErr;
+                }
+            } else {
+                return "relationship '" + key + "' must be a JSON object";
+            }
+        }
+        return;
+    }
+    return "relationships must be an array or an object";
+}
+
+function validateAttributeValue(json val) returns string? {
+    if val is json[] {
+        foreach json valueItem in val {
+            string? err = validateAttributeEntry(valueItem);
+            if err is string {
+                return err;
+            }
+        }
+        return;
+    }
+    if val is map<json> {
+        if !(val["values"] is ()) {
+            return validateAttributeValue(val["values"]);
+        }
+        return validateAttributeEntry(val);
+    }
+    return "attribute value must be an array or an object";
+}
+
+function validateAttributeEntry(json entry) returns string? {
+    AttributeValuePayload|error tbv = constraint:validate(entry);
+    if tbv is error {
+        return tbv.message();
+    }
+    return badAttributeDates(tbv.startTime, tbv.endTime);
+}
+
+function validateAttributeValues(json attrs) returns string? {
+    if attrs is json[] {
+        foreach json item in attrs {
+            if item is map<json> {
+                json|error rawKey = item.key;
+                if rawKey is error || rawKey.toString().trim().length() == 0 {
+                    return "attribute entry key is required";
+                }
+                string? err = validateAttributeValue(item["value"]);
+                if err is string {
+                    return err;
+                }
+            } else {
+                return "attribute entry must be a JSON object";
+            }
+        }
+        return;
+    }
+    if attrs is map<json> {
+        foreach var [key, val] in attrs.entries() {
+            if key.trim().length() == 0 {
+                return "attribute key is required";
+            }
+            string? err = validateAttributeValue(val);
+            if err is string {
+                return "invalid attribute '" + key + "': " + err;
+            }
+        }
+        return;
+    }
+    return "attributes must be an array or an object";
+}
+
+function validateUpdatePayload(string urlId, EntityUpdatePayload payload) returns string? {
+    string? bodyId = payload?.id;
+    if bodyId is string && bodyId.trim() != "" && bodyId != urlId {
+        return "Entity id in payload must match id in path";
+    }
+    record {string major?; string minor?;}? kind = payload?.kind;
+    if kind is record {string major?; string minor?;} {
+        string? major = kind.major;
+        string? minor = kind.minor;
+        if major is string && major.trim() != "" {
+            return "Kind cannot be updated";
+        }
+        if minor is string && minor.trim() != "" {
+            return "Kind cannot be updated";
+        }
+    }
+    return;
+}
 
 // Helper function to convert decimal values to float for protobuf compatibility
 // Note that this is a temporary solution to convert decimal values to float for protobuf compatibility.
@@ -116,7 +454,10 @@ service / on ep0 {
     # Delete an entity
     #
     # + return - Entity deleted 
-    resource function delete entities/[string id]() returns http:NoContent|error {
+    resource function delete entities/[EntityIdParam id]() returns http:NoContent|http:BadRequest|error {
+        if id.trim().length() == 0 {
+            return badRequest("Entity id is required");
+        }
         var result = ep->DeleteEntity({id: id});
         if result is error {
             io:println("gRPC DeleteEntity failed: ", result.message());
@@ -128,7 +469,38 @@ service / on ep0 {
     # Create a new entity
     #
     # + return - Entity created 
-    resource function post entities(@http:Payload json jsonPayload) returns Entity|error {
+    resource function post entities(@http:Payload json jsonPayload) returns Entity|http:BadRequest|error {
+        EntityCreatePayload|error validated = constraint:validate(jsonPayload);
+        if validated is error {
+            return <http:BadRequest>{
+                body: {
+                    "error": "Invalid request parameters",
+                    "details": validated.message()
+                }
+            };
+        }
+        string? dateError = badEntityCreateDates(validated);
+        if dateError is string {
+            return badRequest(dateError);
+        }
+        string? relError = validateNewRelationships(validated?.relationships ?: []);
+        if relError is string {
+            return <http:BadRequest>{
+                body: {
+                    "error": "Invalid request parameters",
+                    "details": relError
+                }
+            };
+        }
+        string? attrError = validateAttributeValues(validated?.attributes ?: []);
+        if attrError is string {
+            return <http:BadRequest>{
+                body: {
+                    "error": "Invalid request parameters",
+                    "details": attrError
+                }
+            };
+        }
         // Convert JSON to Entity with custom mapping
         io:println("[CreateEntity] jsonPayload: ", jsonPayload);
         Entity payload = check convertJsonToEntity(jsonPayload);
@@ -145,7 +517,50 @@ service / on ep0 {
     # Update an existing entity
     #
     # + return - Entity updated 
-    resource function put entities/[string id](@http:Payload json jsonPayload) returns Entity|error {
+    resource function put entities/[EntityIdParam id](@http:Payload json jsonPayload) returns Entity|http:BadRequest|error {
+        if id.trim().length() == 0 {
+            return badRequest("Entity id is required");
+        }
+        EntityUpdatePayload|error validated = constraint:validate(jsonPayload);
+        if validated is error {
+            return <http:BadRequest>{
+                body: {
+                    "error": "Invalid request parameters",
+                    "details": validated.message()
+                }
+            };
+        }
+        string? semanticError = validateUpdatePayload(id, validated);
+        if semanticError is string {
+            return <http:BadRequest>{
+                body: {
+                    "error": "Invalid request parameters",
+                    "details": semanticError
+                }
+            };
+        }
+        string? dateError = badEntityUpdateDates(validated);
+        if dateError is string {
+            return badRequest(dateError);
+        }
+        string? relError = validateUpdateRelationships(validated?.relationships ?: []);
+        if relError is string {
+            return <http:BadRequest>{
+                body: {
+                    "error": "Invalid request parameters",
+                    "details": relError
+                }
+            };
+        }
+        string? attrError = validateAttributeValues(validated?.attributes ?: []);
+        if attrError is string {
+            return <http:BadRequest>{
+                body: {
+                    "error": "Invalid request parameters",
+                    "details": attrError
+                }
+            };
+        }
         // Convert JSON to Entity with custom mapping
         Entity payload = check convertJsonToEntity(jsonPayload);
 
@@ -168,7 +583,10 @@ service / on ep0 {
     #
     # + id - The ID of the entity to retrieve
     # + return - The entity or an error
-    resource function get entities/[string id]() returns Entity|error {
+    resource function get entities/[EntityIdParam id]() returns Entity|http:BadRequest|error {
+        if id.trim().length() == 0 {
+            return badRequest("Entity id is required");
+        }
         // Call the ReadEntity function with the ID
         ReadEntityRequest readEntityRequest = {
             entity: {
@@ -250,9 +668,15 @@ function convertJsonToEntity(json jsonPayload) returns Entity|error {
                         timeBasedValues.push(tbv);
                     }
                 } else {
-                    // Handle the case when value is not an array (could be a single object)
-                    // Create a single TimeBasedValue object
-                    json[] valuesJson = <json[]>check valueJson.values;
+                    // Handle both the {values: [...]} wrapper and a single TimeBasedValue object.
+                    json[] valuesJson;
+                    if valueJson is map<json> && valueJson["values"] is json[] {
+                        valuesJson = <json[]>valueJson["values"];
+                    } else if valueJson is map<json> {
+                        valuesJson = [valueJson];
+                    } else {
+                        return error("attribute value must be an array or an object");
+                    }
 
                     foreach json valueItem in valuesJson {
                         string startTime = valueItem?.startTime is () ? "" : (check valueItem.startTime).toString();

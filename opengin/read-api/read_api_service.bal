@@ -10,6 +10,8 @@ import ballerina/io;
 import ballerina/lang.'int as langint;
 import ballerina/protobuf.types.'any;
 import ballerina/protobuf.types.'any as pbAny;
+import ballerina/constraint;
+import ballerina/time;
 
 // BAL_CONFIG_VAR_CORESERVICEURL
 configurable string coreServiceUrl = "http://localhost:50051";
@@ -32,6 +34,45 @@ grpc:ClientConfiguration grpcConfig = {
 };
 
 COREServiceClient ep = check new (coreServiceUrl, grpcConfig);
+
+// Constrained path and query parameter types. The HTTP listener validates
+// these at binding time and rejects invalid values with 400 before any gRPC
+// call is made.
+@constraint:String {
+    pattern: {value: re `.*\S.*`, message: "entityId is required"}
+}
+type EntityIdParam string;
+
+@constraint:String {
+    pattern: {value: re `.*\S.*`, message: "attributeName is required"}
+}
+type AttributeNameParam string;
+
+@constraint:String {
+    pattern: {
+        value: re `\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2}))?`,
+        message: "Invalid date-time format, expected YYYY-MM-DD or RFC3339"
+    }
+}
+type DateTimeParam string;
+
+// Accept a calendar date or a strict RFC3339 timestamp and let `ballerina/time`
+// validate the calendar, clock and offset before any gRPC call.
+function isValidDateTime(string s) returns boolean {
+    string rfc3339 = s.length() == 10 ? s + "T00:00:00Z" : s;
+    return time:civilFromString(rfc3339) is time:Civil;
+}
+
+function badDateField(string name, string? value) returns string? {
+    if value is string && value != "" && !isValidDateTime(value) {
+        return "invalid " + name + " date-time";
+    }
+    return;
+}
+
+function badRequest(string details) returns http:BadRequest {
+    return <http:BadRequest>{body: {"error": "Invalid request parameters", "details": details}};
+}
 
 // Helper function to extract string representation based on typeUrl
 function extractValueAsString('any:Any anyValue) returns string {
@@ -137,8 +178,22 @@ service /v1 on ep0 {
     #
     # + fields - List of field names to return. Defaults to ['*'] (all fields).
     # + return - Attribute value(s)
-    resource function post entities/[string entityId]/attributes/[string attributeName](string? startTime, string? endTime, @http:Payload attributes_attributeName_body payload, string[]? fields) returns RecordStringStartStringendStringvalueRecordStringStartStringendStringvalueArrayOk|http:NotFound|error {
-        // Set default fields value to ["*"] if not provided or if empty array
+    resource function post entities/[EntityIdParam entityId]/attributes/[AttributeNameParam attributeName](DateTimeParam? startTime, DateTimeParam? endTime, @http:Payload attributes_attributeName_body payload, string[]? fields) returns RecordStringStartStringendStringvalueRecordStringStartStringendStringvalueArrayOk|http:NotFound|http:BadRequest|error {
+        if entityId.trim().length() == 0 {
+            return badRequest("entityId is required");
+        }
+        if attributeName.trim().length() == 0 {
+            return badRequest("attributeName is required");
+        }
+        string? dateError = badDateField("startTime", startTime);
+        if dateError is string {
+            return badRequest(dateError);
+        }
+        dateError = badDateField("endTime", endTime);
+        if dateError is string {
+            return badRequest(dateError);
+        }
+        // Defaults to empty array when fields is omitted or empty
         string[] fieldsToUse = (fields == () || fields.length() == 0) ? [] : fields;
         json recordsToUse = (payload.records ?: []).toJson();
 
@@ -244,7 +299,10 @@ service /v1 on ep0 {
     # Get metadata of an entity
     #
     # + return - Entity metadata 
-    resource function get entities/[string entityId]/metadata() returns EntitiesEntityIdMetadataResponse|error {
+    resource function get entities/[EntityIdParam entityId]/metadata() returns EntitiesEntityIdMetadataResponse|http:BadRequest|error {
+        if entityId.trim().length() == 0 {
+            return badRequest("entityId is required");
+        }
         // Create entity filter with empty fields
         Entity entityFilter = {
             id: entityId,
@@ -290,15 +348,36 @@ service /v1 on ep0 {
     # Get root entity IDs of a given kind
     #
     # + return - List of root entity IDs 
-    resource function get entities/root(string kind) returns inline_response_200 {
+    resource function get entities/root(string kind) returns inline_response_200|http:BadRequest {
+        if kind.trim().length() == 0 {
+            return badRequest("kind is required");
+        }
         // TODO: implement this once the root entity IDs are identified
-        return {};
+        return <inline_response_200>{};
     }
 
     # Get related entity IDs
     #
     # + return - List of related entities 
-    resource function post entities/[string entityId]/relations(@http:Payload entityId_relations_body payload) returns RecordStringidStringrelatedEntityIdStringnameStringstartTimeStringendTimeStringdirectionArrayOk|http:BadRequest|error {
+    resource function post entities/[EntityIdParam entityId]/relations(@http:Payload entityId_relations_body payload) returns RecordStringidStringrelatedEntityIdStringnameStringstartTimeStringendTimeStringdirectionArrayOk|http:BadRequest|error {
+        if entityId.trim().length() == 0 {
+            return badRequest("entityId is required");
+        }
+        string? dateError = badDateField("activeAt", payload.activeAt);
+        if dateError is string {
+            return badRequest(dateError);
+        }
+        dateError = badDateField("startTime", payload.startTime);
+        if dateError is string {
+            return badRequest(dateError);
+        }
+        dateError = badDateField("endTime", payload.endTime);
+        if dateError is string {
+            return badRequest(dateError);
+        }
+        if payload.direction is string && payload.direction != "" && payload.direction != "OUTGOING" && payload.direction != "INCOMING" {
+            return badRequest("direction must be either OUTGOING or INCOMING");
+        }
         // Validate that startTime/endTime and activeAt are not used together
         boolean hasTimeRange = (payload.startTime is string && payload.startTime != "") || (payload.endTime is string && payload.endTime != "");
         boolean hasActiveAt = payload.activeAt is string && payload.activeAt != "";
@@ -385,6 +464,15 @@ service /v1 on ep0 {
                     "details": "Either id or Kind.Major is required for filtering entities"
                 }
             };
+        }
+
+        string? dateError = badDateField("created", payload.created);
+        if dateError is string {
+            return badRequest(dateError);
+        }
+        dateError = badDateField("terminated", payload.terminated);
+        if dateError is string {
+            return badRequest(dateError);
         }
 
         // Extract kind fields if they exist
