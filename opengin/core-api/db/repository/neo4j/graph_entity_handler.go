@@ -185,9 +185,14 @@ func (repo *Neo4jRepository) GetFilteredRelationships(ctx context.Context, entit
 
 // validateGraphEntityCreation checks if an entity has all required fields for Neo4j storage
 func validateGraphEntityCreation(entity *pb.Entity) bool {
-	// Check if Kind is present and has non-blank Major and Minor values
-	if entity.Kind == nil || strings.TrimSpace(entity.Kind.GetMajor()) == "" || strings.TrimSpace(entity.Kind.GetMinor()) == "" {
+	// Check if Kind is present and has non-blank Major and Minor values.
+	// Minor is required here, and validateMinorKind rejects blank or malformed '+' segments.
+	if entity.Kind == nil || strings.TrimSpace(entity.Kind.GetMajor()) == "" || entity.Kind.GetMinor() == "" {
 		log.Printf("[neo4j_handler.validateGraphEntityCreation] Skipping Neo4j entity creation for %s: Missing or blank Kind.Major or Kind.Minor", entity.Id)
+		return false
+	}
+	if err := validateMinorKind(entity.Kind.GetMinor()); err != nil {
+		log.Printf("[neo4j_handler.validateGraphEntityCreation] Skipping Neo4j entity creation for %s: %v", entity.Id, err)
 		return false
 	}
 
@@ -219,11 +224,6 @@ func (repo *Neo4jRepository) HandleGraphEntityCreation(ctx context.Context, enti
 	// Prepare data for Neo4j with safety checks
 	entityMap := map[string]interface{}{
 		"Id": entity.Id,
-	}
-
-	// Validate and extract the Kind field
-	if entity.Kind == nil || entity.Kind.GetMajor() == "" || entity.Kind.GetMinor() == "" {
-		return false, fmt.Errorf("[neo4j_handler.HandleGraphEntityCreation] missing or invalid Kind.Major or Kind.Minor for entity %s", entity.Id)
 	}
 
 	kind := &pb.Kind{

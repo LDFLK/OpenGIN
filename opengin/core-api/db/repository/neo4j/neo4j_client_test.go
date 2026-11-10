@@ -13,6 +13,8 @@ import (
 	pb "lk/datafoundation/core-api/lk/datafoundation/core-api"
 
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/types/known/anypb"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 var repository *Neo4jRepository
@@ -1465,6 +1467,43 @@ func TestValidateMinorKind(t *testing.T) {
 			} else {
 				assert.NoError(t, err, "Expected no error for minor kind %q", tc.minor)
 			}
+		})
+	}
+}
+
+func TestValidateGraphEntityCreation(t *testing.T) {
+	name, err := anypb.New(&wrapperspb.StringValue{Value: "Colombo"})
+	if err != nil {
+		t.Fatalf("Failed to pack name: %v", err)
+	}
+
+	testCases := []struct {
+		name  string
+		kind  *pb.Kind
+		valid bool
+	}{
+		{"major and minor", &pb.Kind{Major: "Region", Minor: "country-level-2"}, true},
+		{"minor with subtype", &pb.Kind{Major: "Region", Minor: "country-level-2+lk-electoral-district"}, true},
+		{"nil kind", nil, false},
+		{"empty major", &pb.Kind{Major: "", Minor: "country-level-2"}, false},
+		{"whitespace major", &pb.Kind{Major: "  ", Minor: "country-level-2"}, false},
+		{"empty minor", &pb.Kind{Major: "Region", Minor: ""}, false},
+		{"whitespace minor", &pb.Kind{Major: "Region", Minor: "   "}, false},
+		{"leading separator", &pb.Kind{Major: "Region", Minor: "+country-level-2"}, false},
+		{"trailing separator", &pb.Kind{Major: "Region", Minor: "country-level-2+"}, false},
+		{"doubled separator", &pb.Kind{Major: "Region", Minor: "country-level-2++lk-electoral-district"}, false},
+		{"whitespace segment", &pb.Kind{Major: "Region", Minor: "country-level-2+ "}, false},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			entity := &pb.Entity{
+				Id:      "validate-entity",
+				Kind:    tc.kind,
+				Name:    &pb.TimeBasedValue{StartTime: "2025-01-01T00:00:00Z", Value: name},
+				Created: "2025-01-01T00:00:00Z",
+			}
+			assert.Equal(t, tc.valid, validateGraphEntityCreation(entity), "Unexpected result for kind %v", tc.kind)
 		})
 	}
 }
