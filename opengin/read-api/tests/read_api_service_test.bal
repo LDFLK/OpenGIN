@@ -1380,6 +1380,11 @@ function testFilterEntitiesByMinorKindSubtype() returns error? {
         test:assertFail("Filter should reject a minor kind with an empty '+' segment");
     }
 
+    // Clean up (DeleteEntity currently only removes Mongo metadata; Neo4j deletion is a TODO in core-api)
+    foreach string id in entities.keys() {
+        Empty _ = check ep->DeleteEntity({id: id});
+    }
+
     return;
 }
 
