@@ -70,6 +70,7 @@ services:
     build:
       context: ./deployment/choreo/development/docker/postgres
       dockerfile: Dockerfile
+      # Same value is used to seed the baked DB and by every runtime client.
       args:
         POSTGRES_PASSWORD: ${OPENGIN_POSTGRES_PASSWORD:-postgres}
     container_name: postgres-choreo
