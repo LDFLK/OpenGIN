@@ -22,8 +22,10 @@ RUN groupadd -g 10014 choreo && \
 ARG GITHUB_BACKUP_REPO=LDFLK/data-backups
 ARG BACKUP_VERSION=0.0.4
 ARG BACKUP_ENVIRONMENT=development
-# Superuser password is only needed at build time to seed the DB. ARG keeps
-# the value out of the runtime image (ENV would persist it in image layers).
+# Development-only superuser password used at build time to seed the DB. ARG
+# keeps the value out of the runtime image (ENV would persist it in layers),
+# but it is NOT a real secret: build args are visible in `docker history` and
+# CI logs. BuildKit `--secret` is the stronger option if this ever matters.
 # Override at build time: docker build --build-arg POSTGRES_PASSWORD=... .
 ARG POSTGRES_PASSWORD=postgres
 
@@ -52,8 +54,11 @@ RUN echo "Initializing database in $PGDATA..." && \
     echo "Starting PostgreSQL..." && \
     pg_ctl -D "$PGDATA" -o "-c listen_addresses='localhost'" -w start && \
     \
-    # Set superuser password from the POSTGRES_PASSWORD build arg.
-    psql -U postgres -c "ALTER USER postgres WITH PASSWORD '${POSTGRES_PASSWORD}';" && \
+    # Set superuser password from the POSTGRES_PASSWORD build arg. The value is
+    # piped on stdin (never argv, so it stays out of the process list) and ':'
+    # quoting lets psql escape it as an SQL literal.
+    printf '%s\n' '\getenv pw POSTGRES_PASSWORD' "ALTER USER postgres WITH PASSWORD :'pw';" | \
+    psql -U postgres -q -v ON_ERROR_STOP=1 && \
     \
     # Create temp workspace
     temp_dir=$(mktemp -d) && \
