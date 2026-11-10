@@ -1503,7 +1503,7 @@ func TestValidateGraphEntityCreation(t *testing.T) {
 				Name:    &pb.TimeBasedValue{StartTime: "2025-01-01T00:00:00Z", Value: name},
 				Created: "2025-01-01T00:00:00Z",
 			}
-			assert.Equal(t, tc.valid, validateGraphEntityCreation(entity), "Unexpected result for kind %v", tc.kind)
+			assert.Equal(t, tc.valid, validateGraphEntityCreation(entity) == nil, "Unexpected result for kind %v", tc.kind)
 		})
 	}
 }
