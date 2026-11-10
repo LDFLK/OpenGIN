@@ -65,7 +65,7 @@ func (r *Neo4jRepository) getSession(ctx context.Context) neo4j.SessionWithConte
 // value or segment is just as blank. Those values are rejected so a filter prefix
 // cannot be widened by a malformed minor kind.
 func validateMinorKind(minor string) error {
-	if minor == "" {
+	if strings.TrimSpace(minor) == "" {
 		return nil
 	}
 	for _, segment := range strings.Split(minor, "+") {

@@ -188,7 +188,7 @@ func (repo *Neo4jRepository) GetFilteredRelationships(ctx context.Context, entit
 func validateGraphEntityCreation(entity *pb.Entity) error {
 	// Check if Kind is present and has non-blank Major and Minor values.
 	// Minor is required here, and validateMinorKind rejects blank or malformed '+' segments.
-	if entity.Kind == nil || strings.TrimSpace(entity.Kind.GetMajor()) == "" || entity.Kind.GetMinor() == "" {
+	if entity.Kind == nil || strings.TrimSpace(entity.Kind.GetMajor()) == "" || strings.TrimSpace(entity.Kind.GetMinor()) == "" {
 		return fmt.Errorf("missing required fields for Neo4j entity creation: missing or blank Kind.Major or Kind.Minor for entity %s", entity.Id)
 	}
 	if err := validateMinorKind(entity.Kind.GetMinor()); err != nil {
