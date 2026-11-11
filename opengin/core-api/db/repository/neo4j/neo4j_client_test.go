@@ -1463,7 +1463,7 @@ func TestValidateMinorKind(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			err := validateMinorKind(tc.minor)
 			if tc.wantErr {
-				assert.ErrorContains(t, err, "'+' segments must be non-empty", "Expected error for minor kind %q", tc.minor)
+				assert.ErrorContains(t, err, "segments must be non-empty", "Expected error for minor kind %q", tc.minor)
 			} else {
 				assert.NoError(t, err, "Expected no error for minor kind %q", tc.minor)
 			}
@@ -1524,7 +1524,7 @@ func TestInvalidMinorKindIsRejected(t *testing.T) {
 				"Name":    "Invalid",
 				"Created": "2025-04-01T00:00:00Z",
 			})
-			assert.ErrorContains(t, err, "'+' segments must be non-empty", "Expected error when creating with minor kind %q", minor)
+			assert.ErrorContains(t, err, "segments must be non-empty", "Expected error when creating with minor kind %q", minor)
 
 			// The entity must not have been stored.
 			_, readErr := repository.ReadGraphEntity(ctx, id)
@@ -1533,7 +1533,7 @@ func TestInvalidMinorKindIsRejected(t *testing.T) {
 
 		t.Run("filter rejects "+minor, func(t *testing.T) {
 			entities, err := repository.FilterEntities(ctx, &pb.Kind{Major: major, Minor: minor}, map[string]interface{}{})
-			assert.ErrorContains(t, err, "'+' segments must be non-empty", "Expected error when filtering by minor kind %q", minor)
+			assert.ErrorContains(t, err, "segments must be non-empty", "Expected error when filtering by minor kind %q", minor)
 			assert.Nil(t, entities)
 		})
 	}
