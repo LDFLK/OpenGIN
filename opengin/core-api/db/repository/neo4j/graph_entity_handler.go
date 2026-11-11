@@ -186,9 +186,9 @@ func (repo *Neo4jRepository) GetFilteredRelationships(ctx context.Context, entit
 // validateGraphEntityCreation checks if an entity has all required fields for Neo4j storage.
 // It returns an error describing the first problem found, or nil if the entity is valid.
 func validateGraphEntityCreation(entity *pb.Entity) error {
-	// Check if Kind is present and has non-blank Major and Minor values.
-	// Minor is required here, and validateMinorKind rejects blank or malformed '+' segments.
-	if entity.Kind == nil || strings.TrimSpace(entity.Kind.GetMajor()) == "" || strings.TrimSpace(entity.Kind.GetMinor()) == "" {
+	// Check if Kind is present with a non-blank Major and a non-empty Minor.
+	// Minor is required here (non-empty); validateMinorKind then rejects whitespace-only or malformed '+' segments.
+	if entity.Kind == nil || strings.TrimSpace(entity.Kind.GetMajor()) == "" || entity.Kind.GetMinor() == "" {
 		return fmt.Errorf("missing required fields for Neo4j entity creation: missing or blank Kind.Major or Kind.Minor for entity %s", entity.Id)
 	}
 	if err := validateMinorKind(entity.Kind.GetMinor()); err != nil {
