@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 
 	pb "lk/datafoundation/core-api/lk/datafoundation/core-api" // Replace with your actual protobuf package
 
@@ -182,35 +183,37 @@ func (repo *Neo4jRepository) GetFilteredRelationships(ctx context.Context, entit
 	return relationships, nil
 }
 
-// validateGraphEntityCreation checks if an entity has all required fields for Neo4j storage
-func validateGraphEntityCreation(entity *pb.Entity) bool {
-	// Check if Kind is present and has a Major value
-	if entity.Kind == nil || entity.Kind.GetMajor() == "" || entity.Kind.GetMinor() == "" {
-		log.Printf("[neo4j_handler.validateGraphEntityCreation] Skipping Neo4j entity creation for %s: Missing or empty Kind.Major", entity.Id)
-		return false
+// validateGraphEntityCreation checks if an entity has all required fields for Neo4j storage.
+// It returns an error describing the first problem found, or nil if the entity is valid.
+func validateGraphEntityCreation(entity *pb.Entity) error {
+	// Check if Kind is present with a non-blank Major and a non-empty Minor.
+	// Minor is required here (non-empty); validateMinorKind then rejects whitespace-only or malformed '+' segments.
+	if entity.Kind == nil || strings.TrimSpace(entity.Kind.GetMajor()) == "" || entity.Kind.GetMinor() == "" {
+		return fmt.Errorf("missing required fields for Neo4j entity creation: missing or blank Kind.Major or Kind.Minor for entity %s", entity.Id)
+	}
+	if err := validateMinorKind(entity.Kind.GetMinor()); err != nil {
+		return err
 	}
 
 	// Check if Name is present and has a Value
 	if entity.Name == nil || entity.Name.GetValue() == nil {
-		log.Printf("[neo4j_handler.validateGraphEntityCreation] Skipping Neo4j entity creation for %s: Missing or empty Name.Value", entity.Id)
-		return false
+		return fmt.Errorf("missing required fields for Neo4j entity creation: missing or empty Name.Value for entity %s", entity.Id)
 	}
 
 	// Check if Created date is present
 	if entity.Created == "" {
-		log.Printf("[neo4j_handler.validateGraphEntityCreation] Skipping Neo4j entity creation for %s: Missing Created date", entity.Id)
-		return false
+		return fmt.Errorf("missing required fields for Neo4j entity creation: missing Created date for entity %s", entity.Id)
 	}
 
-	return true
+	return nil
 }
 
 // HandleGraphEntityCreation creates a new entity in Neo4j
 func (repo *Neo4jRepository) HandleGraphEntityCreation(ctx context.Context, entity *pb.Entity) (bool, error) {
 	// Validate required fields for Neo4j entity creation
-	if !validateGraphEntityCreation(entity) {
-		log.Printf("[neo4j_handler.HandleGraphEntityCreation] Neo4j entity creation failed for entity: %s", entity.Id)
-		return false, fmt.Errorf("[neo4j_handler.HandleGraphEntityCreation] missing required fields for Neo4j entity creation")
+	if err := validateGraphEntityCreation(entity); err != nil {
+		log.Printf("[neo4j_handler.HandleGraphEntityCreation] Neo4j entity creation failed for entity %s: %v", entity.Id, err)
+		return false, fmt.Errorf("[neo4j_handler.HandleGraphEntityCreation] %w", err)
 	}
 
 	log.Printf("[neo4j_handler.HandleGraphEntityCreation] Creating new entity in Neo4j: %s", entity.Id)
@@ -218,11 +221,6 @@ func (repo *Neo4jRepository) HandleGraphEntityCreation(ctx context.Context, enti
 	// Prepare data for Neo4j with safety checks
 	entityMap := map[string]interface{}{
 		"Id": entity.Id,
-	}
-
-	// Validate and extract the Kind field
-	if entity.Kind == nil || entity.Kind.GetMajor() == "" || entity.Kind.GetMinor() == "" {
-		return false, fmt.Errorf("[neo4j_handler.HandleGraphEntityCreation] missing or invalid Kind.Major or Kind.Minor for entity %s", entity.Id)
 	}
 
 	kind := &pb.Kind{
