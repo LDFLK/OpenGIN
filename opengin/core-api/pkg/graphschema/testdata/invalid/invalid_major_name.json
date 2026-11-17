@@ -1,0 +1,22 @@
+{
+  "kindDefs": [
+    {
+      "major": "lk-region",
+      "minors": [
+        "country",
+        "province"
+      ]
+    }
+  ],
+  "relationshipDefs": [
+    {
+      "name": "has_province",
+      "endpoints": [
+        {
+          "from": "lk-region/country",
+          "to": "lk-region/province"
+        }
+      ]
+    }
+  ]
+}

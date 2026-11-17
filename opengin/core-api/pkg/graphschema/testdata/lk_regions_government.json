@@ -1,0 +1,102 @@
+{
+  "description": "Sri Lanka regions and central government",
+  "kindDefs": [
+    {
+      "major": "region",
+      "minors": [
+        "country",
+        "country-level-1+lk-province",
+        "country-level-2+lk-administrative-district",
+        "country-level-3+lk-divisional-secretariat-division",
+        "country-level-4+lk-grama-niladhari-division",
+        "country-level-3+lk-local-government",
+        "country-level-3+lk-medical-officer-of-health",
+        "country-level-2+lk-electoral-district",
+        "country-level-3+lk-electoral-polling-division"
+      ]
+    },
+    {
+      "major": "Organization",
+      "minors": ["Government", "Minister", "Department"]
+    },
+    {
+      "major": "Person",
+      "minors": ["Citizen"]
+    }
+  ],
+  "relationshipDefs": [
+    {
+      "name": "province",
+      "endpoints": [
+        { "from": "region/country", "to": "region/country-level-1+lk-province" }
+      ]
+    },
+    {
+      "name": "administrative_district",
+      "endpoints": [
+        { "from": "region/country-level-1+lk-province", "to": "region/country-level-2+lk-administrative-district" }
+      ]
+    },
+    {
+      "name": "divisional_secretariat_division",
+      "endpoints": [
+        { "from": "region/country-level-2+lk-administrative-district", "to": "region/country-level-3+lk-divisional-secretariat-division" }
+      ]
+    },
+    {
+      "name": "grama_niladhari_division",
+      "endpoints": [
+        { "from": "region/country-level-3+lk-divisional-secretariat-division", "to": "region/country-level-4+lk-grama-niladhari-division" }
+      ]
+    },
+    {
+      "name": "local_government",
+      "endpoints": [
+        { "from": "region/country-level-2+lk-administrative-district", "to": "region/country-level-3+lk-local-government" }
+      ]
+    },
+    {
+      "name": "medical_officer_of_health",
+      "endpoints": [
+        { "from": "region/country-level-2+lk-administrative-district", "to": "region/country-level-3+lk-medical-officer-of-health" }
+      ]
+    },
+    {
+      "name": "electoral_district",
+      "endpoints": [
+        { "from": "region/country-level-1+lk-province", "to": "region/country-level-2+lk-electoral-district" }
+      ]
+    },
+    {
+      "name": "electoral_polling_division",
+      "endpoints": [
+        { "from": "region/country-level-2+lk-electoral-district", "to": "region/country-level-3+lk-electoral-polling-division" }
+      ]
+    },
+    {
+      "name": "has_minister",
+      "endpoints": [
+        { "from": "Organization/Government", "to": "Organization/Minister" }
+      ]
+    },
+    {
+      "name": "has_department",
+      "endpoints": [
+        { "from": "Organization/Minister", "to": "Organization/Department" }
+      ]
+    },
+    {
+      "name": "appointed_minister",
+      "endpoints": [
+        { "from": "Person/Citizen", "to": "Organization/Minister" }
+      ]
+    },
+    {
+      "name": "located_in",
+      "endpoints": [
+        { "from": "Organization/Department", "to": "region/country-level-2+lk-administrative-district" },
+        { "from": "Organization/Government", "to": "region/country" }
+      ]
+    }
+  ]
+}

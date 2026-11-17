@@ -1,0 +1,28 @@
+{
+  "kindDefs": [
+    {
+      "major": "Organization",
+      "minors": [
+        "Minister",
+        "Department"
+      ]
+    },
+    {
+      "major": "Person",
+      "minors": [
+        "*"
+      ]
+    }
+  ],
+  "relationshipDefs": [
+    {
+      "name": "works_at",
+      "endpoints": [
+        {
+          "from": "Person/*",
+          "to": "Organization/*"
+        }
+      ]
+    }
+  ]
+}

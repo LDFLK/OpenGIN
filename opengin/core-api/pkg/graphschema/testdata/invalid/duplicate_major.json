@@ -1,0 +1,27 @@
+{
+  "kindDefs": [
+    {
+      "major": "region",
+      "minors": [
+        "country"
+      ]
+    },
+    {
+      "major": "region",
+      "minors": [
+        "province"
+      ]
+    }
+  ],
+  "relationshipDefs": [
+    {
+      "name": "has_province",
+      "endpoints": [
+        {
+          "from": "region/country",
+          "to": "region/province"
+        }
+      ]
+    }
+  ]
+}
