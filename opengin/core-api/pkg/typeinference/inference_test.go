@@ -6,6 +6,7 @@ package typeinference
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,77 +14,106 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-// JSONToAny converts a JSON string to a protobuf Any value
+// JSONToAny converts a JSON string to a protobuf Any value.
 func JSONToAny(jsonStr string) (*anypb.Any, error) {
 	var data interface{}
-	if err := json.Unmarshal([]byte(jsonStr), &data); err != nil {
+	decoder := json.NewDecoder(strings.NewReader(jsonStr))
+	decoder.UseNumber()
+	if err := decoder.Decode(&data); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal JSON: %v", err)
 	}
 
-	// Handle scalar values
 	switch v := data.(type) {
-	case float64:
-		// Check if it's an integer
-		if v == float64(int64(v)) {
-			structValue, err := structpb.NewStruct(map[string]interface{}{
-				"value": int64(v),
-			})
-			if err != nil {
-				return nil, fmt.Errorf("failed to create struct: %v", err)
-			}
-			return anypb.New(structValue)
-		}
-		structValue, err := structpb.NewStruct(map[string]interface{}{
-			"value": v,
-		})
+	case map[string]interface{}:
+		structValue, err := buildStruct(v)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create struct: %v", err)
-		}
-		return anypb.New(structValue)
-	case string:
-		structValue, err := structpb.NewStruct(map[string]interface{}{
-			"value": v,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to create struct: %v", err)
-		}
-		return anypb.New(structValue)
-	case bool:
-		structValue, err := structpb.NewStruct(map[string]interface{}{
-			"value": v,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to create struct: %v", err)
-		}
-		return anypb.New(structValue)
-	case nil:
-		structValue, err := structpb.NewStruct(map[string]interface{}{
-			"value": nil,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to create struct: %v", err)
+			return nil, err
 		}
 		return anypb.New(structValue)
 	case []interface{}:
-		structValue, err := structpb.NewStruct(map[string]interface{}{
-			"value": v,
-		})
+		value, err := convertJSONValue(v)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create struct: %v", err)
+			return nil, err
 		}
-		return anypb.New(structValue)
-	}
-
-	// Handle objects
-	if obj, ok := data.(map[string]interface{}); ok {
-		structValue, err := structpb.NewStruct(obj)
+		return anypb.New(&structpb.Struct{Fields: map[string]*structpb.Value{"value": value}})
+	default:
+		value, err := convertJSONValue(v)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create struct: %v", err)
+			return nil, err
 		}
-		return anypb.New(structValue)
+		return anypb.New(&structpb.Struct{Fields: map[string]*structpb.Value{"value": value}})
 	}
+}
 
-	return nil, fmt.Errorf("unsupported data type: %T", data)
+func buildStruct(data map[string]interface{}) (*structpb.Struct, error) {
+	fields := make(map[string]*structpb.Value, len(data))
+	for key, value := range data {
+		converted, err := convertJSONValue(value)
+		if err != nil {
+			return nil, err
+		}
+		fields[key] = converted
+	}
+	return &structpb.Struct{Fields: fields}, nil
+}
+
+func convertJSONValue(value interface{}) (*structpb.Value, error) {
+	switch v := value.(type) {
+	case nil:
+		return &structpb.Value{Kind: &structpb.Value_NullValue{}}, nil
+	case string:
+		return &structpb.Value{Kind: &structpb.Value_StringValue{StringValue: v}}, nil
+	case bool:
+		return &structpb.Value{Kind: &structpb.Value_BoolValue{BoolValue: v}}, nil
+	case json.Number:
+		return &structpb.Value{Kind: &structpb.Value_StringValue{StringValue: v.String()}}, nil
+	case float64:
+		return &structpb.Value{Kind: &structpb.Value_NumberValue{NumberValue: v}}, nil
+	case float32:
+		return &structpb.Value{Kind: &structpb.Value_NumberValue{NumberValue: float64(v)}}, nil
+	case int:
+		return &structpb.Value{Kind: &structpb.Value_NumberValue{NumberValue: float64(v)}}, nil
+	case int8:
+		return &structpb.Value{Kind: &structpb.Value_NumberValue{NumberValue: float64(v)}}, nil
+	case int16:
+		return &structpb.Value{Kind: &structpb.Value_NumberValue{NumberValue: float64(v)}}, nil
+	case int32:
+		return &structpb.Value{Kind: &structpb.Value_NumberValue{NumberValue: float64(v)}}, nil
+	case int64:
+		return &structpb.Value{Kind: &structpb.Value_NumberValue{NumberValue: float64(v)}}, nil
+	case uint:
+		return &structpb.Value{Kind: &structpb.Value_NumberValue{NumberValue: float64(v)}}, nil
+	case uint8:
+		return &structpb.Value{Kind: &structpb.Value_NumberValue{NumberValue: float64(v)}}, nil
+	case uint16:
+		return &structpb.Value{Kind: &structpb.Value_NumberValue{NumberValue: float64(v)}}, nil
+	case uint32:
+		return &structpb.Value{Kind: &structpb.Value_NumberValue{NumberValue: float64(v)}}, nil
+	case uint64:
+		return &structpb.Value{Kind: &structpb.Value_NumberValue{NumberValue: float64(v)}}, nil
+	case []interface{}:
+		listValues := make([]*structpb.Value, len(v))
+		for i, item := range v {
+			converted, err := convertJSONValue(item)
+			if err != nil {
+				return nil, err
+			}
+			listValues[i] = converted
+		}
+		return &structpb.Value{Kind: &structpb.Value_ListValue{ListValue: &structpb.ListValue{Values: listValues}}}, nil
+	case map[string]interface{}:
+		fields := make(map[string]*structpb.Value, len(v))
+		for key, item := range v {
+			converted, err := convertJSONValue(item)
+			if err != nil {
+				return nil, err
+			}
+			fields[key] = converted
+		}
+		return &structpb.Value{Kind: &structpb.Value_StructValue{StructValue: &structpb.Struct{Fields: fields}}}, nil
+	default:
+		return nil, fmt.Errorf("unsupported data type: %T", value)
+	}
 }
 
 // TestScalarTypes tests type inference for scalar data types
@@ -103,6 +133,10 @@ func TestScalarTypes(t *testing.T) {
 		},
 		"zero_float": {
 			json:     `0.1`,
+			expected: FloatType,
+		},
+		"zero_float_literal": {
+			json:     `0.0`,
 			expected: FloatType,
 		},
 		"integer": {
