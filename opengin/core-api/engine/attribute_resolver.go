@@ -532,15 +532,6 @@ func (r *TabularAttributeResolver) CreateResolve(ctx context.Context, entityID, 
 		}
 	}
 
-	// Initialize database tables if they don't exist
-	if err := r.repo.InitializeTables(ctx); err != nil {
-		return &Result{
-			Data:    nil,
-			Success: false,
-			Error:   fmt.Errorf("failed to initialize database tables: %v", err),
-		}
-	}
-
 	err := r.repo.StoreTabularData(ctx, entityID, attrName, value)
 	if err != nil {
 		return &Result{
