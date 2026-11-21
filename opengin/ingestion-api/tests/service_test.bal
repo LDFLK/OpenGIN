@@ -2688,19 +2688,19 @@ function testCreateEntityWithInvalidMinorKindViaRest() returns error? {
     http:Client restClient = check new (testIngestionServiceUrl, {httpVersion: "2.0"});
     COREServiceClient ep = check new (testCoreServiceUrl);
 
-    // [id, minor kind, expected error message]
-    [string, string, string][] invalidMinorKinds = [
-        ["test-invalid-minor-kind-empty", "", "missing required fields for Neo4j entity creation"],
-        ["test-invalid-minor-kind-empty-spaces", "        ", "invalid minor kind"],
-        ["test-invalid-minor-kind-only-separator", "+", "invalid minor kind"],
-        ["test-invalid-minor-kind-leading", "+country-level-2", "invalid minor kind"],
-        ["test-invalid-minor-kind-trailing", "country-level-2+", "invalid minor kind"],
-        ["test-invalid-minor-kind-doubled", "country-level-2++lk-electoral-district", "invalid minor kind"]
+    // [id, minor kind, expected status, expected error message]
+    [string, string, int, string][] invalidMinorKinds = [
+        ["test-invalid-minor-kind-empty", "", 400, "Invalid request parameters"],
+        ["test-invalid-minor-kind-empty-spaces", "        ", 500, "invalid minor kind"],
+        ["test-invalid-minor-kind-only-separator", "+", 500, "invalid minor kind"],
+        ["test-invalid-minor-kind-leading", "+country-level-2", 500, "invalid minor kind"],
+        ["test-invalid-minor-kind-trailing", "country-level-2+", 500, "invalid minor kind"],
+        ["test-invalid-minor-kind-doubled", "country-level-2++lk-electoral-district", 500, "invalid minor kind"]
     ];
 
-    foreach var [id, minor, expectedError] in invalidMinorKinds {
+    foreach var [id, minor, expectedStatus, expectedError] in invalidMinorKinds {
         http:Response response = check restClient->post("/entities", entityJson(id, minor));
-        test:assertEquals(response.statusCode, 500, string `Expected create to fail for minor kind "${minor}"`);
+        test:assertEquals(response.statusCode, expectedStatus, string `Expected create to fail for minor kind "${minor}"`);
         string body = check response.getTextPayload();
         test:assertTrue(body.includes(expectedError), body);
 
