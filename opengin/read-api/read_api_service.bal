@@ -50,7 +50,7 @@ type AttributeNameParam string;
 
 @constraint:String {
     pattern: {
-        value: re `\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2}))?`,
+        value: re `(\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2}))?)?`,
         message: "Invalid date-time format, expected YYYY-MM-DD or RFC3339"
     }
 }

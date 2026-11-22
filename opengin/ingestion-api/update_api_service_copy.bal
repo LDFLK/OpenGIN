@@ -158,6 +158,24 @@ function badRelationshipDates(string? startTime, string? endTime) returns string
     return err is string ? err : badDateField("relationship endTime", endTime);
 }
 
+function badRelationshipUpdate(RelationshipUpdatePayload rel) returns string? {
+    string relatedEntityId = rel?.relatedEntityId ?: "";
+    string name = rel?.name ?: "";
+    string startTime = rel?.startTime ?: "";
+    string endTime = rel?.endTime ?: "";
+    boolean creates = relatedEntityId.trim() != "" || name.trim() != "";
+    if creates {
+        if relatedEntityId.trim() == "" || name.trim() == "" || startTime == "" {
+            return "relationship relatedEntityId, name and startTime are required together";
+        }
+        return;
+    }
+    if startTime == "" && endTime == "" {
+        return "relationship startTime or endTime is required";
+    }
+    return;
+}
+
 function badAttributeDates(string startTime, string? endTime) returns string? {
     string? err = badDateField("attribute startTime", startTime);
     return err is string ? err : badDateField("attribute endTime", endTime);
@@ -201,6 +219,15 @@ function badEntityUpdateDates(EntityUpdatePayload payload) returns string? {
 
 function badRequest(string details) returns http:BadRequest {
     return <http:BadRequest>{body: {"error": "Invalid request parameters", "details": details}};
+}
+
+function badMinorKind(string minor) returns string? {
+    foreach string segment in re `\+`.split(minor) {
+        if segment.trim().length() == 0 {
+            return "invalid minor kind: '+' separated segments must be non-empty";
+        }
+    }
+    return;
 }
 
 function validateNewRelationships(json rels) returns string? {
@@ -264,6 +291,10 @@ function validateUpdateRelationships(json rels) returns string? {
                 if dateErr is string {
                     return dateErr;
                 }
+                string? updateErr = badRelationshipUpdate(rel);
+                if updateErr is string {
+                    return updateErr;
+                }
             } else {
                 return "relationship entry must be a JSON object";
             }
@@ -283,6 +314,10 @@ function validateUpdateRelationships(json rels) returns string? {
                 string? dateErr = badRelationshipDates(rel.startTime, rel.endTime);
                 if dateErr is string {
                     return "invalid relationship '" + key + "': " + dateErr;
+                }
+                string? updateErr = badRelationshipUpdate(rel);
+                if updateErr is string {
+                    return "invalid relationship '" + key + "': " + updateErr;
                 }
             } else {
                 return "relationship '" + key + "' must be a JSON object";
@@ -304,8 +339,11 @@ function validateAttributeValue(json val) returns string? {
         return;
     }
     if val is map<json> {
-        if !(val["values"] is ()) {
+        if val["values"] is json[] {
             return validateAttributeValue(val["values"]);
+        }
+        if !(val["values"] is ()) {
+            return "attribute values must be an array";
         }
         return validateAttributeEntry(val);
     }
@@ -483,6 +521,10 @@ service / on ep0 {
         if dateError is string {
             return badRequest(dateError);
         }
+        string? kindError = badMinorKind(validated.kind.minor);
+        if kindError is string {
+            return badRequest(kindError);
+        }
         string? relError = validateNewRelationships(validated?.relationships ?: []);
         if relError is string {
             return <http:BadRequest>{
@@ -623,6 +665,32 @@ service / on ep0 {
     }
 }
 
+function timeBasedValuesFromJsonArray(json[] valuesJson) returns TimeBasedValue[]|error {
+    TimeBasedValue[] timeBasedValues = [];
+    foreach json valueItem in valuesJson {
+        string startTime = valueItem?.startTime is () ? "" : (check valueItem.startTime).toString();
+        string endTime = valueItem?.endTime is () ? "" : (check valueItem.endTime).toString();
+        json value = valueItem?.value is () ? "" : (check valueItem.value).toJson();
+        TimeBasedValue tbv = {
+            startTime: startTime,
+            endTime: endTime,
+            value: check convertJsonToAny(value)
+        };
+        timeBasedValues.push(tbv);
+    }
+    return timeBasedValues;
+}
+
+function toRelationship(json relJson) returns Relationship|error {
+    return {
+        relatedEntityId: relJson?.relatedEntityId is () ? "" : (check relJson.relatedEntityId).toString(),
+        startTime: relJson?.startTime is () ? "" : (check relJson.startTime).toString(),
+        endTime: relJson?.endTime is () ? "" : (check relJson.endTime).toString(),
+        id: relJson?.id is () ? "" : (check relJson.id).toString(),
+        name: relJson?.name is () ? "" : (check relJson.name).toString()
+    };
+}
+
 // Helper function to convert JSON to Entity
 function convertJsonToEntity(json jsonPayload) returns Entity|error {
     // Check if metadata is present and handle accordingly
@@ -667,31 +735,17 @@ function convertJsonToEntity(json jsonPayload) returns Entity|error {
                         };
                         timeBasedValues.push(tbv);
                     }
-                } else {
+                } else if valueJson is map<json> {
                     // Handle both the {values: [...]} wrapper and a single TimeBasedValue object.
-                    json[] valuesJson;
-                    if valueJson is map<json> && valueJson["values"] is json[] {
-                        valuesJson = <json[]>valueJson["values"];
-                    } else if valueJson is map<json> {
-                        valuesJson = [valueJson];
+                    if valueJson["values"] is json[] {
+                        timeBasedValues = check timeBasedValuesFromJsonArray(<json[]>valueJson["values"]);
+                    } else if valueJson["values"] is () {
+                        timeBasedValues = check timeBasedValuesFromJsonArray([valueJson]);
                     } else {
-                        return error("attribute value must be an array or an object");
+                        return error("attribute values must be an array");
                     }
-
-                    foreach json valueItem in valuesJson {
-                        string startTime = valueItem?.startTime is () ? "" : (check valueItem.startTime).toString();
-                        string endTime = valueItem?.endTime is () ? "" : (check valueItem.endTime).toString();
-                        json value = valueItem?.value is () ? "" : (check valueItem.value).toJson();
-                        // Access specific keys for tabular data
-                        pbAny:Any tbvValue = check convertJsonToAny(value);
-                        
-                        TimeBasedValue tbv = {
-                            startTime: startTime,
-                            endTime: endTime,
-                            value: tbvValue
-                        };
-                        timeBasedValues.push(tbv);
-                    }
+                } else {
+                    return error("attribute value must be an array or an object");
                 }
                 
                 TimeBasedValueList tbvList = {
@@ -716,14 +770,22 @@ function convertJsonToEntity(json jsonPayload) returns Entity|error {
                         };
                         timeBasedValues.push(tbv);
                     }
+                } else if val is map<json> {
+                    if val["values"] is json[] {
+                        timeBasedValues = check timeBasedValuesFromJsonArray(<json[]>val["values"]);
+                    } else if val["values"] is () {
+                        // Handle a single TimeBasedValue object.
+                        TimeBasedValue tbv = {
+                            startTime: val?.startTime is () ? "" : (check val.startTime).toString(),
+                            endTime: val?.endTime is () ? "" : (check val.endTime).toString(),
+                            value: check pbAny:pack(val?.value is () ? "" : (check val.value).toString())
+                        };
+                        timeBasedValues.push(tbv);
+                    } else {
+                        return error("attribute values must be an array");
+                    }
                 } else {
-                    // Handle the case when val is not an array
-                    TimeBasedValue tbv = {
-                        startTime: val?.startTime is () ? "" : (check val.startTime).toString(),
-                        endTime: val?.endTime is () ? "" : (check val.endTime).toString(),
-                        value: check pbAny:pack(val?.value is () ? "" : (check val.value).toString())
-                    };
-                    timeBasedValues.push(tbv);
+                    return error("attribute value must be an array or an object");
                 }
                 
                 TimeBasedValueList tbvList = {
@@ -744,35 +806,13 @@ function convertJsonToEntity(json jsonPayload) returns Entity|error {
             foreach json item in relationshipsJsonArray {
                 string key = (check item.key).toString();
                 json relJson = check item.value;
-                
-                Relationship relationship = {
-                    relatedEntityId: (check relJson.relatedEntityId).toString(),
-                    startTime: (check relJson.startTime).toString(),
-                    endTime: relJson?.endTime is () ? "" : (check relJson.endTime).toString(),
-                    id: (check relJson.id).toString(),
-                    name: (check relJson.name).toString()
-                };
-                
+                Relationship relationship = check toRelationship(relJson);
                 relationshipsArray.push({key: key, value: relationship});
             }
         } else if jsonPayload?.relationships is map<json> {
             map<json> relationshipsMap = <map<json>>check jsonPayload.relationships;
             foreach var [key, val] in relationshipsMap.entries() {
-                // Ensure all required relationship fields are present and have default values if missing
-                string relatedEntityId = val?.relatedEntityId is () ? "" : (check val.relatedEntityId).toString();
-                string startTime = val?.startTime is () ? "" : (check val.startTime).toString();
-                string endTime = val?.endTime is () ? "" : (check val.endTime).toString();
-                string id = val?.id is () ? "" : (check val.id).toString();
-                string name = val?.name is () ? key : (check val.name).toString(); // Default to key if name is missing
-                
-                Relationship relationship = {
-                    relatedEntityId: relatedEntityId,
-                    startTime: startTime,
-                    endTime: endTime,
-                    id: id,
-                    name: name
-                };
-                
+                Relationship relationship = check toRelationship(val);
                 relationshipsArray.push({key: key, value: relationship});
             }
         }

@@ -1410,6 +1410,10 @@ function testInvalidDateTimeRejectedBeforeGrpc() returns error? {
     json invalidDirection = {"id": "some-entity", "direction": "SIDEWAYS"};
     http:Response directionResponse = check restClient->post("/v1/entities/some-entity/relations", invalidDirection);
     test:assertEquals(directionResponse.statusCode, 400, "Invalid direction should be rejected");
+
+    json emptyOptionalDate = {"id": "some-entity", "terminated": ""};
+    http:Response emptyDateResponse = check restClient->post("/v1/entities/search", emptyOptionalDate);
+    test:assertEquals(emptyDateResponse.statusCode, 200, "Empty optional dates should remain accepted");
 }
 
 // After Suite Function
