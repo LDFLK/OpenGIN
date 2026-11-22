@@ -2688,19 +2688,19 @@ function testCreateEntityWithInvalidMinorKindViaRest() returns error? {
     http:Client restClient = check new (testIngestionServiceUrl, {httpVersion: "2.0"});
     COREServiceClient ep = check new (testCoreServiceUrl);
 
-    // [id, minor kind, expected error message]
-    [string, string, string][] invalidMinorKinds = [
-        ["test-invalid-minor-kind-empty", "", "missing required fields for Neo4j entity creation"],
-        ["test-invalid-minor-kind-empty-spaces", "        ", "invalid minor kind"],
-        ["test-invalid-minor-kind-only-separator", "+", "invalid minor kind"],
-        ["test-invalid-minor-kind-leading", "+country-level-2", "invalid minor kind"],
-        ["test-invalid-minor-kind-trailing", "country-level-2+", "invalid minor kind"],
-        ["test-invalid-minor-kind-doubled", "country-level-2++lk-electoral-district", "invalid minor kind"]
+    // [id, minor kind, expected status, expected error message]
+    [string, string, int, string][] invalidMinorKinds = [
+        ["test-invalid-minor-kind-empty", "", 400, "Invalid request parameters"],
+        ["test-invalid-minor-kind-empty-spaces", "        ", 400, "invalid minor kind"],
+        ["test-invalid-minor-kind-only-separator", "+", 400, "invalid minor kind"],
+        ["test-invalid-minor-kind-leading", "+country-level-2", 400, "invalid minor kind"],
+        ["test-invalid-minor-kind-trailing", "country-level-2+", 400, "invalid minor kind"],
+        ["test-invalid-minor-kind-doubled", "country-level-2++lk-electoral-district", 400, "invalid minor kind"]
     ];
 
-    foreach var [id, minor, expectedError] in invalidMinorKinds {
+    foreach var [id, minor, expectedStatus, expectedError] in invalidMinorKinds {
         http:Response response = check restClient->post("/entities", entityJson(id, minor));
-        test:assertEquals(response.statusCode, 500, string `Expected create to fail for minor kind "${minor}"`);
+        test:assertEquals(response.statusCode, expectedStatus, string `Expected create to fail for minor kind "${minor}"`);
         string body = check response.getTextPayload();
         test:assertTrue(body.includes(expectedError), body);
 
@@ -2710,4 +2710,90 @@ function testCreateEntityWithInvalidMinorKindViaRest() returns error? {
     }
 
     return;
+}
+
+// Verify invalid payloads are rejected at the HTTP edge, before any gRPC call.
+@test:Config {
+    groups: ["validation"]
+}
+function testRestRejectsInvalidFieldsBeforeGrpc() returns error? {
+    http:Client restClient = check new (testIngestionServiceUrl, {httpVersion: "2.0"});
+
+    json invalidCreated = {
+        "id": "test-invalid-created-entity",
+        "kind": {"major": "test", "minor": "invalid-created"},
+        "created": "2023-02-30",
+        "name": {"value": "invalid-created"}
+    };
+    http:Response createdResponse = check restClient->post("/entities", invalidCreated);
+    test:assertEquals(createdResponse.statusCode, 400, "Impossible created date should be rejected");
+
+    json invalidRelationship = {
+        "id": "test-invalid-relationship-entity",
+        "kind": {"major": "test", "minor": "invalid-relationship"},
+        "created": "2023-01-01",
+        "name": {"value": "invalid-relationship"},
+        "relationships": {
+            "   ": {
+                "id": "rel-invalid",
+                "relatedEntityId": "target",
+                "name": "rel",
+                "startTime": "2023-01-01"
+            }
+        }
+    };
+    http:Response relationshipResponse = check restClient->post("/entities", invalidRelationship);
+    test:assertEquals(relationshipResponse.statusCode, 400, "Blank relationship key should be rejected");
+
+    json invalidAttribute = {
+        "id": "test-invalid-attribute-entity",
+        "kind": {"major": "test", "minor": "invalid-attribute"},
+        "created": "2023-01-01",
+        "name": {"value": "invalid-attribute"},
+        "attributes": {
+            "   ": {
+                "startTime": "2023-01-01",
+                "value": "invalid-attribute"
+            }
+        }
+    };
+    http:Response attributeResponse = check restClient->post("/entities", invalidAttribute);
+    test:assertEquals(attributeResponse.statusCode, 400, "Blank attribute key should be rejected");
+
+    json invalidAttributeDate = {
+        "id": "test-invalid-attribute-date-entity",
+        "kind": {"major": "test", "minor": "invalid-attribute-date"},
+        "created": "2023-01-01",
+        "name": {"value": "invalid-attribute-date"},
+        "attributes": {
+            "attr": {
+                "startTime": "2023-02-30",
+                "value": "invalid-attribute-date"
+            }
+        }
+    };
+    http:Response attributeDateResponse = check restClient->post("/entities", invalidAttributeDate);
+    test:assertEquals(attributeDateResponse.statusCode, 400, "Impossible attribute startTime should be rejected");
+
+    json invalidAttributeWrapper = {
+        "id": "test-invalid-attribute-wrapper-entity",
+        "kind": {"major": "test", "minor": "invalid-attribute-wrapper"},
+        "created": "2023-01-01",
+        "name": {"value": "invalid-attribute-wrapper"},
+        "attributes": {
+            "attr": {
+                "values": {"startTime": "2023-01-01", "value": "invalid-attribute-wrapper"}
+            }
+        }
+    };
+    http:Response attributeWrapperResponse = check restClient->post("/entities", invalidAttributeWrapper);
+    test:assertEquals(attributeWrapperResponse.statusCode, 400, "Object-valued attribute 'values' wrapper should be rejected");
+
+    json invalidRelationshipUpdate = {
+        "relationships": [
+            {"key": "rel-incomplete", "value": {"id": "rel-incomplete"}}
+        ]
+    };
+    http:Response relationshipUpdateResponse = check restClient->put("/entities/test-incomplete-relationship-entity", invalidRelationshipUpdate);
+    test:assertEquals(relationshipUpdateResponse.statusCode, 400, "Relationship update without dates should be rejected");
 }

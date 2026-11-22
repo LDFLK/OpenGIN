@@ -37,6 +37,9 @@ version = "1.6.0"
 dependencies = [
 	{org = "ballerina", name = "jballerina.java"}
 ]
+modules = [
+	{org = "ballerina", packageName = "constraint", moduleName = "constraint"}
+]
 
 [[package]]
 org = "ballerina"
@@ -348,6 +351,9 @@ version = "2.6.0"
 dependencies = [
 	{org = "ballerina", name = "jballerina.java"}
 ]
+modules = [
+	{org = "ballerina", packageName = "time", moduleName = "time"}
+]
 
 [[package]]
 org = "ballerina"
@@ -374,6 +380,7 @@ org = "ldf"
 name = "ingestion_api"
 version = "0.1.0"
 dependencies = [
+	{org = "ballerina", name = "constraint"},
 	{org = "ballerina", name = "grpc"},
 	{org = "ballerina", name = "http"},
 	{org = "ballerina", name = "io"},
@@ -382,6 +389,7 @@ dependencies = [
 	{org = "ballerina", name = "os"},
 	{org = "ballerina", name = "protobuf"},
 	{org = "ballerina", name = "test"},
+	{org = "ballerina", name = "time"},
 	{org = "ballerinai", name = "observe"}
 ]
 modules = [
