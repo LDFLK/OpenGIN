@@ -533,6 +533,46 @@ function testCreateMinimalGraphEntityViaRest() returns error? {
     return;
 }
 
+@test:Config {}
+function testCreateEntityWithoutId() returns error? {
+    // Initialize an HTTP client for the REST API with HTTP/2 support
+    http:ClientConfiguration httpConfig = {
+        httpVersion: "2.0"
+    };
+    http:Client restClient = check new (testIngestionServiceUrl, httpConfig);
+
+    // Payload with missing id field
+    json payloadWithoutId = {
+        "kind": {
+            "major": "Person",
+            "minor": "Employee"
+        },
+        "created": "2025-01-01T00:00:00Z",
+        "terminated": "",
+        "name": {
+            "startTime": "2025-01-01T00:00:00Z",
+            "endTime": "",
+            "value": "No Id User"
+        },
+        "metadata": [],
+        "attributes": [],
+        "relationships": []
+    };
+
+    // Send request
+    http:Response|error response = restClient->post("/entities", payloadWithoutId);
+
+    if response is error {
+        test:assertFail("HTTP request failed: " + response.message());
+    }
+
+    http:Response httpResponse = <http:Response>response;
+    test:assertEquals(httpResponse.statusCode, 400, "Expected 400 Bad Request for missing entity id");
+    io:println("testCreateEntityWithoutId: correctly returned 400 for missing id");
+
+    return;
+}
+
 @test:Config {
     groups: ["entity", "relationship"]
 }
