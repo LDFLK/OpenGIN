@@ -128,13 +128,19 @@ service / on ep0 {
     # Create a new entity
     #
     # + return - Entity created 
-    resource function post entities(@http:Payload json jsonPayload) returns Entity|error {
+    resource function post entities(@http:Payload json jsonPayload) returns Entity|http:BadRequest|error {
         // Convert JSON to Entity with custom mapping
         io:println("[CreateEntity] jsonPayload: ", jsonPayload);
         Entity payload = check convertJsonToEntity(jsonPayload);
-        
+
+        // Validate that id is present
+        if payload.id == "" {
+            log:printError("[CreateEntity] Validation failed: entity Id cannot be empty");
+            return <http:BadRequest>{body: "entity Id cannot be empty"};
+        }
+
         io:println("[CreateEntity] Protobuf Payload: ", payload);
-        
+
         var result = ep->CreateEntity(payload);
         if result is error {
             log:printError("gRPC CreateEntity failed: ", result);
