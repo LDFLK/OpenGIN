@@ -162,47 +162,6 @@ service / on ep0 {
         return result;
     }
 
-    # FIXME: https://github.com/LDFLK/nexoan/issues/135 
-    # TODO: Remove/Don't expose this endpoint from Ingest API (has been only added for testing purposes)
-    # Read an entity by ID
-    #
-    # + id - The ID of the entity to retrieve
-    # + return - The entity or an error
-    resource function get entities/[string id]() returns Entity|error {
-        // Call the ReadEntity function with the ID
-        ReadEntityRequest readEntityRequest = {
-            entity: {
-                id: id,
-                kind: {},
-                created: "",
-                terminated: "",
-                name: {
-                    startTime: "",
-                    endTime: "",
-                    value: check pbAny:pack("")
-                },
-                metadata: [],
-                attributes: [],
-                relationships: []
-            },
-            output: ["metadata", "attributes", "relationships"]
-        };
-        
-        Entity|error result = ep->ReadEntity(readEntityRequest);
-
-        if result is error {
-            log:printError("gRPC ReadEntity failed: ", result);
-            return result;
-        } else {
-            io:println("Retrieved entity with ID: ", id);
-            io:println("Entity metadata: ", result.metadata);
-            io:println("Entity attributes: ", result.attributes);
-            io:println("Entity relationships: ", result.relationships);
-        }
-        
-        // Successfully retrieved the entity
-        return result;
-    }
 }
 
 // Helper function to convert JSON to Entity
