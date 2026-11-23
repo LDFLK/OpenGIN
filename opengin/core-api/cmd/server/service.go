@@ -37,6 +37,11 @@ type Server struct {
 func (s *Server) CreateEntity(ctx context.Context, req *pb.Entity) (*pb.Entity, error) {
 	log.Printf("Creating Entity: %s", req.Id)
 
+	if req.Id == "" {
+		log.Printf("[server.CreateEntity] Validation failed: entity Id cannot be empty")
+		return nil, fmt.Errorf("entity Id cannot be empty")
+	}
+
 	// Validate required fields for Neo4j entity creation
 	success, err := s.neo4jRepo.HandleGraphEntityCreation(ctx, req)
 	if !success {
