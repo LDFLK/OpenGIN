@@ -101,7 +101,7 @@ jobs:
           if docker compose logs core | grep -q "CORE Service is running on"; then
             echo "✅ CORE service is now running!"
             break
-          elif docker compose logs core | grep -q "FAILED\|failed\|error.*test"; then
+          elif docker compose logs core | grep -qE "^--- FAIL:|^FAIL\s"; then
             echo "❌ CORE service tests failed!"
             echo "CORE service logs:"
             docker compose logs core
