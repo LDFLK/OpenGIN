@@ -140,7 +140,6 @@ service / on ep0 {
         }
 
         io:println("[CreateEntity] Protobuf Payload: ", payload);
-
         var result = ep->CreateEntity(payload);
         if result is error {
             log:printError("gRPC CreateEntity failed: ", result);
