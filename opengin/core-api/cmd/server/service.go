@@ -19,7 +19,9 @@ import (
 	engine "lk/datafoundation/core-api/engine"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/reflection"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -39,7 +41,7 @@ func (s *Server) CreateEntity(ctx context.Context, req *pb.Entity) (*pb.Entity, 
 
 	if req.Id == "" {
 		log.Printf("[server.CreateEntity] Validation failed: entity Id cannot be empty")
-		return nil, fmt.Errorf("entity Id cannot be empty")
+		return nil, status.Error(codes.InvalidArgument, "entity Id cannot be empty")
 	}
 
 	// Validate required fields for Neo4j entity creation
