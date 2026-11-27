@@ -119,11 +119,7 @@ components:
                 properties:
                   key:
                     type: string
-                  value:
-                    oneOf:
-                      - type: string
-                      - type: object
-                        additionalProperties: true
+                  value: {}
         attributes:
           type: array
           items:
