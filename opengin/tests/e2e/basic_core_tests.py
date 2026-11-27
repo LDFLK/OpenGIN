@@ -1579,7 +1579,7 @@ if __name__ == "__main__":
 
     try:
         print("🟢 Running Metadata Validation Tests...")
-        metadata_validation_tests = MetadataValidationTests(entity_id="e2e-meta-validation-001")
+        metadata_validation_tests = MetadataValidationTests(entity_id="123")
         metadata_validation_tests.create_entity()
         metadata_validation_tests.read_entity()
         metadata_validation_tests.update_entity()
