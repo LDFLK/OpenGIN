@@ -379,6 +379,46 @@ class MetadataValidationTests(BasicCORETests):
                 f"\n🟢 Entity was not deleted properly: {response.status_code} {response.text}"
             )
 
+    def test_metadata_object_format(self):
+        """metadata sent as a plain object should be accepted (201)."""
+        print("\n🟢 Testing metadata as plain object...")
+        entity_id = "ent-meta-obj-001"
+        requests.delete(f"{self.base_url}/{entity_id}")
+        payload = {
+            "id": entity_id,
+            "kind": {"major": "Person", "minor": "Employee"},
+            "created": "2026-01-01T00:00:00Z",
+            "terminated": "",
+            "name": {"startTime": "2026-01-01T00:00:00Z", "endTime": "", "value": "Test User"},
+            "metadata": {"department": "Engineering", "level": "Senior"},
+            "attributes": [],
+            "relationships": [],
+        }
+        res = requests.post(self.base_url, json=payload, headers={"Content-Type": "application/json"})
+        requests.delete(f"{self.base_url}/{entity_id}")
+        assert res.status_code == 201, f"Expected 201, got {res.status_code}: {res.text}"
+        print("✅ metadata as plain object accepted.")
+
+    def test_metadata_array_object_value(self):
+        """metadata array entry whose value is a nested object should be accepted (201)."""
+        print("\n🟢 Testing metadata array with object value...")
+        entity_id = "ent-meta-arr-obj-001"
+        requests.delete(f"{self.base_url}/{entity_id}")
+        payload = {
+            "id": entity_id,
+            "kind": {"major": "Person", "minor": "Employee"},
+            "created": "2026-01-01T00:00:00Z",
+            "terminated": "",
+            "name": {"startTime": "2026-01-01T00:00:00Z", "endTime": "", "value": "Test User"},
+            "metadata": [{"key": "address", "value": {"city": "Colombo", "country": "LK"}}],
+            "attributes": [],
+            "relationships": [],
+        }
+        res = requests.post(self.base_url, json=payload, headers={"Content-Type": "application/json"})
+        requests.delete(f"{self.base_url}/{entity_id}")
+        assert res.status_code == 201, f"Expected 201, got {res.status_code}: {res.text}"
+        print("✅ metadata array with object value accepted.")
+
 
 class GraphEntityTests(BasicCORETests):
     def __init__(self):
@@ -1552,6 +1592,8 @@ if __name__ == "__main__":
         metadata_validation_tests.validate_update()
         metadata_validation_tests.delete_entity()
         metadata_validation_tests.verify_deletion()
+        metadata_validation_tests.test_metadata_object_format()
+        metadata_validation_tests.test_metadata_array_object_value()
         print("\n🟢 Running Metadata Validation Tests... Done")
 
         print("\n🟢 Running Graph Entity Tests...")
