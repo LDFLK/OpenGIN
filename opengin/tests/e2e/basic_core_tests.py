@@ -382,8 +382,10 @@ class MetadataValidationTests(BasicCORETests):
     def test_metadata_object_format(self):
         """metadata sent as a plain object should be accepted (201)."""
         print("\n🟢 Testing metadata as plain object...")
+        entity_id = "ent-meta-obj-001"
+        requests.delete(f"{self.base_url}/{entity_id}")
         payload = {
-            "id": "ent-meta-obj-001",
+            "id": entity_id,
             "kind": {"major": "Person", "minor": "Employee"},
             "created": "2026-01-01T00:00:00Z",
             "terminated": "",
@@ -393,14 +395,17 @@ class MetadataValidationTests(BasicCORETests):
             "relationships": [],
         }
         res = requests.post(self.base_url, json=payload, headers={"Content-Type": "application/json"})
+        requests.delete(f"{self.base_url}/{entity_id}")
         assert res.status_code == 201, f"Expected 201, got {res.status_code}: {res.text}"
         print("✅ metadata as plain object accepted.")
 
     def test_metadata_array_object_value(self):
         """metadata array entry whose value is a nested object should be accepted (201)."""
         print("\n🟢 Testing metadata array with object value...")
+        entity_id = "ent-meta-arr-obj-001"
+        requests.delete(f"{self.base_url}/{entity_id}")
         payload = {
-            "id": "ent-meta-arr-obj-001",
+            "id": entity_id,
             "kind": {"major": "Person", "minor": "Employee"},
             "created": "2026-01-01T00:00:00Z",
             "terminated": "",
@@ -410,6 +415,7 @@ class MetadataValidationTests(BasicCORETests):
             "relationships": [],
         }
         res = requests.post(self.base_url, json=payload, headers={"Content-Type": "application/json"})
+        requests.delete(f"{self.base_url}/{entity_id}")
         assert res.status_code == 201, f"Expected 201, got {res.status_code}: {res.text}"
         print("✅ metadata array with object value accepted.")
 
